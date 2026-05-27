@@ -25,13 +25,13 @@
   ],
   "activityLog": [
     {
-      "id": "43f85788-c8bc-43df-8bd4-dd6ab4f0d7ae",
-      "at": "2026-05-26T21:59:30.990Z",
+      "id": "6e5c8f6e-896f-4e99-9ba3-da55f4f2d9d4",
+      "at": "2026-05-27T20:10:34.723Z",
       "actor": "老板 / AI 中台",
       "projectId": "color-report",
       "projectName": "色彩分析小程序获客",
-      "action": "系统建设任务",
-      "detail": "从 上下文层 生成任务：为「色彩分析小程序获客」建立客户画像和业务规则卡"
+      "action": "运行流水线",
+      "detail": "生成 4 条候选选题"
     }
   ],
   "config": {
@@ -229,23 +229,137 @@
       "createdAt": "2026-05-27T00:00:00.000Z"
     }
   ],
-  "candidates": [],
-  "topics": [],
-  "tasks": [
+  "candidates": [
     {
-      "id": "12fcd83c-cae3-4e12-9eab-1d18f11d12bd",
-      "source": "workflow-layer",
-      "projectId": "color-report",
-      "layer": "上下文层",
-      "title": "为「色彩分析小程序获客」建立客户画像和业务规则卡",
-      "owner": "企业大脑",
-      "status": "待建设",
-      "next": "整理目标客户、产品卖点、禁区话术、历史案例和素材目录，形成 AI 员工接任务前必须读取的上下文卡。",
-      "acceptance": "打开项目档案时能看到客户画像、业务规则、素材索引和可引用案例。",
-      "createdAt": "2026-05-26T21:59:30.990Z"
+      "id": "39826ef0-0c60-48ba-a2d9-ebb033189eb6",
+      "title": "付了钱却看不到结果，是 AI 产品最不能犯的错",
+      "source": "项目复盘",
+      "score": 98,
+      "formula": "SCAR",
+      "platform": "朋友圈 / 公众号",
+      "angle": "用真实交付事故讲清楚状态闭环、同步机制和兜底机制，让客户相信系统不是玩具。",
+      "material": [
+        "小妹反馈：付款后看不到完整报告，会严重影响信任。"
+      ],
+      "signals": [
+        {
+          "source": "项目复盘",
+          "text": "小妹反馈：付款后看不到完整报告，会严重影响信任。",
+          "metrics": {
+            "likes": 36,
+            "comments": 24,
+            "saves": 8,
+            "shares": 5,
+            "growth": 55
+          },
+          "pain": "付款后看不到、交付不稳定",
+          "performanceScore": 92
+        }
+      ],
+      "createdAt": "2026-05-27T20:10:34.723Z"
+    },
+    {
+      "id": "79f2b69d-0eb8-42de-aafb-eb256c31577b",
+      "title": "为什么用户愿意为一张形象试看图付款？",
+      "source": "增长观察 / 项目复盘",
+      "score": 98,
+      "formula": "PAS",
+      "platform": "小红书 / 朋友圈",
+      "angle": "从好奇心、即时反馈和社交炫耀解释试看图为什么能促成体验和转化。",
+      "material": [
+        "试看图如果足够好看、能发朋友圈炫耀，就更容易带来自传播。",
+        "客户说试看图不像本人，付费意愿会立刻下降。"
+      ],
+      "signals": [
+        {
+          "source": "增长观察",
+          "text": "试看图如果足够好看、能发朋友圈炫耀，就更容易带来自传播。",
+          "metrics": {
+            "likes": 156,
+            "comments": 62,
+            "saves": 47,
+            "shares": 29,
+            "growth": 88
+          },
+          "pain": "想发圈、想炫耀、想被夸",
+          "performanceScore": 103
+        },
+        {
+          "source": "项目复盘",
+          "text": "客户说试看图不像本人，付费意愿会立刻下降。",
+          "metrics": {
+            "likes": 28,
+            "comments": 17,
+            "saves": 6,
+            "shares": 3,
+            "growth": 42
+          },
+          "pain": "像不像本人、值不值得付费",
+          "performanceScore": 76
+        }
+      ],
+      "createdAt": "2026-05-27T20:10:34.723Z"
+    },
+    {
+      "id": "a8343ee6-e903-466b-911b-519ab871ca46",
+      "title": "男士形象分析不是变帅，而是先变精神",
+      "source": "测试反馈",
+      "score": 96,
+      "formula": "SCAR",
+      "platform": "视频号",
+      "angle": "把男士形象优化从“变帅”改成“变精神、干净、可信”，降低审美争议。",
+      "material": [
+        "男士形象分析不一定要变帅，但要变精神、干净、可信、有职业感。"
+      ],
+      "signals": [
+        {
+          "source": "测试反馈",
+          "text": "男士形象分析不一定要变帅，但要变精神、干净、可信、有职业感。",
+          "metrics": {
+            "likes": 74,
+            "comments": 39,
+            "saves": 21,
+            "shares": 11,
+            "growth": 64
+          },
+          "pain": "男士变精神、不要变丑",
+          "performanceScore": 86
+        }
+      ],
+      "createdAt": "2026-05-27T20:10:34.723Z"
+    },
+    {
+      "id": "3a5e316c-8d04-469e-9f89-00b23c5a0977",
+      "title": "老板每天不知道发什么，是因为没有选题流水线",
+      "source": "AI Native",
+      "score": 96,
+      "formula": "QUEST",
+      "platform": "小红书 / 公众号",
+      "angle": "把“色彩分析小程序获客”的内容焦虑拆成信息源、关键词、AI 初筛和人工判断四个动作。",
+      "material": [
+        "老板每天不知道发什么，需要一条选题流水线。"
+      ],
+      "signals": [
+        {
+          "source": "AI Native",
+          "text": "老板每天不知道发什么，需要一条选题流水线。",
+          "metrics": {
+            "likes": 92,
+            "comments": 41,
+            "saves": 33,
+            "shares": 18,
+            "growth": 76
+          },
+          "pain": "每天发什么、内容没规划",
+          "performanceScore": 90
+        }
+      ],
+      "createdAt": "2026-05-27T20:10:34.723Z"
     }
   ],
+  "topics": [],
+  "tasks": [],
   "assets": [],
-  "lastPipelineRunAt": null,
-  "updatedAt": "2026-05-26T21:59:30.990Z"
+  "lastPipelineRunAt": "2026-05-27T20:10:34.723Z",
+  "updatedAt": "2026-05-28T00:00:00.000Z"
 }
