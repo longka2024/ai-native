@@ -1,0 +1,204 @@
+# AI_Make_Money_2026 raw business extraction
+Total rows: 752
+
+## Cluster
+- 166: AI Faceless YouTube / Content Monetization
+- 135: AI SaaS / Vibe Coding Product
+- 121: AI Service / Agency
+- 89: AI Agent / Automation
+- 77: AI Dropshipping / E-commerce
+- 42: N/A (Commentary / Education)
+- 28: AI Affiliate Marketing
+- 23: AI Print on Demand (POD)
+- 21: AI Digital Products (KDP / Etsy / Templates)
+- 3: AI Social Content Monetization
+- 2: AI Education / Course
+- 2: Content Monetization (YouTube AdSense)
+- 1: AI Acquisition / Buy a Boring Business + AI-ify It
+- 1: Knowledge Monetize
+- 1: AI training workshops for businesses
+- 1: AI Tool Review / Tier List
+- 1: N/A (tool roundup / review video)
+- 1: AI Influencer / Virtual KOL
+- 1: Niche News Site / Domain Flipping & SEO
+- 1: Online Education / Mini-Course
+- 1: Online Coaching (Group)
+- 1: N/A (warning / policy commentary)
+- 1: YouTube AdSense (AI Screensaver Channels)
+- 1: N/A (commentary / news)
+- 1: AI Music Generation
+- 1: AI Content / Prompt Methodology Tutorial
+- 1: AI Music Artist (Spotify streaming royalties)
+- 1: AI Virtual Influencer
+- 1: AI Consultant (B2C / Education)
+- 1: N/A (commentary / news analysis)
+
+## A. Type of side hustle
+- 59: AIGC Monetize Content
+- 50: AI Service / Agency
+- 42: N/A
+- 38: AI Agent / Automation
+- 31: AI SaaS / Product
+- 18: Commodity distribution
+- 6: Micro SaaS
+- 6: AI Dropshipping
+- 5: Faceless YouTube automation (AdSense)
+- 5: Digital Products
+- 4: Faceless YouTube Channel
+- 3: Faceless YouTube automation
+- 3: E-commerce / Dropshipping
+- 3: Affiliate Marketing
+- 2: Faceless YouTube Automation
+- 2: Content Creation / Faceless YouTube
+- 2: Faceless YouTube channel (AI content)
+- 2: AI Digital Products / Amazon KDP
+- 2: Etsy Digital Product Sales
+- 2: E-commerce Dropshipping
+- 2: E-commerce / DTC
+- 2: Shopify Dropshipping
+- 2: E-commerce / Print on Demand
+- 2: Print on Demand (POD) with AI
+- 2: AI Education / Course
+- 2: Content Monetization (YouTube AdSense)
+- 1: AI Faceless YouTube
+- 1: Faceless YouTube Shorts channel monetized via AdSense
+- 1: AI Faceless YouTube / Shorts
+- 1: AIGC Monetize Content / freelance
+
+## E. Drainage platform
+- 59: N/A
+- 39: YouTube
+- 11: Etsy search SEO
+- 9: Etsy organic search
+- 8: YouTube Shorts
+- 7: YouTube Shorts algorithm
+- 7: YouTube algorithm
+- 6: TikTok, Instagram Reels, YouTube Shorts
+- 6: YouTube Shorts, TikTok, Instagram Reels
+- 6: Etsy
+- 5: YouTube long-form algorithm
+- 5: Fiverr
+- 4: YouTube, TikTok, Instagram Reels
+- 4: YouTube (long-form)
+- 4: Pinterest
+- 3: TikTok, YouTube Shorts, Instagram Reels
+- 3: Amazon search SEO
+- 3: YouTube long-form
+- 3: Etsy internal search (SEO)
+- 3: Instagram, TikTok
+- 3: Facebook Ads
+- 3: TikTok Ads
+- 2: YouTube algorithm (long-form + Shorts)
+- 2: YouTube long-form / Shorts
+- 2: YouTube search SEO
+- 2: Google search SEO
+- 2: YouTube, Instagram Reels, TikTok
+- 2: TikTok, YouTube Shorts
+- 2: YouTube (Shorts + long-form)
+- 2: TikTok
+
+## K. Sales platform
+- 59: N/A
+- 51: Etsy
+- 32: Own Shopify store
+- 20: YouTube AdSense
+- 12: Direct B2B
+- 11: Direct B2B contracts
+- 9: YouTube (AdSense)
+- 7: YouTube Partner Program (AdSense)
+- 7: Direct invoice / Stripe link
+- 6: Amazon
+- 6: Fiverr
+- 5: Own SaaS landing page
+- 5: Direct B2B consulting contracts
+- 5: Direct B2B / Stripe invoice
+- 4: YouTube AdSense + sponsorships
+- 4: YouTube ad revenue
+- 4: Self-built SaaS on Base44
+- 4: Direct sales / freelance
+- 3: YouTube (AdSense + Shorts revenue)
+- 3: YouTube AdSense (YouTube Partner Program)
+- 3: YouTube AdSense (YPP)
+- 3: Amazon (KDP)
+- 3: Own sales page
+- 3: Self-hosted Shopify store
+- 2: Etsy (digital download)
+- 2: YouTube (Shorts ad revenue)
+- 2: YouTube AdSense, sponsorships
+- 2: YouTube (ad revenue, sponsorships)
+- 2: YouTube Partner Program
+- 2: TikTok Shop (affiliate)
+
+## P. Business model
+- 90: Service / agency
+- 51: N/A
+- 34: Ad revenue
+- 22: Subscription / SaaS
+- 21: Dropshipping
+- 20: Digital products
+- 17: Content / ad revenue
+- 12: Affiliate marketing
+- 12: SaaS subscription
+- 10: Digital product
+- 8: Print-on-demand
+- 8: Digital product sales
+- 8: Freelance service
+- 8: Service / agency (monthly retainer)
+- 7: E-commerce dropshipping
+- 5: Digital product / one-shot sale
+- 5: Dropshipping (no inventory)
+- 5: Print-on-demand e-commerce
+- 4: Content / advertising
+- 4: Ad-revenue media
+- 4: Service / consulting
+- 4: Personal service
+- 4: Service / agency retainer
+- 4: E-commerce / dropshipping
+- 3: Ad-supported faceless YouTube channel
+- 3: Ad revenue / content automation
+- 3: Micro-SaaS subscription
+- 3: B2B subscription SaaS
+- 3: Service
+- 3: Dropshipping e-commerce
+
+## Top viewed examples
+- 22752456 | AI Service / Agency | AI Service / Agency | Alex Hormozi's New Playbook: Entrepreneurship in the Age of AI | tools=Replit, ChatGPT, Claude, Stripe, Loom | model=Service / agency
+- 3652555 | N/A (Commentary / Education) | N/A | The State of the AI Industry is Freaking Me Out | tools=N/A | model=N/A
+- 2607906 | AI SaaS / Vibe Coding Product | AI SaaS / Product | Top 3 Business Ideas For Vibe Coders | tools=Cursor or Replit, ChatGPT/Claude, TradingView Pine Script, Stripe, JetBrains Matter (sponsor) | model=Digital products
+- 2607906 | AI SaaS / Vibe Coding Product | AI SaaS / Product | Top 3 Business Ideas For Vibe Coders | tools=Cursor/Lovable, Nano Banana (Gemini), Seedream 4.0, Stripe | model=Subscription / SaaS
+- 2607906 | AI SaaS / Vibe Coding Product | AI SaaS / Product | Top 3 Business Ideas For Vibe Coders | tools=Stream (video/audio SDK), Cursor/Lovable, OpenAI Realtime API, Stripe | model=Subscription / SaaS
+- 2240102 | AI Service / Agency | AI Service / Agency | 7 Side Hustles Students Can Start In 2026 | tools=Email, LinkedIn, Instagram, Notion or Airtable for deal flow | model=Service / agency
+- 2240102 | AI Service / Agency | AI Service / Agency | 7 Side Hustles Students Can Start In 2026 | tools=DaVinci Resolve, CapCut, Adobe Premiere, ChatGPT for scripts, Descript | model=Service / agency
+- 2240102 | AI Dropshipping / E-commerce | Commodity distribution | 7 Side Hustles Students Can Start In 2026 | tools=eBay seller account | model=Dropshipping
+- 1856231 | AI Faceless YouTube / Content Monetization | AIGC Monetize Content | I BLEW UP a YouTube Channel in 7 Days with AI | tools=Sora 2, Veo / Google Flow, ElevenLabs, Suno (music), CapCut | model=Ad revenue
+- 1830261 | AI Service / Agency | AI Service / Agency | These 5 AI Businesses Will Make You $1M (With Zero Employees) | tools=Opus Clip, Submagic, Descript, CapCut, Buffer/Publer | model=Service / agency
+- 1830261 | AI Service / Agency | AI Service / Agency | These 5 AI Businesses Will Make You $1M (With Zero Employees) | tools=OpenAI Embeddings, Pinecone or Supabase pgvector, n8n, Airbyte, Notion | model=Service / agency
+- 1830261 | AI Agent / Automation | AI Agent / Automation | These 5 AI Businesses Will Make You $1M (With Zero Employees) | tools=youratlas.com, Vapi, Retell AI, n8n, Stripe | model=Service / agency
+- 1830261 | AI Agent / Automation | AI Agent / Automation | These 5 AI Businesses Will Make You $1M (With Zero Employees) | tools=ManyChat, GoHighLevel, GetRev, n8n, OpenAI API | model=Service / agency
+- 1830261 | AI Agent / Automation | AI Agent / Automation | These 5 AI Businesses Will Make You $1M (With Zero Employees) | tools=Fixer, Superhuman, Reclaim, n8n, OpenAI API | model=Service / agency
+- 1652619 | AI SaaS / Vibe Coding Product | AI SaaS / Product | I Tried 500+ AI Tools, These 9 Will Make You Rich | tools=ChatGPT, Gemini, Claude, Lovable, Whisper, 21st.dev, Nano Banana, HeyGen, ElevenLabs, n8n, Granola, Fiverr | model=Subscription / SaaS
+- 1481074 | AI Faceless YouTube / Content Monetization | AI Faceless YouTube | 4 BEST AI Businesses To Start Before 2026 (For Beginners) | tools=Sora (OpenAI), Suno AI, Canva | model=Ad-supported content / faceless YouTube channel
+- 1481074 | AI SaaS / Vibe Coding Product | AI Publishing / AI Digital Products | 4 BEST AI Businesses To Start Before 2026 (For Beginners) | tools=Google Nano Banana (Gemini), ChatGPT (story + prompts), Canva (layout), Etsy | model=Digital product / print-on-demand publishing
+- 1481074 | AI Dropshipping / E-commerce | AI Dropshipping / AI Commerce | 4 BEST AI Businesses To Start Before 2026 (For Beginners) | tools=ChatGPT, Sora, Google Flow, Shopify, Facebook Ads, TikTok Shop research tool (e.g. Kalodata-style) | model=Dropshipping
+- 1481074 | AI Affiliate Marketing | AI Affiliate Marketing | 4 BEST AI Businesses To Start Before 2026 (For Beginners) | tools=Google Flow (Veo), Sora, ChatGPT (for scripts), CapCut | model=Affiliate marketing
+- 1241488 | N/A (Commentary / Education) | N/A | SORA: the all Ai TikTok Clone. will slop end creativity? | tools=Sora (mentioned, not taught as a money tool) | model=N/A
+- 1117534 | N/A (Commentary / Education) | N/A | Why AI Agents are either the best or worst thing we've ever built | tools=OpenClaw (open-source AI agent), Claude/ChatGPT/Gemini APIs underneath, WhatsApp, an online mug shop builder | model=Print-on-demand / agent-run e-commerce (experimental)
+- 1092074 | N/A (Commentary / Education) | N/A | How to Use AI to Make Money, Save Time, and Be More Productive | tools=ChatGPT (general use) | model=N/A (advice / personal productivity)
+- 965964 | AI Agent / Automation | N/A (adjacent: AI Agent / Automation skill) | n8n Now Runs My ENTIRE Homelab | tools=n8n, Proxmox, Ollama / local LLMs, webhooks | model=N/A (tutorial)
+- 909737 | AI SaaS / Vibe Coding Product | Micro-SaaS / AI Software Products | The Only 25 Ways to Make Money in 2026 | tools=Cursor, Lovable, Replit, Supabase, Stripe, OpenAI API | model=SaaS / digital product
+- 909737 | AI Service / Agency | AI Service / Short-form Content Editing Agency | The Only 25 Ways to Make Money in 2026 | tools=Opus Clip / Vizard, Descript, CapCut, ChatGPT | model=Service / agency (monthly retainer)
+- 909737 | AI Service / Agency | AI Content Agency | The Only 25 Ways to Make Money in 2026 | tools=HeyGen, ElevenLabs, Sora, Runway, Descript, CapCut | model=Service / agency, recurring retainer
+- 909737 | AI Agent / Automation | AI Agent / Chatbot Setup for Small Businesses | The Only 25 Ways to Make Money in 2026 | tools=Your.com, Vapi, Voiceflow, Twilio, n8n | model=Service / agency
+- 909737 | AI Agent / Automation | AI Automation Agency | The Only 25 Ways to Make Money in 2026 | tools=n8n, Make, Zapier, OpenAI API, Anthropic API, Airtable, Slack | model=Service / agency, recurring retainer
+- 909737 | AI Acquisition / Buy a Boring Business + AI-ify It | AI Acquisition / Buy a Boring Business + AI-ify It | The Only 25 Ways to Make Money in 2026 | tools=BizBuySell, AI booking platforms, QuickBooks, n8n, ChatGPT for ops SOPs | model=Acquisition / leveraged buyout enhanced by AI
+- 907621 | N/A (Commentary / Education) | N/A | Andrej Karpathy: From Vibe Coding to Agentic Engineering | tools=N/A | model=N/A
+- 867741 | AI Faceless YouTube / Content Monetization | Faceless YouTube Shorts channel monetized via AdSense | how i make $36,438/mo posting YouTube Shorts (using AI) | tools=ChatGPT (scripts), ElevenLabs (voiceover), CapCut, Roblox gameplay footage, AI video generators, YouTube Studio | model=Ads / AdSense
+- 857292 | N/A (Commentary / Education) | N/A | How to make vibe coding not suck… | tools=N/A | model=N/A
+- 836909 | AI SaaS / Vibe Coding Product | Bootstrapped Micro-SaaS Portfolio | I Built 3 SaaS Apps to $200K MRR: Here's My Exact Playbook | tools=Stripe, Cursor/Claude Code, Figma, AWS/Vercel, Intercom, GA4 | model=SaaS subscriptions
+- 797347 | N/A (Commentary / Education) | N/A | 23 Ways to Use ChatGPT So Well it Feels Like Cheating | tools=N/A | model=N/A
+- 792326 | N/A (Commentary / Education) | N/A | The most powerful AI Agent I've ever used in my life | tools=N/A | model=N/A
+- 775136 | N/A (Commentary / Education) | N/A | Don't learn AI Agents without Learning these Fundamentals | tools=N/A | model=N/A
+- 744680 | N/A (Commentary / Education) | N/A | How AI is breaking the SaaS business model... | tools=N/A | model=N/A
+- 696260 | N/A (Commentary / Education) | N/A | You SUCK at Prompting AI (Here's the secret) | tools=N/A | model=N/A
+- 682967 | AI Service / Agency | AI Service / Local Service Business | I Built A Business From Scratch Only Following ChatGPT's Advice | tools=ChatGPT (business plan, branding, copywriting), website builder, Canva-style flyer design | model=Local service business (B2C)
+- 670597 | AI Agent / Automation | AI Service / Automation | How to Win With AI in 2026 | tools=ChatGPT, Claude, Gemini, n8n / Zapier / Make, Replit, Stripe | model=Productized service / AI agency retainer

@@ -1,0 +1,238 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>龙咖 AI Native 经营中台</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <aside class="rail">
+      <div class="brand">
+        <div class="mark">龙</div>
+        <div>
+          <strong>龙咖经营中台</strong>
+          <span>AI Native OS</span>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="active" data-scroll="command">今日经营台</button>
+        <button data-scroll="projects">项目档案</button>
+        <button data-scroll="operating">工作系统</button>
+        <button data-scroll="workbench">AI 员工</button>
+        <button data-scroll="activity">经营日志</button>
+        <button data-scroll="capabilities">技术基座</button>
+        <button data-scroll="pipeline">选题流水线</button>
+        <button data-scroll="library">选题库</button>
+        <button data-scroll="production">生产任务</button>
+        <button data-scroll="assets">营销资产</button>
+      </nav>
+      <section class="side-card">
+        <span>今日闭环</span>
+        <b>接入高价值信息源</b>
+        <b>按数据表现筛选</b>
+        <b>生成内容任务</b>
+        <b>交给小妹制作</b>
+      </section>
+      <button class="ghost logout-button" id="exportButton">导出经营数据</button>
+      <label class="ghost import-button">
+        导入备份
+        <input id="importFile" type="file" accept="application/json,.json" />
+      </label>
+    </aside>
+
+    <section class="workspace">
+      <header class="topbar" id="command">
+        <div>
+          <p class="eyebrow">2026-05-27 / AI Native 经营系统</p>
+          <h1>老板只做判断，系统把信息源、选题、内容和执行任务接起来。</h1>
+        </div>
+        <button class="primary" id="runPipeline">运行今日选题流水线</button>
+      </header>
+
+      <section class="hero-grid">
+        <article class="panel command-panel">
+          <div class="section-title">
+            <span>今日经营建议</span>
+            <small>基于高价值资料源、近期项目状态和可转化痛点生成</small>
+          </div>
+          <div class="mission">
+            <h2>先把色彩项目的“客户为什么愿意试”讲清楚。</h2>
+            <p>系统建议今天启动内容运营员工，围绕形象试看、朋友圈炫耀、男士变精神、付款后稳定交付四个角度筛选选题，再把通过人工判断的选题送入小妹视频工作台。</p>
+          </div>
+          <div class="decision-row">
+            <button class="primary" data-scroll="pipeline">查看选题流水线</button>
+            <button class="ghost" id="approveToday">批准今日内容任务</button>
+          </div>
+        </article>
+
+        <article class="panel daily-card">
+          <span>今日建议产出</span>
+          <strong>3 条内容</strong>
+          <p>1 条小红书笔记、1 条朋友圈配文、1 条短视频脚本。</p>
+          <div class="meter"><i></i></div>
+        </article>
+      </section>
+
+      <section class="panel projects-panel" id="projects">
+        <div class="section-title">
+          <span>企业 / 项目档案</span>
+          <small>每个客户先建立自己的业务上下文，再让 AI 员工按项目工作</small>
+        </div>
+        <div class="projects-layout">
+          <article class="company-card">
+            <p class="eyebrow">COMPANY CONTEXT</p>
+            <h2 id="companyName">龙咖实验室</h2>
+            <p id="companyMeta">项目验证期 / 老板</p>
+            <div class="project-form">
+              <input id="newProjectName" placeholder="新项目名称，例如：口腔门店获客" />
+              <input id="newProjectAudience" placeholder="目标客户，例如：附近 3 公里想做牙齿美白的人" />
+              <input id="newProjectGoal" placeholder="今日目标，例如：生成 3 条可发短视频脚本" />
+              <button class="primary" id="createProject">新建并切换</button>
+            </div>
+          </article>
+          <div class="project-list" id="projectList"></div>
+        </div>
+      </section>
+
+      <section class="panel operating-panel" id="operating">
+        <div class="section-title">
+          <span>Agent-Native 工作系统</span>
+          <small>不是更强提示词，而是上下文、任务、执行、反馈和治理组成的经营系统</small>
+        </div>
+        <div class="operating-lead">
+          <article>
+            <span>01</span>
+            <b>老板决策</b>
+            <p>判断目标、优先级、预算和是否发布。系统只提供证据、候选方案和风险提示。</p>
+          </article>
+          <article>
+            <span>02</span>
+            <b>AI 调度</b>
+            <p>把任务拆给内容员工、设计员工、视频员工、增长员工，并追踪每一步产物。</p>
+          </article>
+          <article>
+            <span>03</span>
+            <b>SOP 约束</b>
+            <p>每个 Agent 明确输入、输出、禁区、验收标准，不能自由发挥到业务失控。</p>
+          </article>
+        </div>
+        <div class="workflow-layer-grid" id="workflowLayerGrid"></div>
+      </section>
+
+      <section class="panel workbench-panel" id="workbench">
+        <div class="section-title">
+          <span>今日 AI 员工工作台</span>
+          <small>老板批准目标，系统按 SOP 调度员工并把产物送到验收区</small>
+        </div>
+        <div class="workbench-layout">
+          <article class="boss-card">
+            <p class="eyebrow">BOSS DECISION</p>
+            <h2>今天只做一个经营目标：让色彩项目获得 3 条可发布内容。</h2>
+            <div class="boss-checks">
+              <label><input type="checkbox" checked /> 目标明确：获客与试看转化</label>
+              <label><input type="checkbox" checked /> 预算明确：先用现有素材和工具</label>
+              <label><input type="checkbox" /> 发布前必须人工复核</label>
+            </div>
+            <div class="boss-actions">
+              <button class="primary" id="approveWorkbench">批准今日目标</button>
+              <span id="workbenchState">等待老板批准</span>
+            </div>
+          </article>
+          <div class="employee-grid" id="employeeGrid"></div>
+        </div>
+      </section>
+
+      <section class="panel activity-panel" id="activity">
+        <div class="section-title">
+          <span>经营日志</span>
+          <small>记录项目、员工、选题和内容生产的关键动作，方便复盘和排错</small>
+        </div>
+        <div class="activity-list" id="activityList"></div>
+      </section>
+
+      <section class="panel capabilities-panel" id="capabilities">
+        <div class="section-title">
+          <span>技术基座 / 技能工厂</span>
+          <small>把开源项目、skills、模型接口和自动化工具封装成 AI 员工可调用的岗位能力</small>
+        </div>
+        <div class="capability-layout">
+          <article class="capability-lead">
+            <p class="eyebrow">NEW SOURCE</p>
+            <h2>garden-skills 进入技能工厂层</h2>
+            <p>它不是单独摆在仓库里的资料，而是变成“岗位能力封装器”：把可复用技能拆成输入、步骤、产物、验收标准，再挂到内容员工、设计员工、视频员工和增长员工身上。</p>
+            <div class="capability-flow">
+              <span>业务目标</span><i></i><span>Skill</span><i></i><span>AI 员工</span><i></i><span>可交付结果</span>
+            </div>
+          </article>
+          <div class="capability-grid" id="capabilityGrid"></div>
+        </div>
+      </section>
+
+      <section class="panel pipeline-panel" id="pipeline">
+        <div class="section-title">
+          <span>内容运营员工 / 选题流水线</span>
+          <small>从高价值信息源到选题入库，每一步都能配置、查看和复用</small>
+        </div>
+
+        <div class="pipeline-steps">
+          <button class="step active" data-step="sources"><b>1</b><span>看表现</span></button>
+          <button class="step" data-step="keywords"><b>2</b><span>定水源</span></button>
+          <button class="step" data-step="screening"><b>3</b><span>AI 初筛</span></button>
+          <button class="step" data-step="judge"><b>4</b><span>人工判断</span></button>
+          <button class="step" data-step="library"><b>5</b><span>入库排期</span></button>
+        </div>
+
+        <div class="pipeline-grid">
+          <section class="config-panel">
+            <div class="config-block">
+              <label>当前项目</label>
+              <input id="configProject" value="色彩分析小程序获客" />
+            </div>
+            <div class="config-block">
+              <label>目标人群</label>
+              <input id="configAudience" value="想改善形象、愿意发圈分享的女性和男士用户" />
+            </div>
+            <div class="config-block">
+              <label>今日目标</label>
+              <input id="configGoal" value="筛出 3 条能直接进入视频/图文生产的选题" />
+            </div>
+            <button class="primary full" id="rerunPipeline">重新生成候选选题</button>
+          </section>
+
+          <section class="stage-panel" id="stagePanel"></section>
+        </div>
+      </section>
+
+      <section class="board-grid">
+        <article class="panel" id="library">
+          <div class="section-title">
+            <span>选题库</span>
+            <small>通过人工判断后沉淀为可复用资产</small>
+          </div>
+          <div class="topic-library" id="topicLibrary"></div>
+        </article>
+
+        <article class="panel" id="production">
+          <div class="section-title">
+            <span>生产任务</span>
+            <small>交给对应 AI 员工或小妹工作台</small>
+          </div>
+          <div class="task-list" id="taskList"></div>
+        </article>
+      </section>
+
+      <section class="panel assets-panel" id="assets">
+        <div class="section-title">
+          <span>营销资产</span>
+          <small>图文、朋友圈、短视频脚本、封面文案都在这里沉淀</small>
+        </div>
+        <div class="asset-grid" id="assetGrid"></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

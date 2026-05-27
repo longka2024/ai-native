@@ -1,0 +1,251 @@
+{
+  "company": {
+    "name": "龙咖实验室",
+    "owner": "老板",
+    "stage": "项目验证期"
+  },
+  "currentProjectId": "color-report",
+  "projects": [
+    {
+      "id": "color-report",
+      "name": "色彩分析小程序获客",
+      "audience": "想改善形象、愿意发圈分享的女性和男士用户",
+      "goal": "筛出 3 条能直接进入视频/图文生产的选题",
+      "status": "运行中",
+      "createdAt": "2026-05-27T00:00:00.000Z"
+    },
+    {
+      "id": "boss-content-os",
+      "name": "老板内容选题流水线",
+      "audience": "每天不知道发什么、缺少内容规划的小微企业老板",
+      "goal": "每天产出可发布选题、图文草稿和短视频脚本",
+      "status": "孵化中",
+      "createdAt": "2026-05-27T00:00:00.000Z"
+    }
+  ],
+  "activityLog": [
+    {
+      "id": "43f85788-c8bc-43df-8bd4-dd6ab4f0d7ae",
+      "at": "2026-05-26T21:59:30.990Z",
+      "actor": "老板 / AI 中台",
+      "projectId": "color-report",
+      "projectName": "色彩分析小程序获客",
+      "action": "系统建设任务",
+      "detail": "从 上下文层 生成任务：为「色彩分析小程序获客」建立客户画像和业务规则卡"
+    }
+  ],
+  "config": {
+    "project": "色彩分析小程序获客",
+    "audience": "想改善形象、愿意发圈分享的女性和男士用户",
+    "goal": "筛出 3 条能直接进入视频/图文生产的选题",
+    "sources": [
+      {
+        "layer": "快水",
+        "name": "小红书 / 视频号热点",
+        "cadence": "每 4 小时",
+        "use": "观察用户正在被什么内容触发兴趣。"
+      },
+      {
+        "layer": "深水",
+        "name": "X / GitHub / 行业文章",
+        "cadence": "每天",
+        "use": "发现 AI Native、Agent、自动化工具的新方法。"
+      },
+      {
+        "layer": "慢水",
+        "name": "行业报告 / 竞品动态",
+        "cadence": "每周 2 次",
+        "use": "沉淀长文、课程和产品路线判断。"
+      },
+      {
+        "layer": "反水",
+        "name": "评论区 / 群聊问题",
+        "cadence": "每天",
+        "use": "抓取真实问题，把用户追问变成选题。"
+      }
+    ],
+    "keywords": {
+      "industry": [
+        "AI 员工",
+        "AI Native",
+        "小程序获客",
+        "内容流水线"
+      ],
+      "pain": [
+        "不会选题",
+        "没流量",
+        "客户不付款",
+        "内容不稳定"
+      ],
+      "project": [
+        "色彩分析",
+        "形象试看",
+        "朋友圈分享",
+        "男士变精神"
+      ],
+      "conversion": [
+        "怎么成交",
+        "怎么种草",
+        "怎么复购",
+        "怎么让客户愿意试"
+      ]
+    }
+  },
+  "workbench": {
+    "approved": false,
+    "approvedAt": null,
+    "employees": [
+      {
+        "id": "intel",
+        "role": "情报员工",
+        "status": "待老板批准",
+        "sop": [
+          "读取高价值信息源",
+          "按表现分排序",
+          "标注客户痛点",
+          "输出候选选题"
+        ],
+        "boundary": "不采集未授权私密聊天，不替老板判断商业优先级。",
+        "deliverable": "今日痛点雷达 + 10 条候选信号",
+        "result": "",
+        "updatedAt": null
+      },
+      {
+        "id": "content",
+        "role": "内容员工",
+        "status": "待老板批准",
+        "sop": [
+          "选择一个痛点",
+          "套用 PAS/SCAR/QUEST 结构",
+          "生成 3 个标题",
+          "输出小红书和朋友圈草稿"
+        ],
+        "boundary": "不承诺确定收益，不写违规夸大话术。",
+        "deliverable": "小红书笔记 + 朋友圈配文",
+        "result": "",
+        "updatedAt": null
+      },
+      {
+        "id": "video",
+        "role": "视频员工",
+        "status": "等待素材",
+        "sop": [
+          "读取案例素材",
+          "匹配视频模板",
+          "生成封面和脚本",
+          "交给小妹工作台合成"
+        ],
+        "boundary": "不使用无授权素材，不自动发布。",
+        "deliverable": "30 秒种草视频脚本 + 封面建议",
+        "result": "",
+        "updatedAt": null
+      },
+      {
+        "id": "growth",
+        "role": "增长员工",
+        "status": "排队中",
+        "sop": [
+          "检查搜索词",
+          "生成 FAQ",
+          "规划小程序入口",
+          "沉淀可复用转化话术"
+        ],
+        "boundary": "不绕过平台规则，不做封号风险动作。",
+        "deliverable": "搜索入口词 + 转化问答资产",
+        "result": "",
+        "updatedAt": null
+      }
+    ]
+  },
+  "rawMaterials": [
+    {
+      "id": "seed-001",
+      "source": "项目复盘",
+      "text": "客户说试看图不像本人，付费意愿会立刻下降。",
+      "pain": "像不像本人、值不值得付费",
+      "metrics": {
+        "likes": 28,
+        "comments": 17,
+        "saves": 6,
+        "shares": 3,
+        "growth": 42
+      },
+      "createdAt": "2026-05-27T00:00:00.000Z"
+    },
+    {
+      "id": "seed-002",
+      "source": "项目复盘",
+      "text": "小妹反馈：付款后看不到完整报告，会严重影响信任。",
+      "pain": "付款后看不到、交付不稳定",
+      "metrics": {
+        "likes": 36,
+        "comments": 24,
+        "saves": 8,
+        "shares": 5,
+        "growth": 55
+      },
+      "createdAt": "2026-05-27T00:00:00.000Z"
+    },
+    {
+      "id": "seed-003",
+      "source": "AI Native",
+      "text": "老板每天不知道发什么，需要一条选题流水线。",
+      "pain": "每天发什么、内容没规划",
+      "metrics": {
+        "likes": 92,
+        "comments": 41,
+        "saves": 33,
+        "shares": 18,
+        "growth": 76
+      },
+      "createdAt": "2026-05-27T00:00:00.000Z"
+    },
+    {
+      "id": "seed-004",
+      "source": "增长观察",
+      "text": "试看图如果足够好看、能发朋友圈炫耀，就更容易带来自传播。",
+      "pain": "想发圈、想炫耀、想被夸",
+      "metrics": {
+        "likes": 156,
+        "comments": 62,
+        "saves": 47,
+        "shares": 29,
+        "growth": 88
+      },
+      "createdAt": "2026-05-27T00:00:00.000Z"
+    },
+    {
+      "id": "seed-005",
+      "source": "测试反馈",
+      "text": "男士形象分析不一定要变帅，但要变精神、干净、可信、有职业感。",
+      "pain": "男士变精神、不要变丑",
+      "metrics": {
+        "likes": 74,
+        "comments": 39,
+        "saves": 21,
+        "shares": 11,
+        "growth": 64
+      },
+      "createdAt": "2026-05-27T00:00:00.000Z"
+    }
+  ],
+  "candidates": [],
+  "topics": [],
+  "tasks": [
+    {
+      "id": "12fcd83c-cae3-4e12-9eab-1d18f11d12bd",
+      "source": "workflow-layer",
+      "projectId": "color-report",
+      "layer": "上下文层",
+      "title": "为「色彩分析小程序获客」建立客户画像和业务规则卡",
+      "owner": "企业大脑",
+      "status": "待建设",
+      "next": "整理目标客户、产品卖点、禁区话术、历史案例和素材目录，形成 AI 员工接任务前必须读取的上下文卡。",
+      "acceptance": "打开项目档案时能看到客户画像、业务规则、素材索引和可引用案例。",
+      "createdAt": "2026-05-26T21:59:30.990Z"
+    }
+  ],
+  "assets": [],
+  "lastPipelineRunAt": null,
+  "updatedAt": "2026-05-26T21:59:30.990Z"
+}

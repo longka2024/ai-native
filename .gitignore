@@ -1,0 +1,37 @@
+# Dependencies and build output
+node_modules/
+.next/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Local env and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*
+secrets*
+all_keys.json
+
+# Runtime databases and private chat data
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+radar.db
+collector.db
+assistant.db
+decrypted/
+.wechat-radar/
+.hive/
+
+# Logs and OS files
+*.log
+logs/
+.DS_Store
+Thumbs.db
+
