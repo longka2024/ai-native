@@ -186,6 +186,10 @@ const workflowLayerGrid = document.querySelector("#workflowLayerGrid");
 const employeeGrid = document.querySelector("#employeeGrid");
 const projectList = document.querySelector("#projectList");
 const activityList = document.querySelector("#activityList");
+const outcomeTitle = document.querySelector("#outcomeTitle");
+const outcomeSummary = document.querySelector("#outcomeSummary");
+const outcomeDigest = document.querySelector("#outcomeDigest");
+const outcomeGrid = document.querySelector("#outcomeGrid");
 const runButton = document.querySelector("#runPipeline");
 const rerunButton = document.querySelector("#rerunPipeline");
 const exportButton = document.querySelector("#exportButton");
@@ -214,8 +218,14 @@ document.querySelector("#approveToday").addEventListener("click", async () => {
 
 document.querySelector("#approveWorkbench").addEventListener("click", approveWorkbench);
 document.querySelector("#createProject").addEventListener("click", createProject);
+document.querySelector("#buildOutcome").addEventListener("click", buildOutcomePack);
 
 document.addEventListener("click", async (event) => {
+  const copyButton = event.target.closest("[data-copy-target]");
+  if (copyButton) {
+    copyTextFrom(copyButton.dataset.copyTarget);
+    return;
+  }
   const action = event.target.closest("[data-action]");
   if (!action) return;
   const id = action.dataset.id;
@@ -307,6 +317,18 @@ async function createProductionTask(candidateId) {
   await postJson("/api/production-tasks", { candidateId });
 }
 
+async function buildOutcomePack() {
+  const candidates = state.candidates || [];
+  if (!candidates.length) {
+    await runPipeline();
+  }
+  const latest = state.candidates?.length ? state.candidates : candidates;
+  for (const item of latest.slice(0, 3)) await createProductionTask(item.id);
+  await loadState();
+  scrollToId("outcomes");
+  showToast("今日成果包已生成");
+}
+
 async function createWorkflowAction(actionKey) {
   const res = await postJson("/api/workflow-actions", { actionKey });
   showToast(`已生成系统建设任务：${res.task?.title || "待处理任务"}`);
@@ -354,6 +376,7 @@ function readConfigFromForm() {
 function render() {
   renderProjects();
   renderEmployees();
+  renderOutcomes();
   renderActivity();
   renderCapabilities();
   renderWorkflowLayers();
@@ -365,6 +388,86 @@ function render() {
   renderLibrary();
   renderTasks();
   renderAssets();
+}
+
+function renderOutcomes() {
+  const candidates = state.candidates || [];
+  const tasks = state.tasks || [];
+  const assets = state.assets || [];
+  const top = candidates[0] || topicsFirst() || null;
+  const projectName = state.config?.project || "当前项目";
+  outcomeTitle.textContent = top ? `今天先推：${top.title}` : "等待生成今日经营成果";
+  outcomeSummary.textContent = top
+    ? `围绕「${projectName}」，系统已把高表现信号整理成可判断选题、生产任务和可复制发布草稿。`
+    : "运行选题流水线后，这里会自动整理今天最值得推进的选题、任务和可复制文案。";
+
+  const digest = buildDigestText(top, tasks, assets);
+  outcomeDigest.innerHTML = `
+    <div>
+      <span>老板摘要</span>
+      <pre>${escapeHtml(digest)}</pre>
+    </div>
+  `;
+
+  const cards = [
+    {
+      label: "1. 今天判断",
+      title: top ? top.title : "先运行选题流水线",
+      body: top ? top.angle : "系统会根据信息池里的表现分、痛点和转化词生成候选选题。",
+      meta: top ? [`${top.score} 分`, top.platform, top.formula] : ["未开始"],
+      action: "老板只需要判断：这条今天值不值得发。",
+    },
+    {
+      label: "2. 交给谁做",
+      title: tasks[0]?.owner || "内容策划员工",
+      body: tasks[0]?.next || "生成小红书正文、朋友圈配文和封面文案，再交给小妹视频工作台做视频。",
+      meta: tasks.slice(0, 3).map((task) => task.status || "待制作"),
+      action: "任务必须有负责人、下一步和验收口径。",
+    },
+    {
+      label: "3. 能否发布",
+      title: assets[0]?.title || "等待内容草稿",
+      body: assets[0]?.copy || "点击“生成今日成果包”后，会生成可复制的发布草稿。",
+      meta: assets.slice(0, 3).map((asset) => asset.type || "内容资产"),
+      action: "草稿不是终稿，发布前由人改一遍。",
+      copyId: "outcomeAssetCopy",
+    },
+  ];
+
+  outcomeGrid.innerHTML = cards.map((card, index) => `
+    <article class="outcome-card">
+      <span>${escapeHtml(card.label)}</span>
+      <b>${escapeHtml(card.title)}</b>
+      <p>${escapeHtml(card.body)}</p>
+      <div class="outcome-meta">
+        ${(card.meta.length ? card.meta : ["待生成"]).map((item) => `<em>${escapeHtml(item)}</em>`).join("")}
+      </div>
+      <small>${escapeHtml(card.action)}</small>
+      ${index === 2 ? `<button class="mini" data-copy-target="outcomeAssetCopy">复制发布草稿</button><textarea id="outcomeAssetCopy">${escapeHtml(assets[0]?.copy || "")}</textarea>` : ""}
+    </article>
+  `).join("");
+}
+
+function topicsFirst() {
+  return Array.isArray(state.topics) && state.topics.length ? state.topics[0] : null;
+}
+
+function buildDigestText(top, tasks, assets) {
+  if (!top) {
+    return [
+      "今日成果：暂未生成",
+      "下一步：运行今日选题流水线",
+      "验收标准：至少得到 3 条候选选题、1 个生产任务、1 份可复制草稿",
+    ].join("\n");
+  }
+  return [
+    `今日主推选题：${top.title}`,
+    `推荐渠道：${top.platform}`,
+    `内容结构：${top.formula}`,
+    `判断理由：${top.angle}`,
+    `已生成任务：${tasks.slice(0, 3).map((task) => task.title).join(" / ") || "待生成"}`,
+    `可复制草稿：${assets.length ? "已生成" : "待生成"}`,
+  ].join("\n");
 }
 
 function renderActivity() {
@@ -698,6 +801,31 @@ function showToast(message) {
   toast.textContent = message;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 2600);
+}
+
+async function copyTextFrom(id) {
+  const node = document.querySelector(`#${id}`);
+  if (!node) {
+    showToast("没有可复制内容");
+    return;
+  }
+  const text = "value" in node ? node.value : node.innerText;
+  if (!text.trim()) {
+    showToast("内容还没生成");
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("已复制");
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+    showToast("已复制");
+  }
 }
 
 function showError(error) {

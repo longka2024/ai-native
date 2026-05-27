@@ -559,6 +559,142 @@ h1 {
   margin-bottom: 20px;
 }
 
+.outcomes-panel {
+  padding: 24px;
+  margin-bottom: 20px;
+  background:
+    linear-gradient(135deg, rgba(185, 67, 53, .08), transparent 46%),
+    linear-gradient(180deg, rgba(255, 253, 247, .98), rgba(248, 244, 234, .96));
+}
+
+.outcome-command {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 22px;
+  border-radius: 8px;
+  color: #fff;
+  background:
+    linear-gradient(145deg, rgba(23, 33, 29, .96), rgba(49, 93, 75, .92)),
+    var(--green);
+}
+
+.outcome-command h2 {
+  margin-bottom: 10px;
+  font-size: 30px;
+  line-height: 1.25;
+}
+
+.outcome-command p {
+  margin: 0;
+  color: rgba(255, 255, 255, .78);
+  line-height: 1.7;
+}
+
+.outcome-command .eyebrow {
+  color: rgba(255, 255, 255, .62);
+}
+
+.outcome-actions {
+  display: grid;
+  gap: 10px;
+  min-width: 180px;
+}
+
+.outcome-digest {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid rgba(49, 93, 75, .14);
+  border-radius: 8px;
+  background: #fffdf7;
+}
+
+.outcome-digest span {
+  display: inline-flex;
+  margin-bottom: 10px;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.outcome-digest pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #2f3834;
+  font: inherit;
+  line-height: 1.65;
+}
+
+.outcome-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.outcome-card {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 18px;
+  border: 1px solid rgba(49, 93, 75, .14);
+  border-radius: 8px;
+  background: #fffdf7;
+}
+
+.outcome-card span {
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.outcome-card b {
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.outcome-card p {
+  margin: 0;
+  color: #4c5853;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.outcome-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.outcome-meta em {
+  padding: 5px 9px;
+  border-radius: 99px;
+  color: #5f4a15;
+  background: #eee6d1;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.outcome-card small {
+  display: block;
+  padding: 10px 12px;
+  border-left: 3px solid var(--gold);
+  border-radius: 6px;
+  color: #4c5853;
+  background: #f2f0e8;
+  line-height: 1.5;
+}
+
+.outcome-card textarea {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
 .workbench-layout {
   display: grid;
   grid-template-columns: minmax(300px, .58fr) minmax(0, 1fr);
@@ -1250,6 +1386,8 @@ button:disabled {
   .workflow-layer-grid,
   .workbench-layout,
   .employee-grid,
+  .outcome-command,
+  .outcome-grid,
   .capability-layout,
   .capability-grid,
   .pipeline-grid,

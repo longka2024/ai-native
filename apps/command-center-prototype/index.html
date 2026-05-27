@@ -21,6 +21,7 @@
         <button data-scroll="projects">项目档案</button>
         <button data-scroll="operating">工作系统</button>
         <button data-scroll="workbench">AI 员工</button>
+        <button data-scroll="outcomes">成果验收</button>
         <button data-scroll="activity">经营日志</button>
         <button data-scroll="capabilities">技术基座</button>
         <button data-scroll="pipeline">选题流水线</button>
@@ -73,6 +74,26 @@
           <p>1 条小红书笔记、1 条朋友圈配文、1 条短视频脚本。</p>
           <div class="meter"><i></i></div>
         </article>
+      </section>
+
+      <section class="panel outcomes-panel" id="outcomes">
+        <div class="section-title">
+          <span>今日成果验收台</span>
+          <small>老板不用看过程堆料，只看今天能不能发、能不能交付、下一步谁执行</small>
+        </div>
+        <div class="outcome-command">
+          <article>
+            <p class="eyebrow">TODAY OUTPUT</p>
+            <h2 id="outcomeTitle">等待生成今日经营成果</h2>
+            <p id="outcomeSummary">运行选题流水线后，这里会自动整理今天最值得推进的选题、任务和可复制文案。</p>
+          </article>
+          <div class="outcome-actions">
+            <button class="primary" id="buildOutcome">生成今日成果包</button>
+            <button class="ghost" data-copy-target="outcomeDigest">复制成果摘要</button>
+          </div>
+        </div>
+        <div class="outcome-digest" id="outcomeDigest"></div>
+        <div class="outcome-grid" id="outcomeGrid"></div>
       </section>
 
       <section class="panel projects-panel" id="projects">
