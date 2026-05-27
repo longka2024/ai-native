@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -17,15 +17,17 @@
         </div>
       </div>
       <nav class="nav">
-        <button class="active" data-scroll="command">今日工作台</button>
-        <button data-scroll="outcomes">成果验收台</button>
-        <button data-scroll="quickTasks">任务大厅</button>
-        <button data-scroll="projects">老板资料</button>
-        <button data-scroll="pipeline">客户问题库</button>
+        <button class="active" data-scroll="command">今日经营台</button>
+        <button data-scroll="projects">项目档案</button>
+        <button data-scroll="operating">工作系统</button>
         <button data-scroll="workbench">AI 员工</button>
-        <button data-scroll="assets">内容资产</button>
-        <button data-scroll="activity">复盘日志</button>
-        <button data-scroll="capabilities">高级模式</button>
+        <button data-scroll="outcomes">成果验收</button>
+        <button data-scroll="activity">经营日志</button>
+        <button data-scroll="capabilities">技术基座</button>
+        <button data-scroll="pipeline">选题流水线</button>
+        <button data-scroll="library">选题库</button>
+        <button data-scroll="production">生产任务</button>
+        <button data-scroll="assets">营销资产</button>
       </nav>
       <section class="side-card">
         <span>今日闭环</span>
@@ -44,65 +46,34 @@
     <section class="workspace">
       <header class="topbar" id="command">
         <div>
-          <p class="eyebrow">LONGKA AI NATIVE / 经营系统样板</p>
-          <h1>每天打开这里，老板只判断方向，AI 员工把内容、视频和成交素材做出来。</h1>
+          <p class="eyebrow">2026-05-27 / AI Native 经营系统</p>
+          <h1>老板只做判断，系统把信息源、选题、内容和执行任务接起来。</h1>
         </div>
-        <div class="top-actions">
-          <select id="projectSwitcher" aria-label="切换项目">
-            <option>色彩项目内容经营系统</option>
-            <option>女装批发内容系统</option>
-            <option>老板 AI 员工中台</option>
-          </select>
-          <button class="primary" id="runPipeline">生成今日经营建议</button>
-        </div>
+        <button class="primary" id="runPipeline">运行今日选题流水线</button>
       </header>
 
       <section class="hero-grid">
         <article class="panel command-panel">
           <div class="section-title">
-            <span>今日老板判断</span>
-            <small>先看目标、证据、动作和交付，不让老板研究提示词</small>
+            <span>今日经营建议</span>
+            <small>基于高价值资料源、近期项目状态和可转化痛点生成</small>
           </div>
           <div class="mission">
-            <h2>今天先把色彩项目做成“用户愿意点开、愿意试、愿意发圈”的内容。</h2>
-            <p>系统已经把近期测试反馈、客户痛点、社交传播逻辑和小妹视频工作台串起来。你只需要批准今日目标，AI 员工会生成选题、脚本、朋友圈配文和待验收草稿。</p>
+            <h2>先把色彩项目的“客户为什么愿意试”讲清楚。</h2>
+            <p>系统建议今天启动内容运营员工，围绕形象试看、朋友圈炫耀、男士变精神、付款后稳定交付四个角度筛选选题，再把通过人工判断的选题送入小妹视频工作台。</p>
           </div>
           <div class="decision-row">
-            <button class="primary" id="approveToday">批准并生成 3 个任务</button>
-            <button class="ghost" data-scroll="outcomes">查看今日成果</button>
+            <button class="primary" data-scroll="pipeline">查看选题流水线</button>
+            <button class="ghost" id="approveToday">批准今日内容任务</button>
           </div>
         </article>
 
-        <div class="metrics-grid">
-          <article class="metric-card">
-            <span>客户问题</span>
-            <strong id="metricSignals">0</strong>
-            <p>来自测试反馈和高价值资料</p>
-          </article>
-          <article class="metric-card">
-            <span>候选选题</span>
-            <strong id="metricCandidates">0</strong>
-            <p>按痛点和转化价值筛选</p>
-          </article>
-          <article class="metric-card">
-            <span>生产任务</span>
-            <strong id="metricTasks">0</strong>
-            <p>可交给 AI 员工执行</p>
-          </article>
-          <article class="metric-card">
-            <span>内容草稿</span>
-            <strong id="metricAssets">0</strong>
-            <p>可复制、可改、可发布</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="panel quick-task-panel" id="quickTasks">
-        <div class="section-title">
-          <span>任务大厅</span>
-          <small>像请员工一样点任务，不让老板自己组织提示词</small>
-        </div>
-        <div class="quick-task-grid" id="quickTaskGrid"></div>
+        <article class="panel daily-card">
+          <span>今日建议产出</span>
+          <strong>3 条内容</strong>
+          <p>1 条小红书笔记、1 条朋友圈配文、1 条短视频脚本。</p>
+          <div class="meter"><i></i></div>
+        </article>
       </section>
 
       <section class="panel outcomes-panel" id="outcomes">

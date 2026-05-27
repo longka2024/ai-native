@@ -1,4 +1,4 @@
-const apiBase = location.protocol === "file:" ? "http://localhost:3760" : "";
+﻿const apiBase = location.protocol === "file:" ? "http://localhost:3760" : "";
 
 const capabilities = [
   {
@@ -190,7 +190,6 @@ const outcomeTitle = document.querySelector("#outcomeTitle");
 const outcomeSummary = document.querySelector("#outcomeSummary");
 const outcomeDigest = document.querySelector("#outcomeDigest");
 const outcomeGrid = document.querySelector("#outcomeGrid");
-const quickTaskGrid = document.querySelector("#quickTaskGrid");
 const runButton = document.querySelector("#runPipeline");
 const rerunButton = document.querySelector("#rerunPipeline");
 const exportButton = document.querySelector("#exportButton");
@@ -375,8 +374,6 @@ function readConfigFromForm() {
 }
 
 function render() {
-  renderDashboardMetrics();
-  renderQuickTasks();
   renderProjects();
   renderEmployees();
   renderOutcomes();
@@ -391,118 +388,6 @@ function render() {
   renderLibrary();
   renderTasks();
   renderAssets();
-}
-
-function renderDashboardMetrics() {
-  const pairs = [
-    ["#metricSignals", state.rawMaterials?.length || 0],
-    ["#metricCandidates", state.candidates?.length || 0],
-    ["#metricTasks", state.tasks?.length || 0],
-    ["#metricAssets", state.assets?.length || 0],
-  ];
-  for (const [selector, value] of pairs) {
-    const node = document.querySelector(selector);
-    if (node) node.textContent = value;
-  }
-}
-
-function renderQuickTasks() {
-  if (!quickTaskGrid) return;
-  const tasks = [
-    {
-      tag: "今日内容",
-      title: "生成今天内容包",
-      desc: "根据客户问题库和项目上下文，生成 3 个可执行内容任务和草稿。",
-      button: "交给内容员工",
-      run: "build-outcome",
-    },
-    {
-      tag: "客户问题",
-      title: "把问题变成选题",
-      desc: "把测试反馈、评论区、群聊摘要里的问题整理成可发布选题。",
-      button: "运行选题流水线",
-      run: "pipeline",
-    },
-    {
-      tag: "短视频",
-      title: "送小妹视频工作台",
-      desc: "把今日主推选题改成短视频脚本、封面方向和素材要求。",
-      button: "生成视频任务",
-      run: "video-task",
-    },
-    {
-      tag: "朋友圈",
-      title: "生成发圈配文",
-      desc: "把试看图、完整报告和用户炫耀心理改成朋友圈种草文案。",
-      button: "生成草稿",
-      run: "copy-task",
-    },
-    {
-      tag: "复盘",
-      title: "检查交付风险",
-      desc: "围绕订单丢失、付款后看不到、图片不像本人做风险清单。",
-      button: "生成复盘任务",
-      run: "review-task",
-    },
-    {
-      tag: "高级模式",
-      title: "接入一个技术基座",
-      desc: "把 open-design、md2wechat、Remotion 或私域雷达接成可调用能力。",
-      button: "生成接入任务",
-      run: "tool-task",
-    },
-  ];
-
-  quickTaskGrid.innerHTML = tasks.map((item) => `
-    <article class="quick-task-card">
-      <span>${escapeHtml(item.tag)}</span>
-      <b>${escapeHtml(item.title)}</b>
-      <p>${escapeHtml(item.desc)}</p>
-      <button class="mini" data-quick-run="${escapeAttr(item.run)}">${escapeHtml(item.button)}</button>
-    </article>
-  `).join("");
-
-  quickTaskGrid.querySelectorAll("[data-quick-run]").forEach((button) => {
-    button.addEventListener("click", () => runQuickTask(button.dataset.quickRun));
-  });
-}
-
-async function runQuickTask(kind) {
-  if (kind === "pipeline") {
-    await runPipeline();
-    return;
-  }
-  if (kind === "build-outcome") {
-    await buildOutcomePack();
-    return;
-  }
-  if (kind === "video-task") {
-    await ensureCandidatesThenTask("男士");
-    showToast("已生成视频任务，去生产任务查看");
-    scrollToId("production");
-    return;
-  }
-  if (kind === "copy-task") {
-    await ensureCandidatesThenTask("试看");
-    showToast("已生成发圈/图文草稿");
-    scrollToId("assets");
-    return;
-  }
-  if (kind === "review-task") {
-    await createWorkflowAction("feedback-metrics");
-    return;
-  }
-  if (kind === "tool-task") {
-    await createWorkflowAction("tool-wiring");
-  }
-}
-
-async function ensureCandidatesThenTask(keyword) {
-  if (!state.candidates?.length) await runPipeline();
-  const latest = (await getJson("/api/state")).candidates || [];
-  const picked = latest.find((item) => item.title.includes(keyword)) || latest[0];
-  if (picked) await createProductionTask(picked.id);
-  await loadState();
 }
 
 function renderOutcomes() {
