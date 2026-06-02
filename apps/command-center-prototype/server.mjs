@@ -16,6 +16,7 @@ const assetDbPath = join(assetVaultDir, 'customer-assets.sqlite');
 const mediaCrawlerRoot = resolveMediaCrawlerRoot();
 const mediaCrawlerPythonDir = join(mediaCrawlerRoot, 'MediaCrawlerPro-Python');
 const mediaCrawlerDbPath = process.env.MEDIACRAWLER_DB_PATH || join(mediaCrawlerPythonDir, 'media_crawler.db');
+const mediaCrawlerPythonExe = resolveMediaCrawlerPythonExe();
 const verifiedClippingsDir = 'F:\\Longka Wiki\\龙咖Wiki\\Clippings';
 const defaultClippingsDir = 'F:\\Longka Wiki\\龙咖Wiki\\Clippings';
 const port = Number(process.env.PORT || 3760);
@@ -62,6 +63,16 @@ function resolveMediaCrawlerRoot() {
     'E:\\Codex\\MediaCrawlerPro',
   ].filter(Boolean);
   return candidates.find((candidate) => existsSync(join(candidate, 'MediaCrawlerPro-Python', 'main.py'))) || candidates[0];
+}
+
+function resolveMediaCrawlerPythonExe() {
+  const candidates = [
+    process.env.MEDIACRAWLER_PYTHON,
+    join(root, 'Runtime', 'venv', 'Scripts', 'python.exe'),
+    join(mediaCrawlerPythonDir, '.venv', 'Scripts', 'python.exe'),
+    'python',
+  ].filter(Boolean);
+  return candidates.find((candidate) => candidate === 'python' || existsSync(candidate)) || 'python';
 }
 
 const defaultProjects = [
@@ -1032,7 +1043,7 @@ async function writeXhsCookieToExcel(cookieString) {
     "ws.cell(2,5).value='normal'",
     'wb.save(path)',
   ].join('\n');
-  await execFileAsync('uv', ['run', 'python', '-c', script, 'config/accounts_cookies.xlsx', cookieString], {
+  await execFileAsync(mediaCrawlerPythonExe, ['-c', script, 'config/accounts_cookies.xlsx', cookieString], {
     cwd: mediaCrawlerPythonDir,
     encoding: 'utf8',
     maxBuffer: 1024 * 1024 * 4,
@@ -1054,7 +1065,7 @@ async function mediaCrawlerPreflight(platform) {
     'has=bool(ws and any(ws.cell(r,3).value for r in range(2, ws.max_row+1)))',
     'print("OK" if has else "MISSING")',
   ].join('\n');
-  const { stdout } = await execFileAsync('uv', ['run', 'python', '-c', script, platform], {
+  const { stdout } = await execFileAsync(mediaCrawlerPythonExe, ['-c', script, platform], {
     cwd: mediaCrawlerPythonDir,
     encoding: 'utf8',
     windowsHide: true,
@@ -1072,8 +1083,7 @@ async function runMediaCrawlerXhsSearch(keywords) {
       ACCOUNT_POOL_SAVE_TYPE: 'xlsx',
       ENABLE_GET_COMMENTS: 'false',
     };
-    const { stdout, stderr } = await execFileAsync('uv', [
-      'run',
+    const { stdout, stderr } = await execFileAsync(mediaCrawlerPythonExe, [
       'main.py',
       '--platform',
       'xhs',
@@ -1105,8 +1115,7 @@ async function runMediaCrawlerXhsDetail(noteUrl) {
       ACCOUNT_POOL_SAVE_TYPE: 'xlsx',
       ENABLE_GET_COMMENTS: 'true',
     };
-    const { stdout, stderr } = await execFileAsync('uv', [
-      'run',
+    const { stdout, stderr } = await execFileAsync(mediaCrawlerPythonExe, [
       'main.py',
       '--platform',
       'xhs',
