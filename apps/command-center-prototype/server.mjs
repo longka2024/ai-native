@@ -68,7 +68,7 @@ function resolveMediaCrawlerRoot() {
 function resolveMediaCrawlerPythonExe() {
   const candidates = [
     process.env.MEDIACRAWLER_PYTHON,
-    join(root, 'Runtime', 'venv', 'Scripts', 'python.exe'),
+    join(root, 'Runtime', 'Python312', 'python.exe'),
     join(mediaCrawlerPythonDir, '.venv', 'Scripts', 'python.exe'),
     'python',
   ].filter(Boolean);
