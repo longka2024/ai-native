@@ -2958,8 +2958,10 @@ button:disabled {
 }
 
 .xhs-preview-card.premium-card {
+  box-sizing: border-box;
   width: 1080px;
   height: 1440px;
+  border: 0;
   border-radius: 0;
   padding: 0;
   background: #f3efe6;

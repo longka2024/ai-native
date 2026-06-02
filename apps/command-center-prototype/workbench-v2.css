@@ -1511,6 +1511,26 @@ textarea {
   font-weight: 800;
 }
 
+.step7-export-result {
+  margin-top: 16px;
+  border: 1px solid #c8ddd1;
+  background: #eff7f1;
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.step7-export-result b {
+  color: var(--green);
+  font-size: 19px;
+}
+
+.step7-export-result p,
+.step7-export-result li {
+  color: var(--muted);
+  line-height: 1.55;
+  word-break: break-all;
+}
+
 @media (max-width: 1180px) {
   .xhs-card-preview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .visual-route-grid { grid-template-columns: 1fr; }

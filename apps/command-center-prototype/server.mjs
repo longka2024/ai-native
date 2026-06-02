@@ -704,6 +704,71 @@ createServer(async (req, res) => {
       return sendJson(res, { ok: true, manifest });
     }
 
+    if (req.method === 'POST' && url.pathname === '/api/xhs-cards/export-plan') {
+      const payload = await readJson(req);
+      const cards = Array.isArray(payload.cards) ? payload.cards : [];
+      if (!cards.length) return sendJson(res, { ok: false, error: 'missing_cards', message: '没有可导出的卡片方案。' }, 400);
+      const now = new Date().toISOString();
+      const asset = {
+        id: randomUUID(),
+        topicId: payload.topicId || `xhs-plan-${Date.now()}`,
+        title: `小红书图文卡片组：${payload.title || cards[0]?.title || '已确认文案'}`,
+        type: '小红书图文卡片组',
+        structured: {
+          selectedTitle: payload.title || cards[0]?.title || '',
+          coverText: payload.title || cards[0]?.title || '',
+          sourceSummary: {
+            layer: 'confirmed-copy',
+            validation: '文案已确认',
+            validationScore: 90,
+            saveMotive: '用户可收藏对照',
+            socialMotive: '来自已确认源头和二创文案',
+            conversion: '先收藏对照，再咨询或评估',
+          },
+          hook: cards[1]?.text || cards[0]?.text || '',
+          bodyDraft: String(payload.body || '').split(/\n+/).map((line) => line.trim()).filter(Boolean).slice(0, 8),
+          cardPlan: cards.map((card, index) => ({
+            page: index + 1,
+            role: card.type || card.role || `第 ${index + 1} 页`,
+            title: card.title || '',
+            copy: card.text || card.copy || '',
+          })),
+          commentGuide: [
+            '你最想先判断哪一种情况？',
+            '如果分不清，可以先按这张清单对照。',
+          ],
+          publishChecklist: [
+            '确认文案已经人工验收。',
+            '确认图片没有使用竞品原图。',
+            '确认没有疗效承诺、医疗诊断语气和夸张前后对比。',
+          ],
+          riskNotes: [
+            '当前导出为原创信息卡片，不渲染竞品原图。',
+            '发布前仍需人工复核平台合规表达。',
+          ],
+          visualRoute: payload.visualRoute || null,
+        },
+        copy: payload.body || '',
+        createdAt: now,
+      };
+      await mutateDb((nextDb) => {
+        nextDb.assets = [asset, ...(nextDb.assets || [])].slice(0, 200);
+        addActivity(nextDb, '生成小红书卡片方案', `准备导出 ${asset.structured.cardPlan.length} 张 PNG：${asset.title}`);
+        nextDb.updatedAt = now;
+      });
+      const manifest = await exportXhsCards(asset.id);
+      await mutateDb((nextDb) => {
+        nextDb.assets = (nextDb.assets || []).map((item) => item.id === asset.id ? {
+          ...item,
+          exportedCards: manifest,
+          exportedAt: new Date().toISOString(),
+        } : item);
+        addActivity(nextDb, '导出小红书 PNG', `已导出 ${manifest.count} 张可发卡片：${asset.title}`);
+        nextDb.updatedAt = new Date().toISOString();
+      });
+      return sendJson(res, { ok: true, assetId: asset.id, manifest });
+    }
+
     if (req.method === 'POST' && url.pathname === '/api/assets/export-video-package') {
       const payload = await readJson(req);
       const db = await readDb();

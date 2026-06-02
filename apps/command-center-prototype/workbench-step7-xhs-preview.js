@@ -181,8 +181,9 @@
           <p>确认后才进入真实图文卡片生成或小妹视频任务。当前只是预览和制作说明。</p>
         </div>
         <button class="secondary" type="button" id="copyXhsCardPlan">复制卡片方案</button>
-        <button class="primary" type="button" id="approveXhsCardPlan">确认制图方案，下一步再生成图片</button>
+        <button class="primary" type="button" id="approveXhsCardPlan">生成可发小红书 PNG 卡片</button>
       </div>
+      <div class="step7-export-result" id="xhsCardExportResult" hidden></div>
     </article>`);
 
     let selectedRoute = routes[0];
@@ -205,11 +206,43 @@
       await navigator.clipboard?.writeText(text).catch(() => {});
     });
 
-    $("#approveXhsCardPlan")?.addEventListener("click", () => {
+    $("#approveXhsCardPlan")?.addEventListener("click", async () => {
+      const button = $("#approveXhsCardPlan");
+      const resultBox = $("#xhsCardExportResult");
+      if (button) {
+        button.disabled = true;
+        button.textContent = "正在生成 PNG 卡片...";
+      }
       window.longkaApprovedXhsCardPlan = { title, source, body, cards, script, visualRoute: selectedRoute, approvedCopy: approved };
       const hint = $("#topicHint");
-      if (hint) hint.textContent = "卡片方案已确认。下一步才能进入真实图片生成。";
-      document.dispatchEvent(new CustomEvent("longka:xhs-card-plan-confirmed", { detail: window.longkaApprovedXhsCardPlan }));
+      if (hint) hint.textContent = "正在导出小红书 PNG 卡片。系统会生成本地文件路径，不会发布。";
+      try {
+        const response = await fetch("/api/xhs-cards/export-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(window.longkaApprovedXhsCardPlan),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) throw new Error(data.message || data.error || `HTTP ${response.status}`);
+        const files = data.manifest?.files || [];
+        if (resultBox) {
+          resultBox.hidden = false;
+          resultBox.innerHTML = `<b>PNG 卡片已生成</b>
+            <p>共 ${files.length} 张，输出目录：${escapeHtml(files[0] ? files[0].replace(/\\xhs-card-01\.png$/, "") : "见 manifest")}</p>
+            <ol>${files.map((file) => `<li>${escapeHtml(file)}</li>`).join("")}</ol>`;
+        }
+        if (button) button.textContent = "PNG 卡片已生成";
+        document.dispatchEvent(new CustomEvent("longka:xhs-card-plan-confirmed", { detail: { ...window.longkaApprovedXhsCardPlan, manifest: data.manifest } }));
+      } catch (error) {
+        if (resultBox) {
+          resultBox.hidden = false;
+          resultBox.innerHTML = `<b>PNG 生成失败</b><p>${escapeHtml(error.message || "导出失败")}</p>`;
+        }
+        if (button) {
+          button.disabled = false;
+          button.textContent = "重新生成可发小红书 PNG 卡片";
+        }
+      }
     });
 
     $("#step7XhsPreview")?.scrollIntoView({ behavior: "smooth", block: "nearest" });

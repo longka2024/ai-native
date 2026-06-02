@@ -42,9 +42,18 @@ try {
   const files = [];
   for (let index = 0; index < cards.length; index += 1) {
     const file = join(outDir, `xhs-card-${String(index + 1).padStart(2, '0')}.png`);
+    await cards[index].evaluate((node) => node.scrollIntoView({ block: 'center', inline: 'center' }));
     const box = await cards[index].boundingBox();
     if (!box) throw new Error(`Card ${index + 1} has no bounding box.`);
-    await cards[index].screenshot({ path: file });
+    await page.screenshot({
+      path: file,
+      clip: {
+        x: Math.round(box.x),
+        y: Math.round(box.y),
+        width: 1080,
+        height: 1440,
+      },
+    });
     files.push(file);
   }
 
