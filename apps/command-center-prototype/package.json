@@ -1,0 +1,12 @@
+{
+  "name": "longka-ai-native-command-center-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "export:xhs-cards": "node tools/export-xhs-cards.mjs",
+    "test:contract": "node tools/verify-workbench-contract.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.56.1"
+  }
+}

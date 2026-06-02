@@ -67,6 +67,32 @@ Reference note:
 
 - `E:\Codex\docs\strategy\waza-self-evolution-tech-base.md`
 
+### Kami / Deliverable Design And Packaging Layer
+
+Source: `https://github.com/tw93/Kami.git`
+
+Relationship to Waza:
+
+- `Waza` governs how AI employees think, execute, check, and evolve.
+- `Kami` governs how finished work is packaged into boss-readable documents, decks, reports, pages, and shareable business artifacts.
+
+Role in Longka:
+
+- Belongs to the final deliverable expression layer, not the raw execution layer.
+- Turns agent output into customer-facing reports, proposal documents, project reviews, content packs, investor one-pagers, onboarding guides, and polished PDFs/pages.
+- Helps Longka sell "finished business artifacts" rather than "AI generated text".
+- Strengthens the U-disk, web, and mini-program editions because every AI employee can end work with a clear deliverable.
+
+Boundary:
+
+- Do not use Kami to make weak evidence look polished.
+- Do not let visual packaging replace workflow validation.
+- Distill its document and page patterns into Longka-owned templates.
+
+Reference note:
+
+- `E:\Codex\ai-native\docs\strategy\kami-deliverable-design-tech-base.md`
+
 ### WeChat Assistant / Private-Domain Intelligence Reference
 
 Source: `https://github.com/huangserva/wechat-assistant.git`
@@ -158,6 +184,51 @@ Boundary:
 Reference note:
 
 - `E:\Codex\docs\strategy\gsap-skills-tech-base.md`
+
+### MoneyPrinterTurbo / Short-Video Production Pipeline Reference
+
+Source: `https://github.com/harry0703/MoneyPrinterTurbo.git`
+
+Role in Longka:
+
+- Belongs to the video production pipeline layer.
+- Useful for improving Xiaomei's video workbench through batch variants, clip rhythm controls, transition presets, subtitle presets, audio mix presets, material preprocessing, and visible task progress.
+- It should inform the existing Remotion/FFmpeg workflow rather than replace it wholesale.
+
+Boundary:
+
+- Do not make generic stock-footage generation the core proof for personal image reports.
+- Do not copy the Streamlit UI.
+- Do not expose too many technical controls to Xiaomei.
+- Keep Longka's domain proof: real customer photo, real report image, strong hook, good cover, and clear CTA.
+
+Reference note:
+
+- `E:\Codex\ai-native\docs\strategy\money-printer-turbo-video-tech-base.md`
+
+### HyperFrames / Premium Video Expression Layer
+
+Local skills:
+
+- `C:\Users\longfei\.codex\skills\hyperframes`
+- `C:\Users\longfei\.codex\skills\hyperframes-cli`
+
+Role in Longka:
+
+- Belongs to the video presentation and motion-design layer.
+- Useful for premium title cards, strong first-3-second hooks, animated text emphasis, product-flow overlays, audio-reactive highlights, kinetic typography, polished transitions, and CTA endings.
+- Best used as an optional premium-scene generator around the existing Remotion/FFmpeg workbench.
+
+Boundary:
+
+- Do not replace Xiaomei's whole workbench with HyperFrames.
+- Do not make normal video generation depend on it.
+- Do not ask Xiaomei to run HyperFrames manually.
+- Use it first for one excellent 3-second opener, then report section cards and CTA endings.
+
+Reference note:
+
+- `E:\Codex\ai-native\docs\strategy\hyperframes-video-expression-tech-base.md`
 
 ## Non-Negotiable Product Principles
 
@@ -256,3 +327,40 @@ At the start of a future session about Longka base-system evolution:
 3. Read the current vertical project file only if the task targets that vertical.
 4. Do not summarize from the current chat window alone.
 5. If history is incomplete, say which source files were read and which period is still uncertain.
+
+## 2026-05-28 Content Output Base Update
+
+New strategy docs:
+
+- `E:\Codex\ai-native\docs\strategy\content-output-base-architecture.md`
+- `E:\Codex\ai-native\docs\strategy\video-use-video-qa-recut-tech-base.md`
+- `E:\Codex\ai-native\docs\strategy\video-rhythm-rules.md`
+- `E:\Codex\ai-native\docs\strategy\content-source-adapters.md`
+
+Important video-production rule:
+
+- Remotion remains the stable main template layer.
+- HyperFrames is the premium opener/title/transition/CTA layer.
+- FFmpeg is the concat/mix/export layer.
+- video-use is the QA, timeline analysis, recut, and second-pass optimization layer.
+- MoneyPrinterTurbo is an engineering reference for batch variants, subtitles, rhythm, material gates, and progress visibility.
+
+Xiaomei video rhythm correction:
+
+- The previous first 3 seconds felt too short, while middle transitions felt too long.
+- New Remotion rhythm: scene 1 is 0-9s, scene 2 is 8-17s, scene 3 is 16-25s, scene 4 is 24-35s.
+- Transition fade is about 10 frames, not long drifting mid-video transitions.
+- HyperFrames color-report opener is 4s, with the first 2.5s building the main visual and the final second holding CTA.
+
+## 2026-05-29 Intelligence Adapter Correction
+
+After reviewing the X video case about a Xiaohongshu explosive-post replication agent, do not hard-code `xhs-cli` as the main crawler.
+
+Correct source priority:
+
+- `apify-xhs`: primary route for XHS hot post samples and comments in P1/P2.
+- `xcrawl-web`: public/dynamic web, competitor pages, search result pages.
+- `manual-import`: required fallback when platforms block server-side access; screenshots/copied text/comments still enter the same analysis flow.
+- `xhs-cli`: low-frequency local verification after login/cookie setup, not the production crawler.
+
+All collection tools must emit a normalized `content_sample` schema before analysis. Failed collection must show a reason and fallback options, never silently fall back to fake seed data.

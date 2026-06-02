@@ -118,7 +118,7 @@ const workflowLayers = [
     owner: "调度官",
     status: "正在打通",
     summary: "把老板一句话需求拆成选题、文案、图片、视频、公众号、朋友圈、客服回复和复盘任务。",
-    ready: ["今日经营建议", "选题流水线", "生产任务入库"],
+    ready: ["今日经营建议", "选题中心", "生产任务入库"],
     next: "增加任务模板、优先级、预算、截止时间和人工批准节点。",
     proof: "老板批准一个目标后，系统自动生成可执行任务，而不是只给聊天建议。",
     actionKey: "task-template",
@@ -164,6 +164,7 @@ const workflowLayers = [
 
 const state = {
   step: "sources",
+  operatorWorkType: "xhs-article",
   company: null,
   currentProjectId: null,
   projects: [],
@@ -195,6 +196,7 @@ const runButton = document.querySelector("#runPipeline");
 const rerunButton = document.querySelector("#rerunPipeline");
 const exportButton = document.querySelector("#exportButton");
 const importFile = document.querySelector("#importFile");
+const operatorHome = ensureOperatorHome();
 
 document.querySelectorAll("[data-scroll]").forEach((button) => {
   button.addEventListener("click", () => scrollToId(button.dataset.scroll));
@@ -227,6 +229,23 @@ document.addEventListener("click", async (event) => {
     copyTextFrom(copyButton.dataset.copyTarget);
     return;
   }
+  const scrollButton = event.target.closest("[data-scroll]");
+  if (scrollButton) {
+    scrollToId(scrollButton.dataset.scroll);
+    return;
+  }
+  const workTypeButton = event.target.closest("[data-work-type]");
+  if (workTypeButton) {
+    state.operatorWorkType = workTypeButton.dataset.workType;
+    renderOperatorHomeV2();
+    return;
+  }
+  const workflowStepButton = event.target.closest("[data-workflow-step]");
+  if (workflowStepButton) {
+    state.step = workflowStepButton.dataset.workflowStep;
+    renderOperatorHomeV2();
+    return;
+  }
   const action = event.target.closest("[data-action]");
   if (!action) return;
   const id = action.dataset.id;
@@ -236,6 +255,22 @@ document.addEventListener("click", async (event) => {
   if (action.dataset.action === "employee") await runEmployeeAction(action.dataset.employeeId, action.dataset.employeeAction);
   if (action.dataset.action === "select-project") await selectProject(action.dataset.projectId);
   if (action.dataset.action === "workflow") await createWorkflowAction(action.dataset.actionKey);
+  if (action.dataset.action === "execute-task") {
+    const result = await executeTask(id);
+    showToast(result.asset ? "已生成下一轮发布包" : "任务已处理");
+  }
+  if (action.dataset.action === "export-cards") {
+    action.disabled = true;
+    action.textContent = "正在导出卡片...";
+    const result = await exportXhsCards(id);
+    showToast(`已导出 ${result.manifest?.count || 0} 张小红书卡片`);
+  }
+  if (action.dataset.action === "export-video-package") {
+    action.disabled = true;
+    action.textContent = "正在交接视频任务...";
+    await exportVideoPackage(id);
+    showToast("已交接给小妹视频工作台");
+  }
   await loadState();
 });
 
@@ -254,6 +289,14 @@ async function exportData() {
   a.remove();
   URL.revokeObjectURL(url);
   showToast("经营数据已导出");
+}
+
+async function exportXhsCards(assetId) {
+  return postJson("/api/assets/export-xhs-cards", { assetId });
+}
+
+async function exportVideoPackage(assetId) {
+  return postJson("/api/assets/export-video-package", { assetId });
 }
 
 async function importData(event) {
@@ -297,7 +340,7 @@ async function scanClippings() {
 }
 
 async function runPipeline() {
-  setBusy(true, "正在运行流水线");
+  setBusy(true, "正在运行内容生产线");
   try {
     await postJson("/api/config", readConfigFromForm());
     const res = await postJson("/api/pipeline/run", {});
@@ -316,6 +359,10 @@ async function addTopic(candidateId) {
 
 async function createProductionTask(candidateId) {
   await postJson("/api/production-tasks", { candidateId });
+}
+
+async function executeTask(taskId) {
+  return postJson("/api/tasks/execute", { taskId });
 }
 
 async function buildOutcomePack() {
@@ -375,6 +422,7 @@ function readConfigFromForm() {
 }
 
 function render() {
+  renderOperatorHomeV2();
   renderDashboardMetrics();
   renderQuickTasks();
   renderProjects();
@@ -406,6 +454,284 @@ function renderDashboardMetrics() {
   }
 }
 
+function ensureOperatorHome() {
+  const workspace = document.querySelector(".workspace");
+  if (!workspace) return null;
+  let node = document.querySelector("#operatorHome");
+  if (!node) {
+    node = document.createElement("section");
+    node.id = "operatorHome";
+    node.className = "operator-home";
+    workspace.prepend(node);
+  }
+  return node;
+}
+
+function renderOperatorHome() {
+  if (!operatorHome) return;
+  const asset = pickOperatorAsset();
+  const structured = asset.structured || {};
+  const cards = asset.exportedCards;
+  const videoExport = asset.exportedVideoPackage;
+  const finalVideo = "E:\\Codex\\my-video\\out\\standard\\final\\color-miniapp-flow.mp4";
+  const coverFile = "E:\\Codex\\my-video\\out\\standard\\covers\\color-miniapp-flow.jpg";
+  const title = structured.selectedTitle || asset.title || "先运行内容生产线";
+  const body = Array.isArray(structured.bodyDraft) ? structured.bodyDraft.join("\n") : asset.copy || "";
+  const bodyId = "operatorDraftCopy";
+  const cardsReady = Boolean(cards?.count);
+  const videoReady = Boolean(videoExport?.jobDir);
+  const firstCard = cards?.files?.[0] || "";
+  const progressText = [asset.id, cardsReady, videoReady].filter(Boolean).length;
+
+  operatorHome.innerHTML = `
+    <div class="operator-hero">
+      <div>
+        <p class="eyebrow">CONTENT WORKBENCH</p>
+        <h1>小红书内容生产台</h1>
+        <p class="operator-subtitle">给小妹用的第一版：按顺序完成选题、图文、视频。不要看技术细节，先把今天能发的内容做出来。</p>
+      </div>
+      <button class="primary" data-scroll="contentWorkflow">开始生产内容</button>
+    </div>
+
+    <div class="operator-main-grid">
+      <article class="operator-focus-card">
+        <span>第 1 步：确认今天要发什么</span>
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(structured.hook || "先生成一套选题包，这里会显示今天最值得推进的内容角度。")}</p>
+        <div class="operator-actions">
+          <button class="primary" data-action="export-cards" data-id="${escapeAttr(asset.id || "")}" ${asset.id ? "" : "disabled"}>${cardsReady ? "重新生成图文" : "生成小红书图文"}</button>
+          <button class="ghost" data-action="export-video-package" data-id="${escapeAttr(asset.id || "")}" ${asset.id && structured.videoPackage ? "" : "disabled"}>${videoReady ? "重新生成视频任务" : "生成视频任务"}</button>
+        </div>
+      </article>
+
+      <article class="operator-next-card">
+        <span>完成进度 ${progressText}/3</span>
+        <ol>
+          <li class="${asset.id ? "done" : ""}">选出一个高价值选题</li>
+          <li class="${cardsReady ? "done" : ""}">导出小红书图文卡片</li>
+          <li class="${videoReady ? "done" : ""}">交给小妹工作台做视频</li>
+        </ol>
+      </article>
+    </div>
+
+    <div class="operator-deliverables">
+      <article>
+        <b>小红书图文</b>
+        <p>${cardsReady ? `已生成 ${cards.count} 张 PNG 卡片。` : "等待导出图文卡片。"}</p>
+        ${cardsReady ? `<button class="mini" data-scroll="assets">查看图文包</button>` : `<button class="mini" data-action="export-cards" data-id="${escapeAttr(asset.id || "")}" ${asset.id ? "" : "disabled"}>生成图文</button>`}
+      </article>
+      <article>
+        <b>宣传短视频</b>
+        <p>${videoReady ? "视频任务已交给小妹工作台。" : "等待交接视频任务。"}</p>
+        ${videoReady ? `<button class="mini" data-scroll="assets">查看视频任务</button>` : `<button class="mini" data-action="export-video-package" data-id="${escapeAttr(asset.id || "")}" ${asset.id && structured.videoPackage ? "" : "disabled"}>生成视频任务</button>`}
+      </article>
+      <article>
+        <b>视频封面</b>
+        <p>成片发布时搭配这张封面。</p>
+        <button class="mini" data-scroll="assets">查看封面位置</button>
+      </article>
+    </div>
+
+    <details class="operator-draft">
+      <summary>查看发布文案</summary>
+      <button class="mini" data-copy-target="${bodyId}">复制文案</button>
+      <textarea id="${bodyId}" readonly>${escapeHtml(body)}</textarea>
+    </details>
+
+    <details class="operator-tech">
+      <summary>技术详情和文件位置</summary>
+      <div>
+        <p><b>图文卡片：</b>${escapeHtml(firstCard || "尚未导出")}</p>
+        <p><b>最终视频：</b>${escapeHtml(finalVideo)}</p>
+        <p><b>视频封面：</b>${escapeHtml(coverFile)}</p>
+      </div>
+    </details>
+  `;
+}
+
+function pickOperatorAsset() {
+  const assets = state.assets || [];
+  return assets.find((item) => item.exportedCards && item.exportedVideoPackage)
+    || assets.find((item) => item.exportedCards || item.exportedVideoPackage)
+    || assets.find((item) => item.structured?.videoPackage)
+    || assets[0]
+    || {};
+}
+
+function renderOperatorHomeV2() {
+  if (!operatorHome) return;
+  const asset = pickOperatorAsset();
+  const structured = asset.structured || {};
+  const cards = asset.exportedCards;
+  const videoExport = asset.exportedVideoPackage;
+  const activeWork = getOperatorWorkTypes().find((item) => item.id === state.operatorWorkType) || getOperatorWorkTypes()[0];
+  const cardsReady = Boolean(cards?.count);
+  const videoReady = Boolean(videoExport?.jobDir);
+  const assetReady = Boolean(asset.id);
+  const steps = getOperatorWorkflowSteps({ cardsReady, videoReady, assetReady });
+  const activeStep = steps.find((item) => item.key === state.step) || steps[0];
+  const topicTitle = structured.selectedTitle || asset.title || "先采集素材，系统会给出候选选题";
+  const body = Array.isArray(structured.bodyDraft) ? structured.bodyDraft.join("\n") : asset.copy || "";
+  const bodyId = "operatorDraftCopy";
+
+  operatorHome.innerHTML = `
+    <div class="pro-home">
+      <section class="pro-hero">
+        <div class="pro-hero-copy">
+          <span class="pro-kicker">AI NATIVE CONTENT OS</span>
+          <h1>先选今天要干的活，再让系统跑完整内容流程。</h1>
+          <p>顾客打开页面，第一眼只需要回答一个问题：今天要做图文、视频、朋友圈，还是长文？选完以后，系统才进入采集、筛选、分析、改造和生产。</p>
+        </div>
+        <div class="pro-hero-action">
+          <button class="primary pro-primary" data-scroll="contentWorkflow">开始采集选题</button>
+          <small>当前已采集 ${state.rawMaterials?.length || 0} 条素材，生成 ${state.candidates?.length || 0} 个候选。</small>
+        </div>
+      </section>
+
+      <section class="pro-work-picker">
+        <div class="pro-section-head">
+          <span>今天要完成什么工作？</span>
+          <small>先选任务类型，再进入 7 步流程。</small>
+        </div>
+        <div class="pro-work-grid">
+          ${getOperatorWorkTypes().map((item) => `
+            <button class="pro-work-card ${item.id === activeWork.id ? "active" : ""}" data-work-type="${escapeAttr(item.id)}">
+              <i>${escapeHtml(item.tag)}</i>
+              <b>${escapeHtml(item.title)}</b>
+              <small>${escapeHtml(item.desc)}</small>
+            </button>
+          `).join("")}
+        </div>
+      </section>
+
+      <section class="pro-current">
+        <article class="pro-current-main">
+          <span>当前任务</span>
+          <h2>${escapeHtml(activeWork.title)}</h2>
+          <p>${escapeHtml(activeWork.plan)}</p>
+          <div class="pro-current-actions">
+            <button class="primary" data-scroll="contentWorkflow">去做第 1 步：采集</button>
+            <button class="ghost" data-scroll="assets">查看已生成结果</button>
+          </div>
+        </article>
+        <article class="pro-topic">
+          <span>当前推荐选题</span>
+          <h3>${escapeHtml(topicTitle)}</h3>
+          <p>${escapeHtml(structured.hook || "采集完成后，这里会显示候选选题、推荐理由、评论痛点和数据表现。")}</p>
+        </article>
+      </section>
+
+      <section class="pro-flow">
+        <div class="pro-section-head">
+          <span>7 步内容生产流程</span>
+          <small>小红书、抖音、视频号、朋友圈、公众号都走这套底层流程。</small>
+        </div>
+        <div class="pro-flow-grid">
+          ${steps.map((step) => `
+            <button class="pro-flow-step ${step.done ? "done" : ""} ${step.key === activeStep.key ? "active" : ""}" data-workflow-step="${escapeAttr(step.key)}">
+              <em>${escapeHtml(step.no)}</em>
+              <b>${escapeHtml(step.title)}</b>
+              <small>${escapeHtml(step.desc)}</small>
+            </button>
+          `).join("")}
+        </div>
+      </section>
+
+      <section class="pro-step-detail">
+        ${renderOperatorStepDetail(activeWork, activeStep, { asset, structured, cardsReady, videoReady })}
+      </section>
+
+      <section class="pro-output">
+        <div class="pro-section-head">
+          <span>当前产物</span>
+          <small>这里才放用户拿得走的东西，技术路径默认折叠。</small>
+        </div>
+        <div class="pro-output-grid">
+          <article>
+            <b>图文卡片</b>
+            <p>${cardsReady ? `已生成 ${cards.count} 张 PNG。` : "还没有导出图文卡片。"}</p>
+            <button class="mini" data-action="export-cards" data-id="${escapeAttr(asset.id || "")}" ${asset.id ? "" : "disabled"}>${cardsReady ? "重新生成" : "生成图文"}</button>
+          </article>
+          <article>
+            <b>视频任务</b>
+            <p>${videoReady ? "已交给小妹视频工作台。" : "还没有生成视频任务。"}</p>
+            <button class="mini" data-action="export-video-package" data-id="${escapeAttr(asset.id || "")}" ${asset.id && structured.videoPackage ? "" : "disabled"}>${videoReady ? "重新交接" : "生成视频任务"}</button>
+          </article>
+          <article>
+            <b>发布文案</b>
+            <p>${body ? "正文草稿已生成，可以复制后人工微调。" : "等待生成正文。"}</p>
+            <button class="mini" data-copy-target="${bodyId}" ${body ? "" : "disabled"}>复制文案</button>
+          </article>
+        </div>
+      </section>
+
+      <details class="operator-draft">
+        <summary>查看发布文案</summary>
+        <textarea id="${bodyId}" readonly>${escapeHtml(body)}</textarea>
+      </details>
+
+      <details class="operator-tech">
+        <summary>技术详情和文件位置</summary>
+        <div>
+          <p><b>图文卡片：</b>${escapeHtml(cards?.files?.[0] || "尚未导出")}</p>
+          <p><b>最终视频：</b>E:\\Codex\\my-video\\out\\standard\\final\\color-miniapp-flow.mp4</p>
+          <p><b>视频封面：</b>E:\\Codex\\my-video\\out\\standard\\covers\\color-miniapp-flow.jpg</p>
+        </div>
+      </details>
+    </div>
+  `;
+}
+
+function getOperatorWorkTypes() {
+  return [
+    { id: "xhs-article", tag: "图文", title: "小红书图文", desc: "做搜索、收藏、评论承接。", plan: "先采集行业里的高表现图文，再拆标题、封面、正文结构和评论痛点，最后生成图文卡片与正文草稿。" },
+    { id: "short-video", tag: "视频", title: "抖音 / 视频号 / 小红书视频", desc: "做演示、种草、案例传播。", plan: "先找同类短视频的爆点，再拆 3 秒开头、镜头结构、口播和 CTA，最后交给视频工作台生成成片任务。" },
+    { id: "moments", tag: "私域", title: "朋友圈种草", desc: "做信任、案例、转化。", plan: "把公开平台选题改造成朋友圈能发的话术，重点展示过程、反馈和可参与的小工具，而不是硬广告。" },
+    { id: "longform", tag: "长文", title: "公众号 / 长文", desc: "做方法论、案例复盘。", plan: "把多个短内容选题沉淀成长文结构，用来解释原理、流程、案例和常见问题。" },
+  ];
+}
+
+function getOperatorWorkflowSteps({ cardsReady, videoReady, assetReady }) {
+  return [
+    { no: "01", key: "sources", title: "采集", desc: "行业、平台、关键词、账号。", done: (state.rawMaterials || []).length > 0 },
+    { no: "02", key: "screening", title: "筛选", desc: "数据表现和评论质量。", done: (state.candidates || []).length > 0 },
+    { no: "03", key: "judge", title: "分析", desc: "标题、开头、结构、痛点。", done: assetReady },
+    { no: "04", key: "transform", title: "改造", desc: "迁移到自己的业务。", done: assetReady },
+    { no: "05", key: "copy", title: "成文", desc: "正文、脚本、配文。", done: assetReady },
+    { no: "06", key: "package", title: "配套", desc: "卡片、封面、视频包。", done: cardsReady || videoReady },
+    { no: "07", key: "review", title: "复盘", desc: "数据回流下一轮。", done: false },
+  ];
+}
+
+function renderOperatorStepDetail(activeWork, step, context) {
+  const detailMap = {
+    sources: ["先告诉系统：今天要抓什么素材？", `当前任务是「${activeWork.title}」。输入行业、关键词、平台或对标账号，系统会抓取今天值得参考的内容。`, [["去填写采集条件", "contentWorkflow", true], [`已采集 ${state.rawMaterials?.length || 0} 条素材`, "contentWorkflow", false]]],
+    screening: ["系统给出候选选题，你来挑。", "筛选不是随便列标题，而是比较数据表现、评论痛点、收藏理由和是否适合你的业务。", [[`查看 ${state.candidates?.length || 0} 个候选`, "contentWorkflow", true], ["进入选题库", "library", false]]],
+    judge: ["分析这个选题为什么值得做。", "拆标题公式、黄金开头、用户情绪、评论区真实问题和转化入口。分析通过后，才进入改造。", [["查看分析结果", "contentWorkflow", true]]],
+    transform: ["把别人的爆款，改造成你的业务内容。", "不搬运，不照抄。把爆款里的情绪、结构和痛点迁移到你的产品、案例和小工具上。", [["查看改造后的发布包", "assets", true]]],
+    copy: ["生成可以人工微调的正文和脚本。", `当前已有 ${state.assets?.length || 0} 份内容资产。文案必须能复制、能修改、能直接交给小妹继续做视频。`, [["查看文案", "assets", true]]],
+    package: ["把文字变成可交付素材包。", "这里产出图文卡片、视频任务、封面、配文和文件包。小妹只需要拿这些去发布或继续制作。", []],
+    review: ["发布后把数据拿回来，下一轮才会更准。", "记录点赞、收藏、评论、私信、成交和用户追问，让系统知道什么内容真的有效。", [["查看复盘区", "assets", true]]],
+  };
+  const [title, body, actions] = detailMap[step.key] || detailMap.sources;
+  return `
+    <article class="pro-step-card">
+      <div>
+        <span>当前步骤：${escapeHtml(step.no)} ${escapeHtml(step.title)}</span>
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(body)}</p>
+      </div>
+      <div class="pro-step-actions">
+        ${actions.map(([label, scroll, primary]) => `<button class="${primary ? "primary" : "ghost"}" data-scroll="${escapeAttr(scroll)}">${escapeHtml(label)}</button>`).join("")}
+        ${step.key === "package" ? `
+          <button class="primary" data-action="export-cards" data-id="${escapeAttr(context.asset.id || "")}" ${context.asset.id ? "" : "disabled"}>${context.cardsReady ? "重新生成图文" : "生成图文"}</button>
+          <button class="ghost" data-action="export-video-package" data-id="${escapeAttr(context.asset.id || "")}" ${context.asset.id && context.structured.videoPackage ? "" : "disabled"}>${context.videoReady ? "重新生成视频任务" : "生成视频任务"}</button>
+        ` : ""}
+      </div>
+    </article>
+  `;
+}
+
 function renderQuickTasks() {
   if (!quickTaskGrid) return;
   const tasks = [
@@ -420,7 +746,7 @@ function renderQuickTasks() {
       tag: "客户问题",
       title: "把问题变成选题",
       desc: "把测试反馈、评论区、群聊摘要里的问题整理成可发布选题。",
-      button: "运行选题流水线",
+      button: "运行选题中心",
       run: "pipeline",
     },
     {
@@ -514,7 +840,7 @@ function renderOutcomes() {
   outcomeTitle.textContent = top ? `今天先推：${top.title}` : "等待生成今日经营成果";
   outcomeSummary.textContent = top
     ? `围绕「${projectName}」，系统已把高表现信号整理成可判断选题、生产任务和可复制发布草稿。`
-    : "运行选题流水线后，这里会自动整理今天最值得推进的选题、任务和可复制文案。";
+    : "运行选题中心后，这里会自动整理今天最值得推进的选题、任务和可复制文案。";
 
   const digest = buildDigestText(top, tasks, assets);
   outcomeDigest.innerHTML = `
@@ -527,7 +853,7 @@ function renderOutcomes() {
   const cards = [
     {
       label: "1. 今天判断",
-      title: top ? top.title : "先运行选题流水线",
+      title: top ? top.title : "先运行选题中心",
       body: top ? top.angle : "系统会根据信息池里的表现分、痛点和转化词生成候选选题。",
       meta: top ? [`${top.score} 分`, top.platform, top.formula] : ["未开始"],
       action: "老板只需要判断：这条今天值不值得发。",
@@ -571,7 +897,7 @@ function buildDigestText(top, tasks, assets) {
   if (!top) {
     return [
       "今日成果：暂未生成",
-      "下一步：运行今日选题流水线",
+      "下一步：生成今日内容计划",
       "验收标准：至少得到 3 条候选选题、1 个生产任务、1 份可复制草稿",
     ].join("\n");
   }
@@ -591,7 +917,7 @@ function renderActivity() {
     activityList.innerHTML = `
       <article class="activity-empty">
         <b>还没有经营日志</b>
-        <p>新建项目、运行流水线、派发员工和生成任务后，这里会自动记录。</p>
+        <p>新建项目、运行内容生产线、派发员工和生成任务后，这里会自动记录。</p>
       </article>
     `;
     return;
@@ -784,7 +1110,7 @@ function renderStage() {
         <button class="ghost" id="stageRun">重新运行</button>
       </div>
       <div class="candidate-list">
-        ${state.candidates.length ? state.candidates.map(renderCandidate).join("") : `<article class="candidate-card"><div><b>还没有候选选题</b><p>先扫描精选资料或保存信息池，再点击运行今日选题流水线。</p></div></article>`}
+        ${state.candidates.length ? state.candidates.map(renderCandidate).join("") : `<article class="candidate-card"><div><b>还没有候选选题</b><p>先扫描精选资料或保存信息池，再点击生成今日内容计划。</p></div></article>`}
       </div>
     `;
     document.querySelector("#stageRun").addEventListener("click", runPipeline);
@@ -870,12 +1196,22 @@ function renderTasks() {
   }
   taskList.innerHTML = state.tasks.map((task) => `
     <article class="task-card">
-      <span>${escapeHtml(task.layer ? `${task.layer} / ${task.owner}` : task.owner)}</span>
+      <span>${escapeHtml(task.layer ? `${task.layer} / ${task.owner}` : task.owner)}${task.source ? ` · ${escapeHtml(sourceLabel(task.source))}` : ""}${task.priority ? ` · ${escapeHtml(task.priority)}优先级` : ""}</span>
       <b>${escapeHtml(task.title)}</b>
       <p>${escapeHtml(task.next)}</p>
       ${task.acceptance ? `<small>${escapeHtml(task.acceptance)}</small>` : ""}
+      ${task.source === "publish-review" && task.status !== "已生成发布包" ? `<button class="mini" data-action="execute-task" data-id="${escapeAttr(task.id)}">生成下一轮发布包</button>` : ""}
+      ${task.generatedAssetId ? `<small>已生成发布包：${escapeHtml(task.generatedAssetId)}</small>` : ""}
     </article>
   `).join("");
+}
+
+function sourceLabel(value) {
+  const map = {
+    "publish-review": "发布复盘",
+    "content-workflow": "内容生产线",
+  };
+  return map[value] || value;
 }
 
 function renderAssets() {
@@ -889,13 +1225,59 @@ function renderAssets() {
     `;
     return;
   }
-  assetGrid.innerHTML = state.assets.map((asset) => `
-    <article class="asset-card">
-      <span>${escapeHtml(asset.type)}</span>
-      <b>${escapeHtml(asset.title)}</b>
-      <pre>${escapeHtml(asset.copy)}</pre>
+  assetGrid.innerHTML = state.assets.map((asset, index) => renderAssetCard(asset, index)).join("");
+}
+
+function renderAssetCard(asset, index) {
+  const structured = asset.structured || {};
+  const cards = asset.exportedCards;
+  const videoExport = asset.exportedVideoPackage;
+  const videoPackage = structured.videoPackage;
+  const evidence = structured.closureEvidence;
+  const copyId = `asset-copy-${index}`;
+  const cardFiles = cards?.files || [];
+  const command = videoExport?.generateCommand
+    ? `cd E:\\Codex\\my-video\n${videoExport.generateCommand}`
+    : "Export video package first.";
+
+  return `
+    <article class="asset-card asset-card-wide">
+      <div class="asset-head">
+        <div>
+          <span>${escapeHtml(asset.type || "Marketing asset")}</span>
+          <b>${escapeHtml(asset.title || "Untitled package")}</b>
+        </div>
+        <em>${escapeHtml(formatTime(asset.createdAt))}</em>
+      </div>
+      <div class="closure-strip">
+        <strong>${evidence?.firstVersionDone ? "V1 closure package ready" : "Closure package pending"}</strong>
+        <small>${escapeHtml(evidence?.endpoint || "Graphic + video deliverables")}</small>
+      </div>
+      <div class="asset-delivery-grid">
+        <section>
+          <h4>1. XHS cards</h4>
+          <p>${cards ? `Exported ${cards.count || cardFiles.length} PNG cards, 900x1200.` : "Card script is ready. Export PNG cards."}</p>
+          ${cardFiles.length ? `<small>${escapeHtml(cardFiles[0])}</small>` : ""}
+          <button class="mini" data-action="export-cards" data-id="${escapeAttr(asset.id)}">${cards ? "Re-export cards" : "Export cards"}</button>
+        </section>
+        <section>
+          <h4>2. Promo video package</h4>
+          <p>${videoExport ? "Exported to Xiaomei video workbench." : (videoPackage ? "Video script is ready. Export task package." : "No video package yet.")}</p>
+          ${videoExport?.jobDir ? `<small>${escapeHtml(videoExport.jobDir)}</small>` : ""}
+          <button class="mini" data-action="export-video-package" data-id="${escapeAttr(asset.id)}" ${videoPackage ? "" : "disabled"}>${videoExport ? "Re-export video package" : "Export video package"}</button>
+        </section>
+        <section>
+          <h4>3. Render command</h4>
+          <p>Use Xiaomei workbench to render cover, voiceover, music and MP4.</p>
+          <pre class="command-block">${escapeHtml(command)}</pre>
+        </section>
+      </div>
+      <div class="asset-copy-row">
+        <button class="mini" data-copy-target="${copyId}">Copy publish draft</button>
+        <textarea id="${copyId}" readonly>${escapeHtml(asset.copy || "")}</textarea>
+      </div>
     </article>
-  `).join("");
+  `;
 }
 
 function scrollToId(id) {
@@ -906,7 +1288,7 @@ function scrollToId(id) {
 function setBusy(busy, label = "正在运行") {
   runButton.disabled = busy;
   rerunButton.disabled = busy;
-  runButton.textContent = busy ? label : "运行今日选题流水线";
+  runButton.textContent = busy ? label : "生成今日内容计划";
   rerunButton.textContent = busy ? label : "重新生成候选选题";
 }
 

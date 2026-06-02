@@ -35,14 +35,23 @@ This file is the first stop when Codex work starts in `E:\Codex`.
 
 ### AI Native Command Center
 
-- Prototype: `E:\Codex\ai-native-command-center-prototype`
-- Base context: `E:\Codex\AI_NATIVE_BASE_CONTEXT.md`
-- Capability wiring: `E:\Codex\ai-native-command-center-prototype\CAPABILITY_WIRING.md`
+- Current repo: `E:\Codex\ai-native`
+- Project harness: `E:\Codex\ai-native\docs\PROJECT_AGENT_HARNESS.md`
+- Base context: `E:\Codex\ai-native\AI_NATIVE_BASE_CONTEXT.md`
+- Main prototype: `E:\Codex\ai-native\apps\command-center-prototype`
+- Command center page: `E:\Codex\ai-native\apps\command-center-prototype\workbench-v2.html`
+- Capability wiring: `E:\Codex\ai-native\apps\command-center-prototype\CAPABILITY_WIRING.md`
+- Merged skill-stack memory: `C:\Users\longfei\.codex\memories\ai-native-merged-skill-stack.md`
+- Content production memory: `C:\Users\longfei\.codex\memories\ai-native-content-production-rules.md`
+- Visible workflow memory: `C:\Users\longfei\.codex\memories\longka_visible_workflow.md`
 - Waza self-evolution technical base note: `E:\Codex\docs\strategy\waza-self-evolution-tech-base.md`
+- Kami deliverable design technical base note: `E:\Codex\ai-native\docs\strategy\kami-deliverable-design-tech-base.md`
 - WeChat assistant private-domain note: `E:\Codex\docs\strategy\wechat-assistant-private-domain-tech-base.md`
 - WeChat radar intelligence dashboard note: `E:\Codex\docs\strategy\wechat-radar-intelligence-dashboard-tech-base.md`
 - Taste skill technical base note: `E:\Codex\docs\strategy\taste-skill-tech-base.md`
 - GSAP technical base note: `E:\Codex\docs\strategy\gsap-skills-tech-base.md`
+- MoneyPrinterTurbo video production pipeline note: `E:\Codex\ai-native\docs\strategy\money-printer-turbo-video-tech-base.md`
+- HyperFrames premium video expression note: `E:\Codex\ai-native\docs\strategy\hyperframes-video-expression-tech-base.md`
 - Installed Waza skills: `C:\Users\longfei\.agents\skills\think`, `design`, `check`, `hunt`, `write`, `learn`, `read`, `health`
 - Installed GSAP skills: `E:\Codex\.agents\skills\gsap-core`, `gsap-timeline`, `gsap-scrolltrigger`, `gsap-react`, `gsap-plugins`, `gsap-utils`, `gsap-performance`, `gsap-frameworks`
 - Installed taste skills: `E:\Codex\.agents\skills\brandkit`, `gpt-taste`, `design-taste-frontend`, `high-end-visual-design`, `redesign-existing-projects`, `minimalist-ui`, `industrial-brutalist-ui`, `image-to-code`, `imagegen-frontend-web`, `imagegen-frontend-mobile`
