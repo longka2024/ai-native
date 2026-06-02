@@ -13,7 +13,9 @@ const dataDir = join(root, 'data');
 const dbPath = join(dataDir, 'command-center.json');
 const assetVaultDir = join(dataDir, 'customer-assets');
 const assetDbPath = join(assetVaultDir, 'customer-assets.sqlite');
-const mediaCrawlerDbPath = process.env.MEDIACRAWLER_DB_PATH || 'E:\\Codex\\MediaCrawlerPro\\MediaCrawlerPro-Python\\media_crawler.db';
+const mediaCrawlerRoot = resolveMediaCrawlerRoot();
+const mediaCrawlerPythonDir = join(mediaCrawlerRoot, 'MediaCrawlerPro-Python');
+const mediaCrawlerDbPath = process.env.MEDIACRAWLER_DB_PATH || join(mediaCrawlerPythonDir, 'media_crawler.db');
 const verifiedClippingsDir = 'F:\\Longka Wiki\\龙咖Wiki\\Clippings';
 const defaultClippingsDir = 'F:\\Longka Wiki\\龙咖Wiki\\Clippings';
 const port = Number(process.env.PORT || 3760);
@@ -51,6 +53,16 @@ const defaultCompany = {
   owner: '老板',
   stage: '项目验证期',
 };
+
+function resolveMediaCrawlerRoot() {
+  const candidates = [
+    process.env.MEDIACRAWLER_ROOT,
+    join(root, 'MediaCrawlerPro'),
+    resolve(root, '..', 'MediaCrawlerPro'),
+    'E:\\Codex\\MediaCrawlerPro',
+  ].filter(Boolean);
+  return candidates.find((candidate) => existsSync(join(candidate, 'MediaCrawlerPro-Python', 'main.py'))) || candidates[0];
+}
 
 const defaultProjects = [
   {
@@ -893,7 +905,7 @@ async function syncXhsCookieFromCdp() {
       ok: false,
       message: '没有检测到 CDP 浏览器。请用 --remote-debugging-port=9222 启动 Chrome，并在该浏览器登录小红书。',
       action: 'start_cdp_browser',
-      command: 'chrome.exe --remote-debugging-port=9222 --user-data-dir=E:\\Codex\\chrome-cdp-profile',
+      command: `chrome.exe --remote-debugging-port=9222 --user-data-dir="${join(root, 'chrome-cdp-profile')}" https://www.xiaohongshu.com`,
     };
   }
   const pageWsUrl = await getCdpPageWebSocketUrl();
@@ -982,7 +994,7 @@ async function writeXhsCookieToExcel(cookieString) {
     'wb.save(path)',
   ].join('\n');
   await execFileAsync('uv', ['run', 'python', '-c', script, 'config/accounts_cookies.xlsx', cookieString], {
-    cwd: 'E:\\Codex\\MediaCrawlerPro\\MediaCrawlerPro-Python',
+    cwd: mediaCrawlerPythonDir,
     encoding: 'utf8',
     maxBuffer: 1024 * 1024 * 4,
     windowsHide: true,
@@ -990,6 +1002,9 @@ async function writeXhsCookieToExcel(cookieString) {
 }
 
 async function mediaCrawlerPreflight(platform) {
+  if (!existsSync(join(mediaCrawlerPythonDir, 'main.py'))) {
+    return { ready: false, message: `MediaCrawlerPro-Python 未找到：${mediaCrawlerPythonDir}` };
+  }
   const sign = await fetchJson('http://127.0.0.1:8989/signsrv/pong', 2500).catch(() => null);
   if (!sign?.isok) return { ready: false, message: 'SignSrv 未启动，请先启动 8989 签名服务。' };
   const script = [
@@ -1001,7 +1016,7 @@ async function mediaCrawlerPreflight(platform) {
     'print("OK" if has else "MISSING")',
   ].join('\n');
   const { stdout } = await execFileAsync('uv', ['run', 'python', '-c', script, platform], {
-    cwd: 'E:\\Codex\\MediaCrawlerPro\\MediaCrawlerPro-Python',
+    cwd: mediaCrawlerPythonDir,
     encoding: 'utf8',
     windowsHide: true,
   });
@@ -1029,7 +1044,7 @@ async function runMediaCrawlerXhsSearch(keywords) {
       keywords.join(','),
       '--no-enable_comments',
     ], {
-      cwd: 'E:\\Codex\\MediaCrawlerPro\\MediaCrawlerPro-Python',
+      cwd: mediaCrawlerPythonDir,
       env,
       encoding: 'utf8',
       maxBuffer: 1024 * 1024 * 8,
@@ -1061,7 +1076,7 @@ async function runMediaCrawlerXhsDetail(noteUrl) {
       '--urls',
       noteUrl,
     ], {
-      cwd: 'E:\\Codex\\MediaCrawlerPro\\MediaCrawlerPro-Python',
+      cwd: mediaCrawlerPythonDir,
       env,
       encoding: 'utf8',
       maxBuffer: 1024 * 1024 * 8,
@@ -3454,7 +3469,7 @@ function sendJson(res, value, status = 200) {
 }
 
 function serveStatic(pathname, res) {
-  const cleanPath = pathname === '/' ? '/index.html' : pathname;
+  const cleanPath = pathname === '/' ? '/workbench-v2.html' : pathname;
   const filePath = join(root, cleanPath.replace(/^\/+/, ''));
   if (!filePath.startsWith(root) || !existsSync(filePath)) {
     res.writeHead(404);
