@@ -385,7 +385,61 @@
     }
   }
 
+  function setXhsCdpStatus(message, isError = false) {
+    const node = $("#xhsCdpStatus");
+    if (!node) return;
+    node.textContent = message;
+    node.classList.toggle("error", Boolean(isError));
+  }
+
+  function installXhsCdpLoginPanel() {
+    const actions = document.querySelector(".input-actions");
+    if (!actions || document.querySelector("#xhsCdpLoginPanel")) return;
+    actions.insertAdjacentHTML("afterend", `<div id="xhsCdpLoginPanel" class="xhs-cdp-login-panel">
+      <div>
+        <b>小红书采集登录</b>
+        <p>先弹出新的 Chrome 窗口，小妹在里面扫码登录小红书；登录成功后读取 Cookie，再开始真实采集。</p>
+        <small id="xhsCdpStatus">未读取 Cookie。</small>
+      </div>
+      <div class="xhs-cdp-actions">
+        <button class="secondary" type="button" id="openXhsCdpBrowser">打开小红书登录窗口</button>
+        <button class="primary" type="button" id="syncXhsCdpCookie">已扫码，读取 Cookie</button>
+      </div>
+    </div>`);
+    $("#openXhsCdpBrowser")?.addEventListener("click", async () => {
+      const button = $("#openXhsCdpBrowser");
+      if (button) button.disabled = true;
+      setXhsCdpStatus("正在弹出新的 Chrome 登录窗口...");
+      try {
+        const response = await fetch("/api/cdp/start-xhs-browser", { method: "POST" });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) throw new Error(data.message || "Chrome 启动失败");
+        setXhsCdpStatus("Chrome 已弹出。请在新窗口扫码登录小红书，登录后点击“已扫码，读取 Cookie”。");
+      } catch (error) {
+        setXhsCdpStatus(error.message || "Chrome 启动失败", true);
+      } finally {
+        if (button) button.disabled = false;
+      }
+    });
+    $("#syncXhsCdpCookie")?.addEventListener("click", async () => {
+      const button = $("#syncXhsCdpCookie");
+      if (button) button.disabled = true;
+      setXhsCdpStatus("正在从 CDP Chrome 读取小红书 Cookie...");
+      try {
+        const response = await fetch("/api/cdp/sync-xhs-cookie", { method: "POST" });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) throw new Error(data.message || "Cookie 读取失败");
+        setXhsCdpStatus(`Cookie 已写入 MediaCrawler 账号池，共读取 ${data.cookieCount || 0} 个 Cookie。现在可以开始真实采集。`);
+      } catch (error) {
+        setXhsCdpStatus(error.message || "Cookie 读取失败，请确认新 Chrome 已登录小红书。", true);
+      } finally {
+        if (button) button.disabled = false;
+      }
+    });
+  }
+
   $("#findTopics")?.addEventListener("click", runStep1FromButton, true);
   installVisibleStep1LockNotice();
+  installXhsCdpLoginPanel();
   installWorkflowBackNav();
 })();

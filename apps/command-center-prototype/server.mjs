@@ -417,6 +417,15 @@ createServer(async (req, res) => {
       return sendJson(res, { ok: true, count: result.samples.length, dbPath: dbFile, samples: result.samples });
     }
 
+    if (req.method === 'POST' && url.pathname === '/api/cdp/start-xhs-browser') {
+      return sendJson(res, startXhsCdpBrowser());
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/cdp/sync-xhs-cookie') {
+      const cdp = await syncXhsCookieFromCdp();
+      return sendJson(res, cdp, cdp.ok ? 200 : 409);
+    }
+
     if (req.method === 'POST' && url.pathname === '/api/sources/mediacrawler/xhs-collect') {
       const payload = await readJson(req);
       const industry = String(payload.industry || '');
@@ -925,6 +934,36 @@ async function syncXhsCookieFromCdp() {
   const cookieString = cookies.map((item) => `${item.name}=${item.value}`).join('; ');
   await writeXhsCookieToExcel(cookieString);
   return { ok: true, cookieCount: cookies.length, source: 'cdp', browser: version.Browser || '' };
+}
+
+function startXhsCdpBrowser() {
+  const profileDir = join(root, 'chrome-cdp-profile');
+  const command = `start "" chrome.exe --remote-debugging-port=9222 --user-data-dir="${profileDir}" https://www.xiaohongshu.com`;
+  try {
+    const child = spawn('cmd.exe', ['/d', '/s', '/c', command], {
+      cwd: root,
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false,
+    });
+    child.unref();
+    return {
+      ok: true,
+      action: 'start_cdp_browser',
+      port: 9222,
+      profileDir,
+      command,
+      message: '已弹出新的 Chrome CDP 窗口。请在这个窗口扫码登录小红书，登录后回到页面点击“已扫码，读取 Cookie”。',
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      action: 'start_cdp_browser_failed',
+      profileDir,
+      command,
+      message: `启动 Chrome CDP 失败：${error.message}`,
+    };
+  }
 }
 
 async function getCdpPageWebSocketUrl() {
