@@ -4,303 +4,152 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Longka AI Native 内容生产中台</title>
-  <link rel="stylesheet" href="./workbench-v2.css?v=20260602-contract-1" />
+  <link rel="stylesheet" href="./workbench-v2-clean.css?v=20260605-x-balance-1" />
 </head>
 <body>
-  <header class="command-topbar">
-    <div class="brand-mark">L</div>
-    <div>
+  <header class="topbar">
+    <div class="brand">L</div>
+    <div class="brand-copy">
       <b>Longka AI Native</b>
-      <span>内容生产中台 v2.4.4 内容动作面板版</span>
+      <span>内容生产中台 v2.5 今日工作流版</span>
     </div>
-    <label class="global-search">
+    <label class="search">
       <span>搜索</span>
       <input id="globalSearch" placeholder="搜索关键词、素材、客户问题、标题、内容计划" />
     </label>
     <select id="workspaceSelect">
+      <option>AI 与自媒体内容系统</option>
       <option>美容行业内容系统</option>
       <option>小妹视频工作台</option>
-      <option>色彩小程序内容系统</option>
+      <option>色彩项目内容系统</option>
     </select>
   </header>
 
-  <main class="app">
-    <aside class="command-sidebar">
-      <div class="sidebar-title">内容工作流</div>
-      <button class="nav-item active" data-route-link="home"><b>今日工作台</b><span>一步步完成今天内容</span></button>
-      <button class="nav-item" data-route-link="keywords"><b>内容资产库</b><span>素材 / 关键词 / 问题 / 标题 / 结构</span></button>
-      <button class="nav-item" data-route-link="plans"><b>内容计划</b><span>待确认 / 待制作</span></button>
-      <button class="nav-item" data-route-link="delivery"><b>视频工作台</b><span>确认后交给小妹</span></button>
+  <main class="shell">
+    <aside class="sidebar">
+      <div class="sidebar-title">Longka 内容工厂</div>
+      <button class="nav-item active" data-route="today">
+        <b>今日工作台</b>
+        <span>今天完成一条可发布内容</span>
+      </button>
+      <button class="nav-item" data-route="assets">
+        <b>内容资产库</b>
+        <span>素材、问题、标题、结构长期沉淀</span>
+      </button>
+      <a class="nav-item nav-link" href="./x-batch.html">
+        <b>内容采集批次</b>
+        <span>X 账号采集、好帖筛选、人工入库、爆文拆解卡</span>
+      </a>
+      <button class="nav-item" data-route="sources">
+        <b>对标账号库</b>
+        <span>X、RSS、网页、公众号等信息源</span>
+      </button>
+      <button class="nav-item" data-route="questions">
+        <b>客户问题库</b>
+        <span>评论区、私域、咨询问题</span>
+      </button>
+      <button class="nav-item" data-route="titles">
+        <b>标题库</b>
+        <span>爆款标题与改写公式</span>
+      </button>
+      <button class="nav-item" data-route="structures">
+        <b>爆款结构库</b>
+        <span>开头、展开、转化、结尾</span>
+      </button>
+      <button class="nav-item" data-route="records">
+        <b>作品记录</b>
+        <span>已确认、已导出、待复盘</span>
+      </button>
+      <button class="nav-item" data-route="settings">
+        <b>设置</b>
+        <span>模型、采集、导入导出</span>
+      </button>
     </aside>
 
-    <div class="command-content">
-      <section class="profile-gate route-panel" id="profileGate" data-route="home">
-        <div class="section-title">
-          <span>先建立你的专属资料库</span>
-          <small>第一次使用先填这张表，后续素材、客户问题、标题和内容都会沉淀到你的资料库里。</small>
+    <section class="content">
+      <section class="route-panel" data-panel="today">
+        <div class="hero">
+          <div>
+            <span class="eyebrow">TODAY</span>
+            <h1>今天先完成一条能发布的内容</h1>
+            <p>按步骤完成：定义任务、选择来源、读取素材、选择选题、选择标题、生成文案、体检优化、确认后再制作图文或视频。</p>
+          </div>
+          <div class="hero-status" id="heroStatus"></div>
         </div>
-        <div class="profile-form">
-          <label>姓名 / 店名
-            <input id="profileName" value="王丽美肤" />
-          </label>
-          <label>行业
-            <input id="profileIndustry" value="美业护肤" />
-          </label>
-          <label>主要诉求
-            <input id="profileGoal" value="持续产出能带来咨询的内容" />
-          </label>
-          <label>业务关键词
-            <input id="profileKeywords" value="淡斑、祛痘、敏感肌修复、抗衰" />
-          </label>
-        </div>
-        <div class="profile-actions">
-          <button class="primary" id="saveCustomerProfile" type="button">创建我的数字资产库</button>
-          <p id="profileStatus">保存好这个资料库文件，以后换电脑或升级系统都可以导入继续创作。</p>
-        </div>
+
+        <nav class="step-rail" id="stepRail" aria-label="今日工作流步骤"></nav>
+        <section class="context-card" id="contextCard"></section>
+        <section class="work-area" id="workArea"></section>
       </section>
 
-      <section class="today-desk route-panel" id="todayDesk" data-route="home">
-        <div>
-          <span class="kicker">STEP BY STEP</span>
-          <h1>今天先完成一条内容</h1>
-          <p>按步骤走：选产物、选素材、填关键词、选题、确认文案，最后才做配图和视频。</p>
-        </div>
-        <div class="stat-grid" id="commandStats">
-          <article><span>关键词</span><b>--</b></article>
-          <article><span>历史素材</span><b>--</b></article>
-          <article><span>客户问题</span><b>--</b></article>
-          <article><span>内容计划</span><b>--</b></article>
-        </div>
-        <div class="workflow-strip" id="workflowStrip">
-          <span class="active">1 选产物</span>
-          <span>2 选素材</span>
-          <span>3 填关键词</span>
-          <span>4 选题</span>
-          <span>5 确认文案</span>
-          <span>6 配图/视频</span>
-        </div>
-      </section>
-
-      <section class="planner route-panel" data-route="home">
-        <article class="step-block">
-          <div class="section-title">
-            <span>第一步：今天要做什么？</span>
-            <small>先决定最后要交付的内容类型。</small>
+      <section class="route-panel" data-panel="assets" hidden>
+        <div class="page-head">
+          <div>
+            <span class="eyebrow">ASSETS</span>
+            <h2>内容资产库</h2>
+            <p>这里沉淀长期可复用的真实素材、客户问题、标题、结构和已发布作品。今日工作台只引用这里的数据，不把全量资产堆进创作流程。</p>
           </div>
-          <div class="task-picker" id="taskPicker">
-            <button class="task-card active" data-task="imageText"><b>做一篇图文</b><span>正文 + 配图 + 发布提示</span></button>
-            <button class="task-card" data-task="video"><b>做一条视频</b><span>选题 + 脚本 + 分镜 + 封面</span></button>
-            <button class="task-card" data-task="moments"><b>写朋友圈</b><span>自然分享 + 私聊引导</span></button>
-            <button class="task-card" data-task="article"><b>写一篇长文</b><span>公众号 / 方法论 / 案例复盘</span></button>
-          </div>
-        </article>
-
-        <article class="step-block">
-          <div class="section-title">
-            <span>第二步：参考哪里的素材？</span>
-            <small>优先复用历史素材。素材不够时，再单独采集新素材。</small>
-          </div>
-          <div class="source-grid" id="sourcePicker">
-            <button class="source-card active ready" data-source="xhs"><b>小红书</b><span>已打通自动采集</span></button>
-            <button class="source-card ready" data-source="douyin"><b>抖音</b><span>已打通 Longka 雷达采集</span></button>
-            <button class="source-card ready" data-source="kuaishou"><b>快手</b><span>已打通 Longka 雷达采集</span></button>
-            <button class="source-card ready" data-source="bili"><b>Bilibili</b><span>已打通 Longka 雷达采集</span></button>
-            <button class="source-card ready" data-source="weibo"><b>微博</b><span>已打通 Longka 雷达采集</span></button>
-            <button class="source-card ready" data-source="zhihu"><b>知乎</b><span>已打通 Longka 雷达采集</span></button>
-            <button class="source-card ready" data-source="tieba"><b>百度贴吧</b><span>已打通 Longka 雷达采集</span></button>
-            <button class="source-card ready" data-source="upload"><b>自己上传素材</b><span>已打通本地导入</span></button>
-            <button class="source-card manual" data-source="link"><b>竞品账号 / 链接</b><span>支持手动粘贴</span></button>
-          </div>
-        </article>
-      </section>
-
-      <section class="workspace route-panel" data-route="home">
-        <article class="input-panel">
-          <div class="section-title">
-            <span>第三步：输入业务关键词</span>
-            <small>先做一个关键词。长期关键词可以在左侧“业务关键词”维护。</small>
-          </div>
-          <div class="form-grid">
-            <label>行业 / 项目
-              <input id="industry" value="美业护肤" />
-            </label>
-            <label>今天关心的话题
-              <input id="topic" value="淡斑" />
-            </label>
-            <label>想达到的目标
-              <input id="businessGoal" value="持续产出能带来咨询的内容" />
-            </label>
-            <label>补充说明
-              <input id="note" placeholder="例如：想做小红书图文，面向到店咨询客户" />
-            </label>
-            <div class="task-summary">
-              <b>当前任务</b>
-              <p id="taskSummary">做一篇图文，参考小红书，最后发布到小红书图文。</p>
-            </div>
-          </div>
-          <div class="input-actions">
-            <button class="primary" id="findTopics">下一步：帮我找选题</button>
-            <button class="secondary" id="runFullPipeline" type="button">确认文案后生成图片和视频</button>
-            <button class="secondary" id="importMaterial">导入已有素材</button>
-          </div>
-        </article>
-
-        <aside class="guide-panel">
-          <span>下一步</span>
-          <h2 id="guideTitle">先找选题，不急着做图和视频</h2>
-          <p id="guideText">系统会先复用历史素材。没有合适素材时，再提示你采集新素材或手动导入。</p>
-        </aside>
-      </section>
-
-      <section class="asset-library route-panel" id="assetLibrary" data-route="assets" hidden>
-        <div class="section-title">
-          <span>内容资产库</span>
-          <small>这里沉淀长期业务关键词、客户问题、标题和爆款结构。</small>
-        </div>
-        <div class="asset-controls">
-          <label>业务关键词
-            <textarea id="businessKeywords">淡斑、祛痘、敏感肌修复、抗衰、毛孔粗大、皮秒、补水</textarea>
-          </label>
-          <div class="asset-actions">
-            <button class="primary" id="refreshAssetLibrary" type="button">刷新内容资产</button>
-            <button class="secondary" id="collectNewMaterial" type="button">采集新素材</button>
-          </div>
-        </div>
-        <div class="asset-tabs" id="assetTabs">
-          <button data-asset-tab="materials">内容素材库</button>
-          <button class="active" data-asset-tab="keywords">业务关键词</button>
-          <button data-asset-tab="questions">客户问题库</button>
-          <button data-asset-tab="titles">标题库</button>
-          <button data-asset-tab="structures">爆款结构库</button>
-          <button data-asset-tab="plans">内容计划</button>
+          <button class="primary" data-action="load-assets">读取历史资产</button>
         </div>
         <div class="asset-board" id="assetBoard"></div>
       </section>
 
-      <section class="crawl-panel route-panel" id="crawlPanel" data-route="collect" hidden>
-        <div class="section-title">
-          <span>第四步：正在找选题</span>
-          <small>这里只展示采集和分析进度。</small>
-        </div>
-        <div class="work-console" id="workConsole">
-          <div class="console-head">
-            <div>
-              <b id="consoleTitle">采集工作窗口</b>
-              <p id="consoleSubtitle">等待开始</p>
-            </div>
-            <span id="consoleBadge">未开始</span>
-          </div>
-          <div class="progress-track"><i id="progressBar"></i></div>
-          <ol class="console-steps" id="consoleSteps"></ol>
-          <div class="terminal-window" aria-label="采集运行日志">
-            <div class="terminal-title">
-              <b>运行日志</b>
-              <span id="terminalStatus">等待开始</span>
-            </div>
-            <pre id="terminalLog">点击“帮我找选题”后，这里会逐步显示采集、分析和生成动作。</pre>
+      <section class="route-panel" data-panel="sources" hidden>
+        <div class="page-head">
+          <div>
+            <span class="eyebrow">SOURCES</span>
+            <h2>对标账号库</h2>
+            <p>维护长期监控的信息源。X 账号可以一行一个或逗号分隔；小红书、RSS、网页、公众号后续按同一资产标准入库。</p>
           </div>
         </div>
-        <div class="crawl-grid" id="crawlGrid"></div>
-      </section>
-
-      <section class="import-panel route-panel" id="importPanel" data-route="materials" hidden>
-        <div class="section-title">
-          <span>素材库</span>
-          <small>复用历史采集素材，或粘贴你已有的竞品帖子、客户问题和评论区高频问题。</small>
-        </div>
-        <div class="import-grid">
-          <label>素材标题
-            <input id="importTitle" placeholder="例如：淡斑前先分清这几种斑" />
+        <div class="source-editor">
+          <label>X 对标账号
+            <textarea id="sourceAccounts" rows="8" placeholder="Xudong07452910&#10;snail_9106&#10;xionghuanwei"></textarea>
           </label>
-          <label>来源链接
-            <input id="importUrl" placeholder="小红书/抖音/公众号链接，可不填" />
-          </label>
-          <label class="wide">正文或素材内容
-            <textarea id="importContent" placeholder="把帖子正文、视频口播、客户描述粘贴到这里"></textarea>
-          </label>
-          <label class="wide">评论区问题 / 客户常问问题
-            <textarea id="importComments" placeholder="一行一个问题，例如：我这是黄褐斑还是晒斑？"></textarea>
-          </label>
-        </div>
-        <div class="input-actions">
-          <button class="primary" id="saveImportedMaterial" type="button">导入并生成选题</button>
-          <button class="secondary" id="cancelImportMaterial" type="button">先不导入</button>
-        </div>
-        <p class="import-help" id="importHelp">建议至少填写标题或正文。手动导入会标记为“手动导入素材”。</p>
-      </section>
-
-      <section class="topics route-panel" id="topicsPanel" data-route="topics" hidden>
-        <div class="section-title">
-          <span>第四步：选择一个选题</span>
-          <small id="topicHint">先点击“帮我找选题”，系统会给出候选题。</small>
-        </div>
-        <div class="workflow-context" id="topicsContext" aria-label="当前任务上下文"></div>
-        <div class="topic-grid" id="topicGrid"></div>
-      </section>
-
-      <section class="decision route-panel" id="decisionPanel" data-route="topics" hidden>
-        <article class="analysis-card">
-          <span>已选择的选题</span>
-          <h2 id="analysisTitle">还没选择选题</h2>
-          <div class="analysis-grid">
-            <div><b>推荐理由</b><p id="reasonText">先选择一个候选选题。</p></div>
-            <div><b>评论痛点</b><p id="painText">这里会显示用户真实关心什么。</p></div>
-            <div><b>改造方向</b><p id="rewriteText">这里会说明如何改造成你的内容。</p></div>
+          <div class="side-note">
+            <b>采集标准</b>
+            <p>优先入库高信息密度、可复用观点、案例、方法和客户问题。纯转发、无上下文回复、低价值闲聊先过滤。</p>
+            <button class="primary" data-action="save-sources">保存账号库</button>
           </div>
-          <div class="publish-target">
-            <div>
-              <b>第五步：生成文案草稿</b>
-              <p id="targetSummary">先生成文案草稿，确认后才做配图和视频。</p>
-            </div>
-            <button class="primary" id="confirmTopic">生成文案草稿</button>
-          </div>
-        </article>
+        </div>
       </section>
 
-      <section class="outputs route-panel" id="outputsPanel" data-route="delivery" hidden>
-        <div class="section-title">
-          <span>第五步：确认文案，再进入制作</span>
-          <small>文案确认前，图片、视频和小妹工作台交接都会锁住。</small>
-        </div>
-        <div class="workflow-context" id="deliveryContext" aria-label="当前任务上下文"></div>
-        <div class="result-layout">
-          <article class="copy-result">
-            <span id="resultPlatform">小红书图文</span>
-            <h2 id="resultTitle">先选择一个选题</h2>
-            <div class="copy-diagnosis" id="copyDiagnosis"></div>
-            <textarea id="resultCopy" readonly></textarea>
-            <div class="copy-quality-slot" id="copyQualitySlot"></div>
-            <button class="primary" id="copyResultCopy" type="button">复制这份文案</button>
-          </article>
-          <article class="visual-result">
-            <span>配套图片 / 视频任务</span>
-            <div class="delivery-flow" id="deliveryFlow"></div>
-            <div class="preview-grid">
-              <div><b>封面</b><p id="imagePlanCover">确认文案后生成封面方案</p></div>
-              <div><b>正文图</b><p id="imagePlanCards">确认文案后生成正文卡片方案</p></div>
-              <div><b>视频</b><p id="videoPlanBrief">确认文案后生成视频脚本方案</p></div>
-            </div>
-            <button class="secondary" id="makeVideoTask">生成视频制作任务</button>
-            <div class="video-task" id="videoTask" hidden></div>
-          </article>
-        </div>
-        <div class="content-pack" id="contentPack"></div>
+      <section class="route-panel simple-panel" data-panel="questions" hidden>
+        <h2>客户问题库</h2>
+        <p>从评论区、咨询、私域和手动导入中沉淀。它服务于选题，不强制每篇文案都依赖某一条爬虫帖子。</p>
+        <div id="questionBoard" class="asset-board"></div>
       </section>
-    </div>
+
+      <section class="route-panel simple-panel" data-panel="titles" hidden>
+        <h2>标题库</h2>
+        <p>保存爆款标题、标题公式和已验证标题表现。今日工作台在标题步骤调用它生成候选标题。</p>
+        <div id="titleBoard" class="asset-board"></div>
+      </section>
+
+      <section class="route-panel simple-panel" data-panel="structures" hidden>
+        <h2>爆款结构库</h2>
+        <p>保存开头、展开、案例、清单、转化和结尾结构，用来指导二创，而不是固定模板套话。</p>
+        <div id="structureBoard" class="asset-board"></div>
+      </section>
+
+      <section class="route-panel simple-panel" data-panel="records" hidden>
+        <h2>作品记录</h2>
+        <p>记录已确认文案、已导出卡片、视频任务和发布后反馈，后续回流到资产库。</p>
+        <div id="recordBoard" class="asset-board"></div>
+      </section>
+
+      <section class="route-panel simple-panel" data-panel="settings" hidden>
+        <h2>设置</h2>
+        <p>模型、采集、导入导出、客户资料库等配置集中放这里，不进入今日创作主流程。</p>
+        <div class="settings-grid">
+          <button class="secondary" data-action="export-state">导出资料库</button>
+          <button class="secondary" data-action="import-state">导入资料库</button>
+          <button class="secondary" data-action="check-health">检查采集能力</button>
+        </div>
+      </section>
+    </section>
   </main>
-  <script src="./workbench-v2.js?v=20260602-contract-1"></script>
-  <script src="./longka-content-strategy-engine.js?v=20260602-content-strategy-1"></script>
-  <script src="./workbench-step1-gate.js?v=20260602-step1-gate-3"></script>
-  <script src="./workbench-step2-deconstruct.js?v=20260602-step2-deconstruct-1"></script>
-  <script src="./workbench-step3-question-bank.js?v=20260602-step3-question-bank-1"></script>
-  <script src="./workbench-step4-title-formulas.js?v=20260602-step4-title-formulas-1"></script>
-  <script src="./workbench-step5-copy-blueprint.js?v=20260602-step5-copy-blueprint-1"></script>
-  <script src="./workbench-step5-content-base.js?v=20260602-step5-content-base-1"></script>
-  <script src="./workbench-content-action-panel.js?v=20260602-content-action-panel-1"></script>
-  <script src="./workbench-step7-production-brief.js?v=20260602-step7-production-brief-1"></script>
-  <script src="./workbench-step7-xhs-preview.js?v=20260602-step7-xhs-preview-1"></script>
-  <script src="./workbench-step-navigation.js?v=20260602-step-navigation-1"></script>
-  <script src="./workbench-creative-flow-labels.js?v=20260602-creative-flow-labels-1"></script>
-  <script src="./workbench-step1-experience.js?v=20260602-step1-experience-1"></script>
+
+  <script src="./workbench-v2-clean.js?v=20260605-x-balance-1"></script>
 </body>
 </html>

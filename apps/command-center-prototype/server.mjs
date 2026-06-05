@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { DatabaseSync } from 'node:sqlite';
+import { collectorHealth, confirmContentAsset, initCollectorHub, loadLatestXBatch, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch } from './collector-hub.mjs';
 
 const root = resolve(fileURLToPath(new URL('.', import.meta.url)));
 const dataDir = join(root, 'data');
@@ -17,12 +17,19 @@ const mediaCrawlerRoot = resolveMediaCrawlerRoot();
 const mediaCrawlerPythonDir = join(mediaCrawlerRoot, 'MediaCrawlerPro-Python');
 const mediaCrawlerDbPath = process.env.MEDIACRAWLER_DB_PATH || join(mediaCrawlerPythonDir, 'media_crawler.db');
 const mediaCrawlerPythonExe = resolveMediaCrawlerPythonExe();
+const mediaCrawlerSitePackages = join(root, 'Runtime', 'site-packages');
 const verifiedClippingsDir = 'F:\\Longka Wiki\\龙咖Wiki\\Clippings';
 const defaultClippingsDir = 'F:\\Longka Wiki\\龙咖Wiki\\Clippings';
 const port = Number(process.env.PORT || 3760);
 let dbWriteQueue = Promise.resolve();
 const execFileAsync = promisify(execFile);
 let assetDb = null;
+let sqliteUnavailableReason = null;
+let pgPool = null;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -73,6 +80,17 @@ function resolveMediaCrawlerPythonExe() {
     'python',
   ].filter(Boolean);
   return candidates.find((candidate) => candidate === 'python' || existsSync(candidate)) || 'python';
+}
+
+function mediaCrawlerPythonEnv(extra = {}) {
+  const separator = process.platform === 'win32' ? ';' : ':';
+  const pythonPath = [mediaCrawlerSitePackages, process.env.PYTHONPATH].filter(Boolean).join(separator);
+  return {
+    ...process.env,
+    PYTHONIOENCODING: 'utf-8',
+    PYTHONPATH: pythonPath,
+    ...extra,
+  };
 }
 
 const defaultProjects = [
@@ -151,6 +169,7 @@ const defaultWorkbench = {
 
 await mkdir(dataDir, { recursive: true });
 await ensureDb();
+await initCollectorHub();
 await ensureAssetDb();
 
 createServer(async (req, res) => {
@@ -158,6 +177,84 @@ createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
     if (req.method === 'GET' && url.pathname === '/api/state') return sendJson(res, await readDb());
+
+    if (req.method === 'GET' && url.pathname === '/api/radar/seed-plan') {
+      const db = await readDb();
+      return sendJson(res, { ok: true, plan: db.radarSeedPlan || defaultRadarSeedPlan() });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/radar/seed-plan') {
+      const payload = await readJson(req);
+      let plan = null;
+      await mutateDb((db) => {
+        plan = normalizeRadarSeedPlan(payload);
+        db.radarSeedPlan = plan;
+        addActivity(db, '保存内容雷达种子表', `赛道：${plan.track}，关键词 ${plan.keywords.length} 个，对标账号 ${plan.accounts.length} 个`);
+        db.updatedAt = new Date().toISOString();
+      });
+      return sendJson(res, { ok: true, plan });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/collectors/health') {
+      return sendJson(res, await collectorHealth());
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/collectors/recent-assets') {
+      const result = await loadRecentContentAssets({
+        platform: url.searchParams.get('platform') || 'x',
+        limit: url.searchParams.get('limit') || 100,
+      });
+      return sendJson(res, result);
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/content-assets/unified') {
+      const result = await loadUnifiedContentAssets({
+        platform: url.searchParams.get('platform') || '',
+        keywords: url.searchParams.get('keywords') || '',
+        runIds: url.searchParams.get('runIds') || '',
+        limit: url.searchParams.get('limit') || 200,
+      });
+      return sendJson(res, result);
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/content-assets/x-batch') {
+      const result = await loadXBatchAssets({
+        runIds: url.searchParams.get('runIds') || '',
+      });
+      return sendJson(res, result, result.ok ? 200 : 400);
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/content-assets/x-latest-batch') {
+      const result = await loadLatestXBatch({
+        limitRuns: url.searchParams.get('limitRuns') || 3,
+      });
+      return sendJson(res, result, result.ok ? 200 : 400);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/content-assets/confirm') {
+      const payload = await readJson(req);
+      const result = await confirmContentAsset(payload);
+      return sendJson(res, result, result.ok ? 200 : 400);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/collectors/xcrawl/x-user-tweets') {
+      const payload = await readJson(req);
+      const result = await runXcrawlXUserTweets(payload);
+      return sendJson(res, result, result.ok ? 200 : 400);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/collectors/xcrawl/x-user-tweets-batch') {
+      const payload = await readJson(req);
+      const result = await runXcrawlXUserTweetsBatch(payload);
+      return sendJson(res, result, result.ok ? 200 : 400);
+    }
+
+    const xcrawlMatch = url.pathname.match(/^\/api\/collectors\/xcrawl\/(scrape|map|crawl|search)$/);
+    if (req.method === 'POST' && xcrawlMatch) {
+      const payload = await readJson(req);
+      const result = await runXcrawlStandard(xcrawlMatch[1], payload);
+      return sendJson(res, result, result.ok ? 200 : 400);
+    }
 
     if (req.method === 'GET' && url.pathname === '/api/customer-profile') {
       return sendJson(res, { ok: true, profile: getCustomerProfile(), assetDbPath, assetVaultDir });
@@ -441,34 +538,61 @@ createServer(async (req, res) => {
       const payload = await readJson(req);
       const industry = String(payload.industry || '');
       const keywords = splitQueryWords(`${payload.keywords || ''}`).slice(0, 5);
+      const cdpLimit = Math.max(5, Math.min(20, Number(payload.cdpLimit || 12)));
+      const deepLimit = Math.max(0, Math.min(5, Number(payload.deepLimit || 3)));
+      const detailDelayMs = Math.max(0, Math.min(20000, Number(payload.detailDelayMs || 0)));
+      const detailDelayJitterMs = Math.max(0, Math.min(10000, Number(payload.detailDelayJitterMs || 0)));
+      const collectionRunId = `xhs-cdp-${Date.now()}-${randomUUID().slice(0, 8)}`;
       if (!keywords.length) return sendJson(res, { ok: false, error: 'missing_keywords', message: '请先输入要验证的关键词。' }, 400);
       const cdp = await syncXhsCookieFromCdp();
       if (!cdp.ok) return sendJson(res, { ok: false, stage: 'cdp-cookie', ...cdp }, 409);
       const preflight = await mediaCrawlerPreflight('xhs');
       if (!preflight.ready) return sendJson(res, { ok: false, stage: 'preflight', ...preflight }, 409);
-      const collect = await runMediaCrawlerXhsSearch(keywords);
-      const imported = await importMediaCrawlerSqlite(mediaCrawlerDbPath, 80, keywords);
-      imported.samples = imported.samples.filter((sample) => sampleMatchesQuery(sample, keywords));
-      if (!collect.ok && !imported.samples.length) return sendJson(res, { ok: false, stage: 'collect', ...collect }, 500);
-      const deepTargets = selectCommentDeepDiveTargets(imported.samples, Number(payload.deepDiveLimit || 5));
+      const cdpCollect = await collectXhsSearchViaCdp(keywords, cdpLimit);
+      const collect = { ok: false, skipped: true, reason: 'cdp_primary', message: '当前版本先用 CDP 浏览器页面采集，MediaCrawler API 不阻塞第一闭环。' };
+      const imported = { samples: [], message: '' };
+      if (!cdpCollect.samples?.length) {
+        return sendJson(res, {
+          ok: false,
+          stage: cdpCollect.stage || 'cdp-search',
+          keywords,
+          collected: collect,
+          cdpFallback: cdpCollect,
+          importedCount: 0,
+          dbPath: mediaCrawlerDbPath,
+          importMessage: imported.message,
+          message: cdpCollect.message || 'CDP 浏览器页面没有采集到可用帖子。系统不会用假数据替代。',
+        }, 500);
+      }
+      const quickSamples = cdpCollect.samples;
+      const deepTargets = selectCommentDeepDiveTargets(quickSamples, deepLimit);
       const deepDiveResults = [];
-      for (const target of deepTargets) {
+      for (const [index, target] of deepTargets.entries()) {
         if (!target.url) continue;
+        if (index > 0 && detailDelayMs > 0) {
+          const jitter = detailDelayJitterMs ? Math.floor(Math.random() * detailDelayJitterMs) : 0;
+          await sleep(detailDelayMs + jitter);
+        }
+        const detail = await collectXhsDetailViaCdp(target);
         deepDiveResults.push({
           id: target.id,
           title: target.title,
           url: target.url,
           metrics: target.metrics,
-          result: await runMediaCrawlerXhsDetail(target.url),
+          result: detail,
         });
       }
-      const refreshed = deepDiveResults.length
-        ? await importMediaCrawlerSqlite(mediaCrawlerDbPath, 120, keywords)
-        : imported;
-      refreshed.samples = refreshed.samples.filter((sample) => sampleMatchesQuery(sample, keywords));
-      const finalSamples = mergeContentSamples(imported.samples, refreshed.samples);
+      const deepSamples = deepDiveResults
+        .filter((item) => item.result?.ok && item.result.sample)
+        .map((item) => item.result.sample);
+      const finalSamples = mergeContentSamples(quickSamples, deepSamples).map((sample) => ({
+        ...sample,
+        collectionRunId,
+        collectedAt: sample.collectedAt || new Date().toISOString(),
+        collectionStatus: 'real',
+      }));
       const questionBank = buildQuestionBankFromSamples(finalSamples, { industry, keywords });
-      if (imported.samples.length) {
+      if (finalSamples.length) {
         await mutateDb((db) => {
           db.contentSamples = Array.isArray(db.contentSamples) ? db.contentSamples : [];
           db.rawMaterials = Array.isArray(db.rawMaterials) ? db.rawMaterials : [];
@@ -491,12 +615,14 @@ createServer(async (req, res) => {
           }
           db.contentSamples = db.contentSamples.slice(0, 300);
           db.rawMaterials = db.rawMaterials.slice(0, 300);
-          const workflow = buildXhsWorkflow(db);
+          db.lastCollectionRunId = collectionRunId;
+          db.lastCollectionKeywords = keywords;
+          const workflow = buildXhsWorkflow({ contentSamples: finalSamples, rawMaterials: [] });
           db.candidates = workflow.candidates;
           db.tasks = [...workflow.tasks, ...db.tasks].slice(0, 120);
           db.assets = [...workflow.assets, ...db.assets].slice(0, 120);
           db.lastPipelineRunAt = new Date().toISOString();
-          addActivity(db, '采集并生成选题', `小红书关键词：${keywords.join(' / ')}，导入 ${imported.samples.length} 条样本`);
+          addActivity(db, '采集并生成选题', `小红书关键词：${keywords.join(' / ')}，导入 ${finalSamples.length} 条样本`);
           db.updatedAt = new Date().toISOString();
         });
       }
@@ -504,9 +630,19 @@ createServer(async (req, res) => {
         ok: true,
         stage: 'done',
         keywords,
+        collectionRunId,
         collected: collect,
+        cdpFallback: cdpCollect,
+        pacing: {
+          mode: payload.paceMode || 'safe',
+          cdpLimit,
+          deepLimit,
+          detailDelayMs,
+          detailDelayJitterMs,
+        },
         importedCount: finalSamples.length,
-        quickScanCount: imported.samples.length,
+        samples: finalSamples,
+        quickScanCount: quickSamples.length,
         deepDiveCount: deepDiveResults.length,
         deepDiveTargets: deepTargets.map((item) => ({
           id: item.id,
@@ -514,11 +650,22 @@ createServer(async (req, res) => {
           url: item.url,
           metrics: item.metrics,
         })),
+        deepDiveDiagnostics: deepDiveResults.map((item) => ({
+          id: item.id,
+          ok: Boolean(item.result?.ok),
+          bodyLength: item.result?.bodyLength || 0,
+          imageCount: item.result?.imageCount || 0,
+          commentCount: item.result?.commentCount || 0,
+          domDescLength: item.result?.domDescLength || 0,
+          extractedLength: item.result?.extractedLength || 0,
+          bodyCandidateLengths: item.result?.bodyCandidateLengths || [],
+          domError: item.result?.domError || '',
+          message: item.result?.message || '',
+          contentHead: item.result?.sample?.content ? String(item.result.sample.content).slice(0, 160) : '',
+        })),
         questionCount: questionBank.questions.length,
         questionBank,
-        message: collect.ok
-          ? (imported.samples.length ? '已完成真实采集、导入和内容生产闭环。' : '采集命令已完成，但 SQLite 没有匹配样本。')
-          : `采集进程未正常结束，但已从 SQLite 找到 ${imported.samples.length} 条真实样本并完成后续闭环。`,
+        message: `已通过 CDP 浏览器采集 ${finalSamples.length} 条真实小红书结果，其中深挖 ${deepSamples.length} 条详情/评论。`,
       });
     }
 
@@ -1019,7 +1166,7 @@ async function readCookiesViaCdp(wsUrl, url) {
     '  } catch (err) { console.error(err.message); ws.close(); process.exit(1); }',
     '});',
   ].join('\n');
-  const { stdout } = await execFileAsync('node', ['-e', script, wsUrl, url], {
+  const { stdout } = await execFileAsync(process.execPath, ['-e', script, wsUrl, url], {
     encoding: 'utf8',
     maxBuffer: 1024 * 1024 * 4,
     windowsHide: true,
@@ -1045,6 +1192,7 @@ async function writeXhsCookieToExcel(cookieString) {
   ].join('\n');
   await execFileAsync(mediaCrawlerPythonExe, ['-c', script, 'config/accounts_cookies.xlsx', cookieString], {
     cwd: mediaCrawlerPythonDir,
+    env: mediaCrawlerPythonEnv(),
     encoding: 'utf8',
     maxBuffer: 1024 * 1024 * 4,
     windowsHide: true,
@@ -1067,6 +1215,7 @@ async function mediaCrawlerPreflight(platform) {
   ].join('\n');
   const { stdout } = await execFileAsync(mediaCrawlerPythonExe, ['-c', script, platform], {
     cwd: mediaCrawlerPythonDir,
+    env: mediaCrawlerPythonEnv(),
     encoding: 'utf8',
     windowsHide: true,
   });
@@ -1076,13 +1225,11 @@ async function mediaCrawlerPreflight(platform) {
 
 async function runMediaCrawlerXhsSearch(keywords) {
   try {
-    const env = {
-      ...process.env,
-      PYTHONIOENCODING: 'utf-8',
+    const env = mediaCrawlerPythonEnv({
       DB_TYPE: 'sqlite',
       ACCOUNT_POOL_SAVE_TYPE: 'xlsx',
       ENABLE_GET_COMMENTS: 'false',
-    };
+    });
     const { stdout, stderr } = await execFileAsync(mediaCrawlerPythonExe, [
       'main.py',
       '--platform',
@@ -1100,7 +1247,8 @@ async function runMediaCrawlerXhsSearch(keywords) {
       timeout: 180000,
       windowsHide: true,
     });
-    return { ok: true, stdout: stdout.slice(-1200), stderr: stderr.slice(-1200) };
+    const diagnosis = diagnoseMediaCrawlerOutput(`${stdout}\n${stderr}`);
+    return { ok: !diagnosis.blocked, message: diagnosis.message || 'MediaCrawler search finished.', reason: diagnosis.reason, stdout: stdout.slice(-1800), stderr: stderr.slice(-1800) };
   } catch (error) {
     return { ok: false, message: error.message, stdout: error.stdout?.slice(-1200) || '', stderr: error.stderr?.slice(-1200) || '' };
   }
@@ -1108,13 +1256,11 @@ async function runMediaCrawlerXhsSearch(keywords) {
 
 async function runMediaCrawlerXhsDetail(noteUrl) {
   try {
-    const env = {
-      ...process.env,
-      PYTHONIOENCODING: 'utf-8',
+    const env = mediaCrawlerPythonEnv({
       DB_TYPE: 'sqlite',
       ACCOUNT_POOL_SAVE_TYPE: 'xlsx',
       ENABLE_GET_COMMENTS: 'true',
-    };
+    });
     const { stdout, stderr } = await execFileAsync(mediaCrawlerPythonExe, [
       'main.py',
       '--platform',
@@ -1131,10 +1277,516 @@ async function runMediaCrawlerXhsDetail(noteUrl) {
       timeout: 180000,
       windowsHide: true,
     });
-    return { ok: true, stdout: stdout.slice(-1200), stderr: stderr.slice(-1200) };
+    const diagnosis = diagnoseMediaCrawlerOutput(`${stdout}\n${stderr}`);
+    return { ok: !diagnosis.blocked, message: diagnosis.message || 'MediaCrawler detail finished.', reason: diagnosis.reason, stdout: stdout.slice(-1800), stderr: stderr.slice(-1800) };
   } catch (error) {
     return { ok: false, message: error.message, stdout: error.stdout?.slice(-1200) || '', stderr: error.stderr?.slice(-1200) || '' };
   }
+}
+
+async function collectXhsSearchViaCdp(keywords, limit = 20) {
+  const keyword = keywords[0] || '';
+  if (!keyword) return { ok: false, stage: 'cdp-search', samples: [], message: '缺少 CDP 页面搜索关键词。' };
+  let pageWsUrl = '';
+  try {
+    pageWsUrl = await getCdpPageWebSocketUrl();
+  } catch {
+    return { ok: false, stage: 'cdp-search', samples: [], message: '没有检测到可用的 CDP Chrome 页面。' };
+  }
+  if (!pageWsUrl) return { ok: false, stage: 'cdp-search', samples: [], message: '没有可用的 CDP Chrome 页面。' };
+
+  const script = [
+    'const wsUrl = process.argv[1];',
+    'const keyword = process.argv[2];',
+    'const limit = Number(process.argv[3] || 20);',
+    'const ws = new WebSocket(wsUrl);',
+    'let id = 1;',
+    'const pending = new Map();',
+    'const searchResponses = [];',
+    'function call(method, params = {}) {',
+    '  return new Promise((resolve, reject) => {',
+    '    const msgId = id++;',
+    '    const timer = setTimeout(() => reject(new Error("CDP timeout: " + method)), 25000);',
+    '    pending.set(msgId, { resolve, reject, timer });',
+    '    ws.send(JSON.stringify({ id: msgId, method, params }));',
+    '  });',
+    '}',
+    'function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }',
+    'function compactNumber(value) {',
+    '  if (value === undefined || value === null || value === "") return 0;',
+    '  if (typeof value === "number") return value;',
+    '  const text = String(value);',
+    '  const match = text.match(/(\\d+(?:\\.\\d+)?)(万)?/);',
+    '  if (!match) return 0;',
+    '  return Math.round(Number(match[1]) * (match[2] ? 10000 : 1));',
+    '}',
+    'function bestImage(imageList) {',
+    '  if (!Array.isArray(imageList) || !imageList.length) return "";',
+    '  const img = imageList[0] || {};',
+    '  return img.url_default || img.url || img.info_list?.[0]?.url || "";',
+    '}',
+    'function parseSearchBody(body) {',
+    '  const parsed = JSON.parse(body || "{}");',
+    '  const data = parsed.data || parsed;',
+    '  const items = Array.isArray(data.items) ? data.items : [];',
+    '  return items.map((item) => {',
+    '    const card = item.note_card || item.note || item;',
+    '    const noteId = item.id || item.note_id || card.note_id || card.id || "";',
+    '    const xsecToken = item.xsec_token || card.xsec_token || "";',
+    '    const xsecSource = item.xsec_source || card.xsec_source || "pc_search";',
+    '    const interact = card.interact_info || item.interact_info || {};',
+    '    const user = card.user || item.user || {};',
+    '    const images = Array.isArray(card.image_list) ? card.image_list.map(bestImage).filter(Boolean) : [];',
+    '    return {',
+    '      noteId, xsecToken, xsecSource,',
+    '      title: card.display_title || card.title || card.desc || "",',
+    '      content: card.desc || card.display_title || card.title || "",',
+    '      author: user.nickname || "",',
+    '      cover: images[0] || "", images,',
+    '      metrics: {',
+    '        likes: compactNumber(interact.liked_count),',
+    '        saves: compactNumber(interact.collected_count),',
+    '        comments: compactNumber(interact.comment_count),',
+    '        shares: compactNumber(interact.shared_count),',
+    '        growth: 0',
+    '      },',
+    '      url: noteId ? `https://www.xiaohongshu.com/explore/${noteId}?xsec_token=${encodeURIComponent(xsecToken)}&xsec_source=${encodeURIComponent(xsecSource)}` : ""',
+    '    };',
+    '  }).filter((item) => item.noteId && item.title).slice(0, limit);',
+    '}',
+    'ws.addEventListener("message", async (event) => {',
+    '  const data = JSON.parse(String(event.data));',
+    '  if (data.id && pending.has(data.id)) {',
+    '    const item = pending.get(data.id);',
+    '    pending.delete(data.id);',
+    '    clearTimeout(item.timer);',
+    '    data.error ? item.reject(new Error(data.error.message)) : item.resolve(data.result || {});',
+    '    return;',
+    '  }',
+    '  if (data.method === "Network.responseReceived" && data.params?.response?.url?.includes("/api/sns/web/v1/search/notes")) {',
+    '    searchResponses.push({ requestId: data.params.requestId, url: data.params.response.url, status: data.params.response.status });',
+    '  }',
+    '});',
+    'ws.addEventListener("open", async () => {',
+    '  try {',
+    '    await call("Network.enable", {});',
+    '    await call("Page.enable", {});',
+    '    await call("Runtime.enable", {});',
+    '    const target = "https://www.xiaohongshu.com/search_result/?keyword=" + encodeURIComponent(keyword) + "&type=51";',
+    '    await call("Page.navigate", { url: target });',
+    '    await sleep(12000);',
+    '    let apiItems = [];',
+    '    const bodies = [];',
+    '    for (const response of searchResponses.slice(-3)) {',
+    '      try {',
+    '        const body = await call("Network.getResponseBody", { requestId: response.requestId });',
+    '        const text = body.base64Encoded ? Buffer.from(body.body, "base64").toString("utf8") : body.body;',
+    '        bodies.push({ url: response.url, status: response.status, length: text.length });',
+    '        apiItems = parseSearchBody(text);',
+    '        if (apiItems.length) break;',
+    '      } catch (err) { bodies.push({ url: response.url, status: response.status, error: err.message }); }',
+    '    }',
+    '    const expression = `(() => {',
+    '      const cards = Array.from(document.querySelectorAll("a[href*=\'/explore/\']")).slice(0, ${limit}).map((a) => {',
+    '        const box = a.closest("section,div") || a;',
+    '        const text = (box.innerText || a.innerText || "").trim();',
+    '        const lines = text.split(/\\\\n+/).map((line) => line.trim()).filter(Boolean);',
+    '        const img = a.querySelector("img")?.src || box.querySelector("img")?.src || "";',
+    '        return { href: a.href, title: lines[0] || (a.getAttribute("title") || "").trim(), author: lines[1] || "", text, image: img };',
+    '      }).filter((item) => item.href && item.title);',
+    '      return { href: location.href, title: document.title, input: Array.from(document.querySelectorAll("input")).map((i) => i.value).filter(Boolean)[0] || "", cards };',
+    '    })()`;',
+    '    const out = await call("Runtime.evaluate", { expression, returnByValue: true });',
+    '    console.log(JSON.stringify({ ...(out.result?.value || {}), apiItems, bodies }));',
+    '    ws.close();',
+    '  } catch (err) { console.error(err.stack || err.message); ws.close(); process.exit(1); }',
+    '});',
+  ].join('\n');
+
+  try {
+    const { stdout } = await execFileAsync(process.execPath, ['-e', script, pageWsUrl, keyword, String(limit)], {
+      encoding: 'utf8',
+      maxBuffer: 1024 * 1024 * 4,
+      windowsHide: true,
+      timeout: 45000,
+    });
+    const parsed = JSON.parse(stdout || '{}');
+    const apiItems = Array.isArray(parsed.apiItems) ? parsed.apiItems : [];
+    const domCards = Array.isArray(parsed.cards) ? parsed.cards : [];
+    const pageUrl = String(parsed.href || '');
+    const pageInput = String(parsed.input || '');
+    const pageMatchesKeyword = pageUrl.includes(encodeURIComponent(keyword)) || pageUrl.includes(keyword) || pageInput.includes(keyword);
+    if (!pageMatchesKeyword) {
+      return {
+        ok: false,
+        stage: 'cdp-search',
+        samples: [],
+        keyword,
+        pageTitle: parsed.title || '',
+        pageUrl,
+        input: pageInput,
+        apiResponseCount: Array.isArray(parsed.bodies) ? parsed.bodies.length : 0,
+        message: `CDP 页面没有进入当前关键词搜索：${keyword}。系统不会用旧数据冒充新采集。`,
+      };
+    }
+    const samples = apiItems.length
+      ? apiItems.map((item, index) => cdpSearchApiItemToSample(item, keyword, index))
+      : domCards.map((card, index) => cdpSearchCardToSample(card, keyword, index));
+    return {
+      ok: samples.length > 0,
+      stage: 'cdp-search',
+      source: 'cdp-browser-page',
+      keyword,
+      pageTitle: parsed.title || '',
+      pageUrl: parsed.href || '',
+      input: parsed.input || '',
+      apiResponseCount: Array.isArray(parsed.bodies) ? parsed.bodies.length : 0,
+      samples,
+      message: samples.length ? `CDP 浏览器采集到 ${samples.length} 条真实搜索结果。` : 'CDP 浏览器页面没有抽取到帖子卡片。',
+    };
+  } catch (error) {
+    return { ok: false, stage: 'cdp-search', samples: [], message: `CDP 浏览器页面采集失败：${error.message}` };
+  }
+}
+
+async function collectXhsDetailViaCdp(sample) {
+  if (!sample?.url) return { ok: false, stage: 'cdp-detail', message: '缺少要深挖的小红书详情 URL。' };
+  let pageWsUrl = '';
+  try {
+    pageWsUrl = await getCdpPageWebSocketUrl();
+  } catch {
+    return { ok: false, stage: 'cdp-detail', message: '没有检测到可用的 CDP Chrome 页面。' };
+  }
+  const payload = Buffer.from(JSON.stringify({
+    id: sample.id,
+    keyword: sample.keyword,
+    title: sample.title,
+    url: sample.url,
+    author: sample.author,
+    metrics: sample.metrics,
+    cover: sample.cover,
+    images: sample.images,
+  }), 'utf8').toString('base64');
+
+  const script = [
+    'const wsUrl = process.argv[1];',
+    'const target = JSON.parse(Buffer.from(process.argv[2], "base64").toString("utf8"));',
+    'const ws = new WebSocket(wsUrl);',
+    'let id = 1;',
+    'const pending = new Map();',
+    'const responses = [];',
+    'const imageUrls = [];',
+    'function call(method, params = {}) {',
+    '  return new Promise((resolve, reject) => {',
+    '    const msgId = id++;',
+    '    const timer = setTimeout(() => reject(new Error("CDP timeout: " + method)), 25000);',
+    '    pending.set(msgId, { resolve, reject, timer });',
+    '    ws.send(JSON.stringify({ id: msgId, method, params }));',
+    '  });',
+    '}',
+    'function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }',
+    'function compactNumber(value) {',
+    '  if (value === undefined || value === null || value === "") return 0;',
+    '  if (typeof value === "number") return value;',
+    '  const text = String(value);',
+    '  const match = text.match(/(\\d+(?:\\.\\d+)?)(万)?/);',
+    '  if (!match) return 0;',
+    '  return Math.round(Number(match[1]) * (match[2] ? 10000 : 1));',
+    '}',
+    'function bestImage(imageList) {',
+    '  if (!Array.isArray(imageList)) return [];',
+    '  return imageList.map((img) => img?.url_default || img?.urlDefault || img?.url || img?.info_list?.[0]?.url || img?.infoList?.[0]?.url || "").filter(Boolean);',
+    '}',
+    'function extractNoteFromFeedBody(body) {',
+    '  try {',
+    '    const parsed = JSON.parse(body || "{}");',
+    '    const items = parsed.data?.items || parsed.items || [];',
+    '    const card = items[0]?.note_card || items[0]?.noteCard || null;',
+    '    if (!card) return null;',
+    '    const interact = card.interact_info || card.interactInfo || {};',
+    '    const user = card.user || {};',
+    '    const images = bestImage(card.image_list || card.imageList || []);',
+    '    return {',
+    '      title: card.title || card.display_title || card.displayTitle || "",',
+    '      desc: card.desc || "",',
+    '      author: user.nickname || "",',
+    '      images,',
+    '      metrics: { likes: compactNumber(interact.liked_count || interact.likedCount), saves: compactNumber(interact.collected_count || interact.collectedCount), comments: compactNumber(interact.comment_count || interact.commentCount), shares: compactNumber(interact.share_count || interact.shareCount || interact.shared_count), growth: 0 }',
+    '    };',
+    '  } catch { return null; }',
+    '}',
+    'function collectCommentTexts(node, out = []) {',
+    '  if (!node || typeof node !== "object") return out;',
+    '  if (Array.isArray(node)) { for (const item of node) collectCommentTexts(item, out); return out; }',
+    '  if (typeof node.content === "string" && node.content.trim()) {',
+    '    out.push({ content: node.content.trim(), likeCount: compactNumber(node.like_count), nickname: node.user_info?.nickname || node.nickname || "" });',
+    '  }',
+    '  for (const key of ["comments", "sub_comments", "subComments"]) collectCommentTexts(node[key], out);',
+    '  return out;',
+    '}',
+    'function extractCommentsFromBody(body) {',
+    '  try {',
+    '    const parsed = JSON.parse(body || "{}");',
+    '    return collectCommentTexts(parsed.data || parsed).filter((item) => item.content).slice(0, 80);',
+    '  } catch { return []; }',
+    '}',
+    'ws.addEventListener("message", (event) => {',
+    '  const data = JSON.parse(String(event.data));',
+    '  if (data.id && pending.has(data.id)) {',
+    '    const item = pending.get(data.id);',
+    '    pending.delete(data.id);',
+    '    clearTimeout(item.timer);',
+    '    data.error ? item.reject(new Error(data.error.message)) : item.resolve(data.result || {});',
+    '    return;',
+    '  }',
+    '  const url = data.params?.response?.url || "";',
+    '  if (data.method === "Network.responseReceived") {',
+    '    if (/sns-webpic|sns-img|notes_pre_post/.test(url) && !/\\.js(\\?|$)|avatar|fe-static/.test(url)) imageUrls.push(url);',
+    '    if (/\\/api\\/sns\\/web\\/v2\\/comment\\/(page|sub\\/page)|\\/api\\/sns\\/web\\/v1\\/feed/.test(url)) {',
+    '      responses.push({ requestId: data.params.requestId, url, status: data.params.response.status });',
+    '    }',
+    '  }',
+    '});',
+    'ws.addEventListener("open", async () => {',
+    '  try {',
+    '    await call("Network.enable", {});',
+    '    await call("Page.enable", {});',
+    '    await call("Runtime.enable", {});',
+    '    await call("Page.navigate", { url: target.url });',
+    '    await sleep(9000);',
+    '    await call("Runtime.evaluate", { expression: "window.scrollTo(0, Math.min(document.body.scrollHeight, 1800))" });',
+    '    for (let i = 0; i < 12; i++) {',
+    '      const ready = await call("Runtime.evaluate", { expression: "(function(){var el=document.querySelector(\'#detail-desc, .note-text\'); return el ? String(el.innerText || el.textContent || \'\').trim().length : 0;})()", returnByValue: true });',
+    '      if (Number((ready.result && ready.result.value) || 0) > 30) break;',
+    '      await sleep(1500);',
+    '    }',
+    '    const expression = `(function () {',
+    '      var primaryDesc = "";',
+    '      var primaryNode = document.querySelector("#detail-desc") || document.querySelector(".note-content .note-text") || document.querySelector(".note-text");',
+    '      if (primaryNode) primaryDesc = String(primaryNode.innerText || primaryNode.textContent || "").trim();',
+    '      var bodyCandidates = ["#detail-desc", ".note-text", ".note-content", ".note-scroller", ".interaction-container"].map(function (selector) {',
+    '        var el = document.querySelector(selector);',
+    '        return el ? String(el.innerText || el.textContent || "").trim() : "";',
+    '      }).filter(function (text) { return text.length > 0; }).sort(function (a, b) { return b.length - a.length; });',
+    '      var titleNode = document.querySelector("#detail-title");',
+    '      var title = titleNode ? String(titleNode.innerText || titleNode.textContent || "").trim() : target.title;',
+    '      var images = Array.prototype.slice.call(document.images).map(function (img) { return { src: img.currentSrc || img.src || "", size: (img.naturalWidth || 0) * (img.naturalHeight || 0) }; })',
+    '        .filter(function (img) { return /sns-webpic|sns-img|notes_pre_post/.test(img.src) && img.src.indexOf("avatar") < 0 && img.src.indexOf(".js") < 0 && img.src.indexOf("fe-static") < 0; })',
+    '        .sort(function (a, b) { return b.size - a.size; })',
+    '        .map(function (img) { return img.src; });',
+    '      return { href: location.href, pageTitle: document.title, title: title, desc: primaryDesc.length > 30 ? primaryDesc : (bodyCandidates[0] || ""), bodyText: document.body.innerText.slice(0, 5000), bodyCandidateLengths: bodyCandidates.map(function (text) { return text.length; }).slice(0, 5), author: "", images: Array.from(new Set(images)).slice(0, 30), metrics: { likes: 0, saves: 0, comments: 0, shares: 0, growth: 0 } };',
+    '    })()`;',
+    '    const dom = await call("Runtime.evaluate", { expression, returnByValue: true });',
+    '    const domValue = dom.result?.value || {};',
+    '    const domError = dom.exceptionDetails ? (dom.exceptionDetails.exception?.description || dom.exceptionDetails.text || JSON.stringify(dom.exceptionDetails)) : "";',
+    '    const comments = [];',
+    '    let apiNote = null;',
+    '    const bodies = [];',
+    '    for (const response of responses.slice(-20)) {',
+    '      try {',
+    '        const body = await call("Network.getResponseBody", { requestId: response.requestId });',
+    '        const text = body.base64Encoded ? Buffer.from(body.body, "base64").toString("utf8") : body.body;',
+    '        bodies.push({ url: response.url, status: response.status, length: text.length });',
+    '        if (response.url.includes("/api/sns/web/v1/feed")) apiNote = extractNoteFromFeedBody(text) || apiNote;',
+    '        if (response.url.includes("/comment/")) comments.push(...extractCommentsFromBody(text));',
+    '      } catch (err) { bodies.push({ url: response.url, status: response.status, error: err.message }); }',
+    '    }',
+    '    console.log(JSON.stringify({ target, dom: domValue, domError, apiNote, comments, imageUrls: Array.from(new Set(imageUrls)).slice(0, 30), bodies }));',
+    '    ws.close();',
+    '  } catch (err) { console.error(err.stack || err.message); ws.close(); process.exit(1); }',
+    '});',
+  ].join('\n');
+
+  try {
+    const { stdout } = await execFileAsync(process.execPath, ['-e', script, pageWsUrl, payload], {
+      encoding: 'utf8',
+      maxBuffer: 1024 * 1024 * 8,
+      windowsHide: true,
+      timeout: 50000,
+    });
+    const parsed = JSON.parse(stdout || '{}');
+    const dom = parsed.dom || {};
+    const apiNote = parsed.apiNote || {};
+    const commentTexts = [...new Map((parsed.comments || [])
+      .map((item) => String(item.content || '').trim())
+      .filter(Boolean)
+      .map((text) => [text, text])).values()].slice(0, 80);
+    const extractedContent = extractXhsBodyTextFromPage(dom.bodyText || '', sample.title);
+    const content = pickBestXhsContent([apiNote.desc, dom.desc, extractedContent, sample.content], sample.title);
+    const images = Array.from(new Set([
+      ...(Array.isArray(apiNote.images) ? apiNote.images : []),
+      ...(Array.isArray(dom.images) ? dom.images : []),
+      ...(Array.isArray(parsed.imageUrls) ? parsed.imageUrls : []),
+      ...(sample.images || []),
+    ].filter(Boolean))).slice(0, 30);
+    const detailSample = normalizeContentSample({
+      ...sample,
+      sourceTool: 'xhs-cdp-detail',
+      collectionStatus: 'real',
+      title: String(apiNote.title || dom.title || sample.title || '').trim(),
+      content: content || sample.content || '',
+      author: apiNote.author || dom.author || sample.author || '',
+      comments: commentTexts,
+      metrics: mergeMetrics(sample.metrics, apiNote.metrics || dom.metrics),
+      url: dom.href || sample.url,
+      cover: images[0] || sample.cover || '',
+      images,
+    });
+    return {
+      ok: Boolean(detailSample.content || detailSample.comments.length || detailSample.images.length),
+      stage: 'cdp-detail',
+      sample: detailSample,
+      commentCount: detailSample.comments.length,
+      imageCount: detailSample.images.length,
+      bodyLength: detailSample.content.length,
+      domDescLength: String(dom.desc || '').length,
+      extractedLength: String(extractedContent || '').length,
+      bodyCandidateLengths: Array.isArray(dom.bodyCandidateLengths) ? dom.bodyCandidateLengths : [],
+      domError: parsed.domError || '',
+      networkResponses: parsed.bodies || [],
+      message: `CDP 深挖完成：正文 ${detailSample.content.length} 字，图片 ${detailSample.images.length} 张，评论 ${detailSample.comments.length} 条。`,
+    };
+  } catch (error) {
+    return { ok: false, stage: 'cdp-detail', message: `CDP 详情深挖失败：${error.message}` };
+  }
+}
+
+function mergeMetrics(primary = {}, secondary = {}) {
+  const a = normalizeMetrics(primary);
+  const b = normalizeMetrics(secondary);
+  return {
+    likes: b.likes || a.likes,
+    saves: b.saves || a.saves,
+    comments: b.comments || a.comments,
+    shares: b.shares || a.shares,
+    growth: b.growth || a.growth,
+  };
+}
+
+function pickBestXhsContent(candidates = [], title = '') {
+  const titleText = String(title || '').trim();
+  const valid = candidates
+    .map((item) => String(item || '').trim())
+    .filter(Boolean)
+    .filter((item) => {
+      if (!titleText) return item.length >= 20;
+      const withoutTitle = item.replace(titleText, '').trim();
+      return withoutTitle.length >= 20 || item.length >= Math.max(60, titleText.length + 20);
+    });
+  if (!valid.length) return String(candidates.find(Boolean) || '').trim();
+  return valid.sort((a, b) => b.length - a.length)[0].slice(0, 3000);
+}
+
+function extractXhsBodyTextFromPage(bodyText = '', title = '') {
+  const lines = String(bodyText || '').split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return '';
+  const titleText = String(title || '').trim();
+  const titleIndex = lines.findIndex((line) => titleText && (line === titleText || line.includes(titleText) || titleText.includes(line)));
+  const start = titleIndex >= 0 ? titleIndex + 1 : 0;
+  const picked = [];
+  const blockedExact = new Set(['创作中心', '业务合作', '发现', 'RED', '直播', '发布', '通知', '我', '更多', '关于我们', '关注', '赞', '回复', '发送', '取消', '活动', '评论']);
+  for (const line of lines.slice(start)) {
+    if (/猜你想搜|共\s*\d+\s*条评论|- THE END -|^评论$|鼠标悬停查看/.test(line)) break;
+    if (blockedExact.has(line)) continue;
+    if (/ICP备|营业执照|公网安备|增值电信|互联网药品|举报|行吟信息科技|© 2014|地址：|电话：/.test(line)) continue;
+    if (/^\d+\/\d+$/.test(line)) continue;
+    picked.push(line);
+    if (picked.join('\n').length > 2500) break;
+  }
+  const text = picked.join('\n').trim();
+  return text.length > titleText.length ? text.slice(0, 3000) : '';
+}
+
+function extractLikelyXhsBodyText(bodyText = '', title = '') {
+  const lines = String(bodyText || '').split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return '';
+  const start = lines.findIndex((line) => title && (line.includes(title) || title.includes(line)));
+  const from = start >= 0 ? start : 0;
+  const picked = [];
+  const blockedExact = /^(创作中心|业务合作|发现|RED|直播|发布|通知|我|更多|关于我们|关注|赞|回复|发送|取消|活动)$/;
+  const stop = /猜你想搜|共\s*\d+\s*条评论|- THE END -|^评论$|鼠标悬停查看/;
+  for (const line of lines.slice(from)) {
+    if (stop.test(line)) break;
+    if (blockedExact.test(line)) continue;
+    if (/沪ICP备|营业执照|公网安备|增值电信|互联网药品|举报|行吟信息科技|© 2014|地址：|电话：/.test(line)) continue;
+    picked.push(line);
+    if (picked.join('\n').length > 2500) break;
+  }
+  const text = picked.join('\n').trim();
+  return text.length > String(title || '').length ? text.slice(0, 3000) : '';
+}
+
+function cdpSearchApiItemToSample(item, keyword, index) {
+  const noteId = item.noteId || extractXhsNoteId(item.url) || index;
+  return normalizeContentSample({
+    platform: 'xiaohongshu',
+    sourceTool: 'xhs-cdp-search-api',
+    collectionStatus: 'real',
+    id: `cdp-xhs-${noteId}`,
+    keyword,
+    title: item.title || '',
+    content: item.content || item.title || '',
+    author: item.author || '',
+    comments: [],
+    metrics: normalizeMetrics(item.metrics || {}),
+    url: item.url || '',
+    cover: item.cover || '',
+    images: Array.isArray(item.images) ? item.images : [],
+  });
+}
+
+function cdpSearchCardToSample(card, keyword, index) {
+  const text = String(card.text || '');
+  return normalizeContentSample({
+    platform: 'xiaohongshu',
+    sourceTool: 'xhs-cdp-page',
+    collectionStatus: 'real',
+    id: `cdp-xhs-${extractXhsNoteId(card.href) || index}`,
+    keyword,
+    title: card.title || text.split(/\n/).find(Boolean) || '',
+    content: text,
+    author: card.author || '',
+    comments: [],
+    metrics: parseMetricText(text),
+    url: card.href || '',
+    cover: card.image || '',
+    images: card.image ? [card.image] : [],
+  });
+}
+
+function parseMetricText(text = '') {
+  const lines = String(text).split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const metricLine = [...lines].reverse().find((line) => !/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}$/.test(line) && !/^\d+天前$/.test(line)) || '';
+  const number = parseCompactNumber(metricLine);
+  return { likes: number, saves: 0, comments: 0, shares: 0, growth: 0 };
+}
+
+function parseCompactNumber(value = '') {
+  const match = String(value).match(/(\d+(?:\.\d+)?)(万)?/);
+  if (!match) return 0;
+  const base = Number(match[1]);
+  return Math.round(base * (match[2] ? 10000 : 1));
+}
+
+function diagnoseMediaCrawlerOutput(output = '') {
+  const text = stripAnsi(String(output || ''));
+  if (/没有权限访问|code['"]?:\s*-104|code["']?:\s*-104/.test(text)) {
+    return { blocked: true, reason: 'xhs_account_no_search_permission', message: '小红书返回 -104：当前登录账号没有权限访问搜索接口。' };
+  }
+  if (/验证码|status code 461|Response \[461/.test(text)) {
+    return { blocked: true, reason: 'xhs_verify_required', message: '小红书返回验证码风控 461，MediaCrawler API 当前不可用。' };
+  }
+  if (/账号池中没有可用的账号|没有可用的账号/.test(text)) {
+    return { blocked: true, reason: 'xhs_account_pool_empty', message: 'MediaCrawler 账号池没有可用账号。' };
+  }
+  if (/Login state result:\s*False|登录状态.*False/i.test(text)) {
+    return { blocked: true, reason: 'xhs_cookie_invalid', message: '小红书 Cookie 已失效或未登录成功。' };
+  }
+  return { blocked: false, reason: '' };
+}
+
+function stripAnsi(value = '') {
+  return String(value).replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '');
 }
 
 function extractXhsNoteId(url) {
@@ -1211,9 +1863,9 @@ async function importMediaCrawlerSqlite(dbFile, limit, queryWords = []) {
     "print(json.dumps({'samples': samples}, ensure_ascii=False))",
   ].join('\n');
   try {
-    const { stdout } = await execFileAsync('python', ['-c', py, dbFile, String(limit), ...queryWords], {
+    const { stdout } = await execFileAsync(mediaCrawlerPythonExe, ['-c', py, dbFile, String(limit), ...queryWords], {
       encoding: 'utf8',
-      env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+      env: mediaCrawlerPythonEnv(),
       maxBuffer: 1024 * 1024 * 8,
       windowsHide: true,
     });
@@ -1293,7 +1945,7 @@ function sampleEngagementScore(sample = {}) {
 }
 
 function selectCommentDeepDiveTargets(samples = [], limit = 5) {
-  const max = Math.min(Math.max(Number(limit || 8), 5), 10);
+  const max = Math.min(Math.max(Number(limit || 5), 1), 10);
   return [...samples]
     .filter((sample) => sample?.url)
     .sort((a, b) => {
@@ -1314,11 +1966,27 @@ function mergeContentSamples(...groups) {
       map.set(key, sample);
       continue;
     }
-    const oldComments = Array.isArray(old.comments) ? old.comments : [];
-    const nextComments = Array.isArray(sample.comments) ? sample.comments : [];
-    map.set(key, nextComments.length >= oldComments.length ? { ...old, ...sample } : { ...sample, ...old, comments: oldComments });
+    map.set(key, mergeContentSamplePair(old, sample));
   }
   return [...map.values()].sort((a, b) => sampleEngagementScore(b) - sampleEngagementScore(a));
+}
+
+function mergeContentSamplePair(oldSample = {}, nextSample = {}) {
+  const oldComments = Array.isArray(oldSample.comments) ? oldSample.comments : [];
+  const nextComments = Array.isArray(nextSample.comments) ? nextSample.comments : [];
+  const oldImages = Array.isArray(oldSample.images) ? oldSample.images : [];
+  const nextImages = Array.isArray(nextSample.images) ? nextSample.images : [];
+  const oldContent = String(oldSample.content || '');
+  const nextContent = String(nextSample.content || '');
+  return {
+    ...oldSample,
+    ...nextSample,
+    content: nextContent.length >= oldContent.length ? nextContent : oldContent,
+    comments: nextComments.length >= oldComments.length ? nextComments : oldComments,
+    images: nextImages.length >= oldImages.length ? nextImages : oldImages,
+    cover: nextSample.cover || oldSample.cover || '',
+    metrics: mergeMetrics(oldSample.metrics, nextSample.metrics),
+  };
 }
 
 function looksLikeCustomerQuestion(text = '') {
@@ -2551,6 +3219,14 @@ function slugify(value) {
 
 async function ensureAssetDb() {
   await mkdir(assetVaultDir, { recursive: true });
+  let DatabaseSync;
+  try {
+    ({ DatabaseSync } = await import('node:sqlite'));
+  } catch (error) {
+    sqliteUnavailableReason = error.message;
+    assetDb = null;
+    return;
+  }
   assetDb = new DatabaseSync(assetDbPath);
   assetDb.exec(`
     PRAGMA journal_mode = WAL;
@@ -2599,7 +3275,6 @@ function getCustomerProfile() {
 }
 
 function saveCustomerProfile(payload = {}) {
-  if (!assetDb) throw new Error('asset database is not initialized');
   const now = new Date().toISOString();
   const displayName = String(payload.displayName || payload.name || payload.storeName || '客户').trim();
   const industry = String(payload.industry || '未分类行业').trim();
@@ -2610,6 +3285,22 @@ function saveCustomerProfile(payload = {}) {
   const libraryName = customerLibraryName({ displayName, industry });
   const profileId = slugify(libraryName);
   const materialsDir = join(assetVaultDir, `${profileId}-materials`);
+  if (!assetDb) {
+    mkdir(materialsDir, { recursive: true }).catch(() => {});
+    return {
+      id: profileId,
+      displayName,
+      industry,
+      goal,
+      keywords,
+      libraryName,
+      materialsDir,
+      createdAt: now,
+      updatedAt: now,
+      assetDbAvailable: false,
+      assetDbReason: sqliteUnavailableReason || 'asset database is not initialized',
+    };
+  }
   assetDb.prepare(`
     INSERT INTO customer_profiles (id, display_name, industry, goal, keywords, library_name, materials_dir, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -2639,6 +3330,44 @@ function normalizeWorkbench(workbench = {}) {
       sop: Array.isArray((existing.get(employee.id) || {}).sop) ? existing.get(employee.id).sop : employee.sop,
     })),
   };
+}
+
+function defaultRadarSeedPlan() {
+  return {
+    track: 'AI + 自媒体内容生产',
+    goal: '建立 Longka 第一版 AI 自媒体内容雷达，找到对标账号、种子样本、客户问题和标题公式。',
+    platforms: ['X', '小红书', '公众号', '今日头条', 'B站'],
+    keywords: ['AI 写作', 'AI 自媒体', 'AI 内容工厂', 'AI 爆款文案', 'AI 图文', 'AI 短视频', 'AI 自动化', 'AI 副业', 'AI 账号矩阵', 'AI 私域获客'],
+    accounts: [],
+    sampleLinks: [],
+    customerQuestions: [],
+    titleFormulas: [],
+    notes: '',
+    updatedAt: null,
+  };
+}
+
+function normalizeRadarSeedPlan(payload = {}) {
+  return {
+    track: String(payload.track || 'AI + 自媒体内容生产').trim(),
+    goal: String(payload.goal || '').trim(),
+    platforms: normalizeLineList(payload.platforms),
+    keywords: normalizeLineList(payload.keywords),
+    accounts: normalizeLineList(payload.accounts),
+    sampleLinks: normalizeLineList(payload.sampleLinks || payload.sample_links),
+    customerQuestions: normalizeLineList(payload.customerQuestions || payload.customer_questions),
+    titleFormulas: normalizeLineList(payload.titleFormulas || payload.title_formulas),
+    notes: String(payload.notes || '').trim(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function normalizeLineList(value) {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
+  return String(value || '')
+    .split(/\r?\n|[,，、]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function normalizeImportedDb(payload = {}) {
@@ -2672,12 +3401,55 @@ function normalizeImportedDb(payload = {}) {
     tasks: Array.isArray(payload.tasks) ? payload.tasks : [],
     assets: Array.isArray(payload.assets) ? payload.assets : [],
     publishRecords: Array.isArray(payload.publishRecords) ? payload.publishRecords : [],
+    radarSeedPlan: normalizeRadarSeedPlan(payload.radarSeedPlan || defaultRadarSeedPlan()),
     lastPipelineRunAt: payload.lastPipelineRunAt || null,
     updatedAt: payload.updatedAt || new Date().toISOString(),
   };
 }
 
 async function ensureDb() {
+  if (process.env.DATABASE_URL) {
+    const pg = await import('pg');
+    pgPool = new pg.Pool({
+      connectionString: process.env.DATABASE_URL,
+      max: Number(process.env.DB_POOL_MAX || 8),
+      idleTimeoutMillis: Number(process.env.DB_IDLE_TIMEOUT_MS || 30000),
+    });
+    await pgPool.query(`
+      CREATE TABLE IF NOT EXISTS ai_native_command_center_state (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+    const existing = await pgPool.query('SELECT id FROM ai_native_command_center_state WHERE id = $1', ['default']);
+    if (!existing.rowCount) {
+      const initial = {
+        company: defaultCompany,
+        currentProjectId: defaultProjects[0].id,
+        projects: defaultProjects,
+        activityLog: [],
+        config: defaultConfig,
+        workbench: defaultWorkbench,
+        rawMaterials: seedMaterials,
+        contentSamples: [],
+        candidates: [],
+        topics: [],
+        tasks: [],
+    assets: [],
+    publishRecords: [],
+    radarSeedPlan: defaultRadarSeedPlan(),
+    lastPipelineRunAt: null,
+    updatedAt: new Date().toISOString(),
+  };
+      await pgPool.query(
+        'INSERT INTO ai_native_command_center_state (id, data, updated_at) VALUES ($1, $2::jsonb, now())',
+        ['default', JSON.stringify(initial)],
+      );
+    }
+    return;
+  }
   if (existsSync(dbPath)) {
     try {
       JSON.parse(await readFile(dbPath, 'utf8'));
@@ -2700,13 +3472,16 @@ async function ensureDb() {
     tasks: [],
     assets: [],
     publishRecords: [],
+    radarSeedPlan: defaultRadarSeedPlan(),
     lastPipelineRunAt: null,
     updatedAt: new Date().toISOString(),
   });
 }
 
 async function readDb() {
-  const db = JSON.parse(await readFile(dbPath, 'utf8'));
+  const db = pgPool
+    ? (await pgPool.query('SELECT data FROM ai_native_command_center_state WHERE id = $1', ['default'])).rows[0]?.data || {}
+    : JSON.parse(await readFile(dbPath, 'utf8'));
   return {
     company: normalizeCompany(db.company),
     currentProjectId: db.currentProjectId || defaultProjects[0].id,
@@ -2721,12 +3496,24 @@ async function readDb() {
     tasks: Array.isArray(db.tasks) ? db.tasks : [],
     assets: Array.isArray(db.assets) ? db.assets : [],
     publishRecords: Array.isArray(db.publishRecords) ? db.publishRecords : [],
+    radarSeedPlan: normalizeRadarSeedPlan(db.radarSeedPlan || defaultRadarSeedPlan()),
     lastPipelineRunAt: db.lastPipelineRunAt || null,
     updatedAt: db.updatedAt || null,
   };
 }
 
 async function writeDb(db) {
+  if (pgPool) {
+    db.updatedAt = db.updatedAt || new Date().toISOString();
+    dbWriteQueue = dbWriteQueue.then(() => pgPool.query(
+      `INSERT INTO ai_native_command_center_state (id, data, updated_at)
+       VALUES ($1, $2::jsonb, now())
+       ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`,
+      ['default', JSON.stringify(db)],
+    ));
+    await dbWriteQueue;
+    return;
+  }
   dbWriteQueue = dbWriteQueue.then(() => writeFile(dbPath, JSON.stringify(db, null, 2), 'utf8'));
   await dbWriteQueue;
 }
@@ -2735,7 +3522,17 @@ async function mutateDb(mutator) {
   dbWriteQueue = dbWriteQueue.then(async () => {
     const db = await readDb();
     await mutator(db);
-    await writeFile(dbPath, JSON.stringify(db, null, 2), 'utf8');
+    db.updatedAt = db.updatedAt || new Date().toISOString();
+    if (pgPool) {
+      await pgPool.query(
+        `INSERT INTO ai_native_command_center_state (id, data, updated_at)
+         VALUES ($1, $2::jsonb, now())
+         ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`,
+        ['default', JSON.stringify(db)],
+      );
+    } else {
+      await writeFile(dbPath, JSON.stringify(db, null, 2), 'utf8');
+    }
   });
   await dbWriteQueue;
 }
@@ -2744,7 +3541,7 @@ async function readJson(req) {
   const chunks = [];
   for await (const chunk of req) chunks.push(chunk);
   if (!chunks.length) return {};
-  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  return JSON.parse(Buffer.concat(chunks).toString('utf8').replace(/^\uFEFF/, ''));
 }
 
 async function readOperatorAiConfig() {
