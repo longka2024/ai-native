@@ -102,7 +102,7 @@ window.addEventListener("message", (event) => {
   state.lastXRunIds = Array.isArray(event.data.runIds) ? event.data.runIds : [];
   state.useLatestXRunOnly = state.lastXRunIds.length > 0;
   state.logs = [
-    "已从内容采集批次返回。",
+    "已回到今日工作台。",
     "下一步：读取已入库 X 资产，生成今天可用的母题候选。",
   ];
   state.assetStatus = "准备读取已入库 X 资产";
@@ -280,7 +280,7 @@ function renderXCollectControls() {
       <div>
         <span class="eyebrow">实时采集</span>
         <h3>采集一批新的 X 推主帖子</h3>
-        <p>适合你换了对标账号，想抓当下新帖。采集完成后会先进入内容采集批次页，人工筛选、确认入库、生成拆解卡。</p>
+        <p>适合你换了对标账号，想抓当下新帖。采集完成后，系统会在当前工作台里筛出可用候选，不跳到其他页面。</p>
       </div>
       <label>账号，多个用换行或逗号隔开
         <textarea id="xAccountsInput" rows="4" placeholder="xionghuanwei&#10;snail_9106&#10;Xudong07452910">xionghuanwei
@@ -291,8 +291,8 @@ Xudong07452910</textarea>
         <label>每个账号采集条数<input id="xMaxTweetsInput" type="number" min="5" max="100" value="30" /></label>
         <label>采集页数<input id="xPagesInput" type="number" min="1" max="5" value="1" /></label>
       </div>
-      <button class="primary" data-open-collection-batch>去采集批次页操作</button>
-      <span class="muted-text">推荐：先走采集批次页，确认好帖入库后再回今日工作台创作。</span>
+      <button class="primary" data-collect-x ${state.isCollectingX ? "disabled" : ""}>${state.isCollectingX ? "正在采集，请勿重复点击" : "在今日工作台内采集并筛选"}</button>
+      <span class="muted-text">采集、筛选、生成候选都会留在当前今日工作台，不跳转到其他页面。</span>
     </article>
     <article class="action-tile">
       <div>
@@ -301,8 +301,7 @@ Xudong07452910</textarea>
         <p>适合你不想重新采集，直接用之前已经确认过、拆解过的帖子资产来找母题。</p>
       </div>
       <button class="primary" data-read-materials>读取已入库资产并生成母题</button>
-      <button class="secondary" data-route-target="collection">打开内容采集批次</button>
-      <span class="muted-text">后续会只读取“已确认资产”，不再直接拿原始爬虫结果乱生成。</span>
+      <span class="muted-text">不重新采集，只从内容资产库读取素材，在当前今日工作台继续走下一步。</span>
     </article>
   </div>`;
 }
@@ -475,7 +474,6 @@ function bindWorkAreaActions() {
     setStep(3);
   });
   byId("workArea")?.querySelector("[data-collect-x]")?.addEventListener("click", () => collectXAccounts());
-  byId("workArea")?.querySelector("[data-open-collection-batch]")?.addEventListener("click", () => setRoute("collection"));
   byId("workArea")?.querySelector("[data-read-materials]")?.addEventListener("click", () => readMaterials());
   byId("workArea")?.querySelector("[data-demo-materials]")?.addEventListener("click", () => readDemoMaterials());
   $$("#workArea [data-topic-id]").forEach((button) => {
