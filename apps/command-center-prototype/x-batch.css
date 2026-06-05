@@ -251,6 +251,35 @@ button:disabled {
   margin-top: 14px;
 }
 
+.next-step-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #b7ddcf;
+  border-radius: 8px;
+  background: #f0fbf7;
+}
+
+.next-step-card[hidden] {
+  display: none;
+}
+
+.next-step-card b {
+  color: #0f4f3d;
+}
+
+.next-step-card span {
+  color: #456257;
+  line-height: 1.55;
+}
+
+.next-step-card div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .stat {
   padding: 12px;
   border: 1px solid var(--line);
@@ -318,6 +347,14 @@ button:disabled {
   margin: 0;
   line-height: 1.6;
   font-size: 13px;
+}
+
+.post-card .reject-help {
+  margin-top: 8px;
+  padding: 9px 10px;
+  border-radius: 6px;
+  background: #fff7ed;
+  color: #7c2d12;
 }
 
 .meta,

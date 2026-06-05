@@ -5,11 +5,13 @@ const state = {
   progress: 0,
   batch: null,
   lastCard: null,
+  embedded: false,
 };
 
 const $ = (selector) => document.querySelector(selector);
 
 if (new URLSearchParams(location.search).get("embedded") === "1") {
+  state.embedded = true;
   document.body.classList.add("embedded");
 }
 
@@ -209,7 +211,7 @@ function renderPostCard(item, tier) {
   const metrics = item.metrics || {};
   const text = item.body || item.title || "";
   const reasons = item.qualityReasons || [];
-  const reject = item.rejectReason ? [`淘汰原因：${item.rejectReason}`] : [];
+  const reject = item.rejectReason ? [humanRejectReason(item.rejectReason)] : [];
   return `<article class="post-card ${tier}">
     <div class="meta">
       <span>@${escapeHtml(item.keyword || item.authorId || "unknown")}</span>
@@ -226,6 +228,7 @@ function renderPostCard(item, tier) {
       <span>引 ${escapeHtml(metrics.quotes ?? 0)}</span>
     </div>
     <div class="tags">${[...reasons, ...reject].slice(0, 4).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>
+    ${item.rejectReason ? `<p class="reject-help">${escapeHtml(rejectActionHint(item.rejectReason))}</p>` : ""}
     ${item.sourceUrl ? `<a class="source-link" href="${escapeHtml(item.sourceUrl)}" target="_blank" rel="noreferrer">打开原帖</a>` : ""}
     <div class="card-actions">
       ${tier !== "rejected" ? `<button class="primary" data-confirm="${escapeHtml(item.id)}" data-destination="mother_topic">入母题库并拆解</button>` : ""}
@@ -234,6 +237,34 @@ function renderPostCard(item, tier) {
       <button class="secondary" data-confirm="${escapeHtml(item.id)}" data-destination="discard">丢弃</button>
     </div>
   </article>`;
+}
+
+function humanRejectReason(reason) {
+  const map = {
+    pure_link: "淘汰原因：只有链接，缺少可拆正文",
+    retweet: "淘汰原因：转发内容，不适合作为原创母题",
+    reply_or_contextless: "淘汰原因：像回复，缺少上下文",
+    repost_or_unknown_source: "淘汰原因：原作者识别不清",
+    too_short: "淘汰原因：正文太短",
+    weak_engagement_signal: "淘汰原因：互动信号弱",
+    weak_content_signal: "淘汰原因：观点/方法信号弱",
+    low_mother_topic_score: "淘汰原因：母题价值分不够",
+  };
+  return map[reason] || `淘汰原因：${reason}`;
+}
+
+function rejectActionHint(reason) {
+  const map = {
+    pure_link: "处理建议：如果链接背后是好文章，后续用网页抓取工具抓正文；当前这条先不直接二创。",
+    retweet: "处理建议：优先找原作者原帖，避免把转发当成素材源。",
+    reply_or_contextless: "处理建议：需要补全上下文后再判断，否则容易写偏。",
+    repost_or_unknown_source: "处理建议：先确认原作者和原链接，再决定是否入库。",
+    too_short: "处理建议：可以当灵感，不建议直接作为母题。",
+    weak_engagement_signal: "处理建议：可入反例库，用来训练什么样的帖子不值得仿写。",
+    weak_content_signal: "处理建议：暂不做母题，除非你人工判断它背后有强话题。",
+    low_mother_topic_score: "处理建议：先放普通素材或反例库，不进入今日创作主线。",
+  };
+  return map[reason] || "处理建议：先不进入今日创作主线。";
 }
 
 async function confirmAsset(sampleId, destination) {
@@ -257,8 +288,15 @@ async function confirmAsset(sampleId, destination) {
   } else {
     log("已确认入库，并生成爆文拆解卡。");
     setStatus("已生成拆解卡", result.sample?.title || sampleId);
+    $("#useAssetsBtn").disabled = false;
+    $("#nextStepCard").hidden = false;
   }
   renderCard();
+  if (destination !== "discard") {
+    setTimeout(() => {
+      $("#cardPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+  }
 }
 
 function renderCard() {
@@ -320,6 +358,20 @@ function clearBatch() {
   renderStats(null);
   renderLists();
   renderCard();
+  $("#useAssetsBtn").disabled = true;
+  $("#nextStepCard").hidden = true;
+}
+
+function useAssetsInWorkbench() {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "longka-use-confirmed-x-assets",
+      runIds: state.runIds,
+    }, window.location.origin);
+    log("已切回今日工作台：下一步从已入库 X 资产里找话题。");
+    return;
+  }
+  window.location.href = "./workbench-v2.html";
 }
 
 document.addEventListener("click", (event) => {
@@ -334,5 +386,13 @@ $("#startBatchBtn").addEventListener("click", startBatch);
 $("#loadLatestBtn").addEventListener("click", loadLatestBatch);
 $("#reloadBatchBtn").addEventListener("click", () => reloadBatch().catch((error) => log(`读取批次失败：${error.message}`)));
 $("#clearBtn").addEventListener("click", clearBatch);
+$("#useAssetsBtn").addEventListener("click", useAssetsInWorkbench);
+$("#useAssetsInlineBtn").addEventListener("click", useAssetsInWorkbench);
+$("#viewCardBtn").addEventListener("click", () => $("#cardPanel")?.scrollIntoView({ behavior: "smooth", block: "start" }));
 
 clearBatch();
+if (state.embedded) {
+  setTimeout(() => {
+    loadLatestBatch();
+  }, 250);
+}

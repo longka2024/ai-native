@@ -95,6 +95,21 @@ function setRoute(route) {
   if (route !== "today") renderAssetPage(route);
 }
 
+window.addEventListener("message", (event) => {
+  if (event.origin !== window.location.origin) return;
+  if (event.data?.type !== "longka-use-confirmed-x-assets") return;
+  state.sourceChannel = "x-live";
+  state.lastXRunIds = Array.isArray(event.data.runIds) ? event.data.runIds : [];
+  state.useLatestXRunOnly = state.lastXRunIds.length > 0;
+  state.logs = [
+    "已从内容采集批次返回。",
+    "下一步：读取已入库 X 资产，生成今天可用的母题候选。",
+  ];
+  state.assetStatus = "准备读取已入库 X 资产";
+  setRoute("today");
+  setStep(4);
+});
+
 function setStep(step) {
   state.step = Math.max(1, Math.min(12, step));
   renderToday();
