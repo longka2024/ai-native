@@ -123,6 +123,45 @@ textarea { resize: vertical; line-height: 1.65; }
   background: #f5f7fb;
 }
 
+.x-source-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr);
+  gap: 16px;
+  margin: 18px 0;
+}
+
+.action-tile {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-height: 260px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fbfaf6;
+}
+
+.action-tile.primary-tile {
+  background: #f4fbf8;
+  border-color: #c8e1d8;
+}
+
+.action-tile h3 {
+  margin: 4px 0 6px;
+  font-size: 20px;
+}
+
+.action-tile p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.action-tile .primary,
+.action-tile .secondary {
+  justify-self: start;
+}
+
 .hero, .page-head, .simple-panel, .work-card, .context-card {
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -433,7 +472,7 @@ p { margin: 0; color: var(--muted); line-height: 1.65; }
 }
 
 @media (max-width: 1180px) {
-  .topbar, .shell, .hero, .draft-box, .source-editor, .page-head {
+  .topbar, .shell, .hero, .draft-box, .source-editor, .page-head, .x-source-actions {
     grid-template-columns: 1fr;
   }
   .shell { width: min(100% - 28px, 920px); }
