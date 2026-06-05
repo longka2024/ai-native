@@ -10,6 +10,10 @@ const state = {
   topics: [],
   selectedTopicId: "",
   titleChoices: [],
+  titleAssets: [],
+  titleAssetMessage: "",
+  titleAssetKey: "",
+  titleAssetLoading: false,
   selectedTitle: "",
   draft: "",
   improvedDraft: "",
@@ -344,8 +348,13 @@ function renderTopicCard(topic) {
 
 function renderTitleStep() {
   if (!state.titleChoices.length && state.selectedTopicId) state.titleChoices = buildTitleChoices(selectedTopic());
+  if (state.selectedTopicId) requestAnimationFrame(() => ensureTitleAssetsForCurrentTopic());
+  const assetHint = state.titleAssetLoading
+    ? "正在读取标题资产库：优先匹配当前方向的真实高分标题。"
+    : state.titleAssetMessage || (state.titleAssets.length ? `已读取 ${state.titleAssets.length} 条标题资产，候选标题会优先参考同类公式。` : "当前先用本地公式兜住流程，标题资产读取完成后会自动刷新。");
   return `<section class="work-card">
     ${cardHead(`生成 ${currentTarget().title} 标题`, "同一个选题，按不同平台调性生成不同标题。选择标题后，正文会跟着重写。")}
+    <div class="status-strip">${escapeHtml(assetHint)}</div>
     <div class="title-grid">
       ${state.titleChoices.map((item) => `<button class="title-card ${state.selectedTitle === item.title ? "active" : ""}" data-title-choice="${escapeHtml(item.title)}">
         <b>${escapeHtml(item.title)}</b><span>${escapeHtml(item.reason)}</span>
@@ -1052,36 +1061,190 @@ function reuseLineForTarget(theme) {
   return `选题“${theme}”后续可改成小红书图文、公众号长文、短视频脚本和朋友圈文案。`;
 }
 
-function buildTitleChoices(topic) {
-  if (!topic) return [];
-  const theme = safeThemeForTitle(topic);
-  if (state.publishTarget === "wechat-article") {
-    return [
-      { title: `为什么${theme}，正在成为很多人的内容卡点？`, reason: "公众号长文：问题化开头，适合展开论证。" },
-      { title: `${theme}背后，真正值得复盘的不是技巧`, reason: "复盘型：适合案例和方法论。" },
-      { title: `我重新理解了${theme}这件事`, reason: "认知升级型：适合长文阅读。" },
-      { title: `${theme}：从素材到方法论的完整拆解`, reason: "体系型：适合收藏和转发。" },
-      { title: `普通人做${theme}，最容易忽略的第一步`, reason: "人群型：降低阅读门槛。" },
-    ];
+async function ensureTitleAssetsForCurrentTopic() {
+  const topic = selectedTopic();
+  if (!topic || state.titleAssetLoading) return;
+  const key = [
+    state.publishTarget,
+    state.keywords,
+    topic.id,
+    topic.theme || topic.title || "",
+  ].join("|");
+  if (state.titleAssetKey === key) return;
+  state.titleAssetKey = key;
+  state.titleAssetLoading = true;
+  state.titleAssetMessage = "";
+  try {
+    const params = new URLSearchParams({
+      keywords: [state.keywords, topic.theme, topic.title].filter(Boolean).join(","),
+      platform: currentTarget().platform || "",
+      limit: "40",
+    });
+    const res = await fetch(`/api/title-assets?${params.toString()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const result = await res.json();
+    state.titleAssets = Array.isArray(result.titles) ? result.titles : [];
+    state.titleAssetMessage = result.filterMiss
+      ? "当前方向标题资产不足，已临时参考全库高分标题；建议继续采集本方向爆款标题。"
+      : `当前方向已匹配 ${state.titleAssets.length} 条标题资产，候选标题会参考真实爆款公式。`;
+    state.titleChoices = buildTitleChoices(topic, state.titleAssets);
+    if (!state.titleChoices.some((item) => item.title === state.selectedTitle)) state.selectedTitle = "";
+  } catch (error) {
+    state.titleAssets = [];
+    state.titleAssetMessage = `标题资产读取失败：${error.message}`;
+  } finally {
+    state.titleAssetLoading = false;
+    if (state.step === 6) renderToday();
   }
-  if (state.publishTarget === "douyin" || state.publishTarget === "video-account") {
-    return [
-      { title: `你以为${theme}难在工具，其实第一步就错了`, reason: "短视频钩子：反常识。" },
-      { title: `${theme}没结果？先看这 3 个判断`, reason: "清单型：适合口播。" },
-      { title: `别急着做${theme}，先听我讲一个坑`, reason: "故事型：适合停留。" },
-      { title: `很多人做${theme}，输在没有素材库`, reason: "观点型：适合知识口播。" },
-      { title: `一分钟讲清楚${theme}的正确顺序`, reason: "效率型：适合短视频标题。" },
-    ];
-  }
-  return [
-    { title: `${theme}别急着做，先看清这一步`, reason: "小红书避坑型：适合收藏。" },
-    { title: `${theme}没效果？先排查这 3 个原因`, reason: "小红书清单型：适合图文卡片。" },
-    { title: `很多人卡在${theme}，其实第一步就错了`, reason: "痛点型：制造停留。" },
-    { title: `我为什么建议你先做一次${theme}自查`, reason: "真人建议型：广告感弱。" },
-    { title: `${theme}真正有用的，不是照搬爆款`, reason: "观点型：适合二创解释。" },
-  ];
 }
 
+function buildAssetBackedTitleChoices(topic, assets = []) {
+  const seed = buildTitleSeed(topic);
+  const usable = assets.filter((item) => item && item.title).slice(0, 18);
+  const groups = groupTitleAssets(usable).slice(0, 5);
+  return groups.map((group, index) => {
+    const example = group.items[0] || usable[index] || {};
+    const title = rewriteTitleFromAsset(seed, group.name, example.title || "");
+    const metrics = example.metrics || {};
+    const proof = metrics.likes || metrics.saves || metrics.comments
+      ? `赞${metrics.likes || 0}/藏${metrics.saves || 0}/评${metrics.comments || 0}`
+      : "真实标题资产";
+    return titleChoice(title, `${group.name}：参考「${example.title || "标题资产"}」，${proof}`);
+  });
+}
+
+function rewriteTitleFromAsset(seed, formula = "", example = "") {
+  const core = seed.core || state.businessLine;
+  const problem = seed.problem || `${core}没效果`;
+  const scene = seed.scene || `做${core}`;
+  const audience = seed.audience || "普通人";
+  const mark = `${formula} ${example}`;
+  if (/认知|冲突|对比|不是|而是/.test(mark)) return `${core}真正难的，不是工具`;
+  if (/损失|避坑|别|警告|不要/.test(mark)) return `别急着做${core}，先看这一步`;
+  if (/数字|清单|\d/.test(mark)) return `${audience}做${core}，先存这 5 类素材`;
+  if (/结果|承诺|如何|怎么/.test(mark)) return `如何把${scene}变成稳定选题`;
+  if (/经验|案例|复盘|我/.test(mark)) return `我做${core}后才明白的一件事`;
+  if (/争议|互动|测试|问题/.test(mark)) return `${problem}，到底卡在哪一步？`;
+  return `${core}不是照搬爆款，而是先建资产`;
+}
+
+function buildTitleChoices(topic, titleAssets = state.titleAssets) {
+  if (!topic) return [];
+  const seed = buildTitleSeed(topic);
+  const assetChoices = buildAssetBackedTitleChoices(topic, titleAssets);
+  if (state.publishTarget === "wechat-article") {
+    return dedupeTitleChoices([
+      ...assetChoices,
+      titleChoice(`为什么${seed.problem}，不是换工具就能解决的？`, "认知冲突型：适合长文展开问题本质。"),
+      titleChoice(`${seed.asset}这件事，我建议内容创作者早点补上`, "行动建议型：适合公众号方法论。"),
+      titleChoice(`从${seed.scene}到稳定发文，中间差的是一套素材系统`, "路径拆解型：适合讲完整框架。"),
+      titleChoice(`${seed.audience}最容易忽略的内容资产问题`, "人群代入型：降低阅读门槛。"),
+      titleChoice(`写不出内容时，先别急着问 AI`, "反常识型：制造继续阅读理由。"),
+      titleChoice(`我重新理解了${seed.core}：它不是资料夹`, "观点升级型：适合沉淀方法论。"),
+    ]);
+  }
+  if (state.publishTarget === "douyin" || state.publishTarget === "video-account") {
+    return dedupeTitleChoices([
+      ...assetChoices,
+      titleChoice(`你不是缺选题，是缺${seed.asset}`, "短视频钩子：一句话打断旧认知。"),
+      titleChoice(`${seed.scene}？先做这 3 个动作`, "清单型：适合口播脚本。"),
+      titleChoice(`别再让 AI 直接写了，先把素材喂对`, "避坑型：适合前 3 秒停留。"),
+      titleChoice(`${seed.audience}每天发什么？答案不在工具里`, "痛点型：适合引发共鸣。"),
+      titleChoice(`内容越写越像 AI，多半少了这一步`, "反差型：适合短视频开场。"),
+      titleChoice(`一分钟讲清楚${seed.core}怎么用`, "效率型：适合教程口播。"),
+    ]);
+  }
+  const pool = xhsTitlePoolForSeed(seed);
+  return dedupeTitleChoices([
+    ...assetChoices,
+    ...pool.map((item) => titleChoice(item.title, item.reason)),
+  ]);
+}
+
+function buildTitleSeed(topic = {}) {
+  const sourceText = cleanSourceText([
+    topic.theme,
+    topic.title,
+    topic.pain,
+    topic.reason,
+    topic.reuse,
+    topic.content,
+  ].filter(Boolean).join(" "));
+  const text = sourceText || state.businessLine;
+  const hasAsset = /资产库|素材库|知识库|语料库|内容库/.test(text);
+  const hasAgent = /Agent|智能体|工作流|自动化/.test(text);
+  const hasAiTaste = /AI味|AI 味|不像人|模板|同质化/.test(text);
+  const hasNoTopic = /不知道发什么|选题|话题|素材/.test(text);
+  const asset = hasAsset ? "内容资产库" : hasAgent ? "Agent 工作流" : hasAiTaste ? "人味素材库" : "素材库";
+  const core = hasAsset ? "内容资产库" : hasAgent ? "Agent 工作流" : state.businessLine;
+  const scene = hasNoTopic ? "每天不知道发什么" : hasAiTaste ? "写出来总有 AI 味" : hasAgent ? "Agent 总是跑偏" : `做${state.businessLine}`;
+  const problem = hasNoTopic ? "每天不知道发什么" : hasAiTaste ? "文案越来越像 AI" : hasAgent ? "Agent 工作流总卡壳" : `${state.businessLine}没效果`;
+  const audience = /普通人|新手|小白/.test(text) ? "普通人" : /公众号|小红书|自媒体/.test(text) ? "自媒体人" : "内容创作者";
+  const sourceType = hasAsset ? "asset" : hasAgent ? "agent" : hasAiTaste ? "humanize" : /公众号|长文/.test(text) ? "longform" : "general";
+  return { asset, core, scene, problem, audience, sourceType };
+}
+
+function xhsTitlePoolForSeed(seed) {
+  const pools = {
+    asset: [
+      { title: `内容资产库怎么搭？先存这 5 类素材`, reason: "资产库专属：直接给可收藏动作。" },
+      { title: `每天不知道发什么，多半不是缺灵感`, reason: "痛点反转：击中选题焦虑。" },
+      { title: `我现在写内容，先翻素材库再问 AI`, reason: "流程展示：把方法变成场景。" },
+      { title: `别把爆款只存在收藏夹里`, reason: "认知提醒：从收藏转向复用。" },
+      { title: `内容越做越稳的人，都在偷偷存素材`, reason: "好奇缺口：强调长期积累。" },
+    ],
+    agent: [
+      { title: `Agent 总跑偏？先检查任务拆法`, reason: "问题诊断：贴合 Agent 源头。" },
+      { title: `想搭 Agent，别一上来就堆工具`, reason: "避坑型：阻止错误动作。" },
+      { title: `你的 Agent 缺的可能不是模型`, reason: "认知冲突：从模型转向流程。" },
+      { title: `Agent 工作流卡壳，通常卡在这一步`, reason: "悬念型：制造点击理由。" },
+      { title: `普通人搭 Agent，先做这个小闭环`, reason: "行动型：降低门槛。" },
+    ],
+    humanize: [
+      { title: `AI 味太重？先别急着润色`, reason: "去 AI 味专属：反常识切入。" },
+      { title: `文案像 AI，不是因为词不够口语`, reason: "认知冲突：避免表层改词。" },
+      { title: `写得太完整，反而更像 AI`, reason: "人味诊断：抓住具体症状。" },
+      { title: `去 AI 味，我最先删这几类句子`, reason: "清单型：适合收藏。" },
+      { title: `别再让 AI 写得像说明书了`, reason: "痛点型：画面感强。" },
+    ],
+    longform: [
+      { title: `公众号长文写不动，先别怪选题`, reason: "长文专属：从写作阻力切入。" },
+      { title: `写了 3 年长文，我越来越少硬憋`, reason: "经验复盘：适合真实经历类。" },
+      { title: `长文真正难的，不是开头`, reason: "反差型：引出结构问题。" },
+      { title: `小红书和公众号，不能用同一套写法`, reason: "平台差异：适合一鱼多吃。" },
+      { title: `长文素材不够时，别直接开写`, reason: "避坑型：回到素材积累。" },
+    ],
+    general: [
+      { title: `${seed.problem}？先看这一步`, reason: "通用避坑：保底但绑定问题。" },
+      { title: `${seed.audience}最容易忽略的内容动作`, reason: "人群代入：降低门槛。" },
+      { title: `${seed.core}不是照搬爆款`, reason: "观点型：适合二创解释。" },
+      { title: `为什么你做${seed.core}总是没结果？`, reason: "问题型：引出诊断。" },
+      { title: `想做好${seed.core}，先存这张清单`, reason: "收藏型：适合图文。" },
+    ],
+  };
+  return pools[seed.sourceType] || pools.general;
+}
+
+function titleChoice(title, reason) {
+  return { title: clampTitle(title), reason };
+}
+
+function clampTitle(title = "") {
+  const clean = String(title || "").replace(/\s+/g, " ").trim();
+  return clean.length > 32 ? `${clean.slice(0, 31)}…` : clean;
+}
+
+function dedupeTitleChoices(items = []) {
+  const seen = new Set();
+  const result = [];
+  for (const item of items) {
+    const key = item.title.replace(/[，。！？?！、\s]/g, "");
+    if (!item.title || seen.has(key)) continue;
+    seen.add(key);
+    result.push(item);
+  }
+  return result.slice(0, 5);
+}
 function safeThemeForTitle(topic = {}) {
   const sourceTheme = cleanSourceText(topic.theme || topic.title || state.businessLine);
   if (!sourceTheme || looksLikeGenericDiagnosis(sourceTheme)) return state.businessLine;
@@ -1438,6 +1601,10 @@ function buildDeliveryPlan() {
 
 function renderAssetPage(route) {
   if (route === "assets") renderAssets();
+  if (route === "titles") {
+    renderTitleAssets();
+    return;
+  }
   const map = {
     questions: "客户问题库",
     titles: "标题库",
@@ -1454,6 +1621,124 @@ function renderAssetPage(route) {
     const target = byId(idMap[route]);
     if (target) target.innerHTML = sampleAssetItems(map[route]);
   }
+}
+
+async function renderTitleAssets() {
+  const target = byId("titleBoard");
+  if (!target) return;
+  target.innerHTML = `<div class="empty-state"><b>正在读取标题资产</b><span>从真实采集样本中抽取标题、公式和互动数据。</span></div>`;
+  try {
+    const params = new URLSearchParams({
+      keywords: state.keywords || "",
+      limit: "80",
+    });
+    const res = await fetch(`/api/title-assets?${params.toString()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const result = await res.json();
+    const titles = Array.isArray(result.titles) ? result.titles : [];
+    const groups = groupTitleAssets(titles);
+    target.innerHTML = renderTitleAssetWorkbench(result, titles, groups);
+    return;
+    target.innerHTML = `
+      <div class="asset-summary">
+        <b>已沉淀 ${titles.length} 条标题资产</b>
+        <span>${escapeHtml(result.filterMiss ? "当前关键词还没沉淀标题，先展示全库高分标题；需要继续采集本方向爆款标题。" : "标题不是一股脑堆在一起。先按公式/心理触发分组，再结合平台、行业和互动数据筛选。")}</span>
+      </div>
+      ${groups.length ? groups.map(renderTitleAssetGroup).join("") : `<article class="empty-state"><b>还没有标题资产</b><span>先采集真实帖子，标题会自动沉淀到这里。</span></article>`}`;
+  } catch (error) {
+    target.innerHTML = `<div class="empty-state"><b>标题库读取失败</b><span>${escapeHtml(error.message)}</span></div>`;
+  }
+}
+
+function groupTitleAssets(titles = []) {
+  const map = new Map();
+  for (const item of titles) {
+    const key = item.formula || inferTitleGroupName(item.title) || "待拆解";
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(item);
+  }
+  return [...map.entries()].map(([name, items]) => ({
+    name,
+    items: items.sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 8),
+  })).sort((a, b) => b.items.length - a.items.length);
+}
+
+function renderTitleAssetWorkbench(result = {}, titles = [], groups = []) {
+  const exactCount = result.filterMiss ? 0 : titles.length;
+  const formulaCount = groups.length;
+  const top = titles[0] || {};
+  const status = result.filterMiss
+    ? "当前方向还缺标题资产，下面先展示全库高分标题作为参考。"
+    : "当前方向已有可复用标题资产，可以直接支援第 6 步标题改写。";
+  return `
+    <div class="asset-summary asset-command">
+      <b>标题资产库不是标题列表</b>
+      <span>它负责沉淀真实爆款标题、拆出公式、绑定表现数据，并反哺今日工作台第 6 步。</span>
+    </div>
+    <div class="asset-kpi-grid">
+      <article><b>${exactCount}</b><span>当前方向标题</span></article>
+      <article><b>${titles.length}</b><span>本次可参考标题</span></article>
+      <article><b>${formulaCount}</b><span>已识别公式</span></article>
+      <article><b>${escapeHtml(top.score || 0)}</b><span>最高标题分</span></article>
+    </div>
+    <section class="asset-lane">
+      <div class="title-group-head">
+        <b>现在该怎么用</b>
+        <span>${escapeHtml(status)}</span>
+      </div>
+      <div class="asset-grid title-asset-grid">
+        <article class="asset-item">
+          <b>1. 先看当前方向是否有标题资产</b>
+          <span>如果这里是 0，说明不是生成器不努力，而是这个方向还没采集足够好标题。</span>
+        </article>
+        <article class="asset-item">
+          <b>2. 再看哪些公式真的有效</b>
+          <span>同一个话题要覆盖认知冲突、损失规避、数字清单、案例经验等不同触发器。</span>
+        </article>
+        <article class="asset-item">
+          <b>3. 最后回到第 6 步改写标题</b>
+          <span>第 6 步会优先调用这里的标题资产；发布后的数据再回流，标题库才会越用越强。</span>
+        </article>
+      </div>
+    </section>
+    ${groups.length ? groups.map(renderTitleAssetGroup).join("") : `<article class="empty-state"><b>还没有标题资产</b><span>先采集真实高表现内容，标题会自动进入这里。</span></article>`}
+  `;
+}
+
+function inferTitleGroupName(title = "") {
+  if (/为什么|不是|而是|真正/.test(title)) return "认知冲突型";
+  if (/别|先|警告|避坑|不要/.test(title)) return "损失提醒型";
+  if (/\d|几|第/.test(title)) return "数字清单型";
+  if (/如何|怎么|清单|步骤/.test(title)) return "行动方法型";
+  if (/我|亲测|经验|复盘/.test(title)) return "经验复盘型";
+  return "待拆解";
+}
+
+function renderTitleAssetGroup(group) {
+  return `<section class="title-group">
+    <div class="title-group-head">
+      <b>${escapeHtml(group.name)}</b>
+      <span>${group.items.length} 条高分标题</span>
+    </div>
+    <div class="asset-grid title-asset-grid">${group.items.map(renderTitleAssetCard).join("")}</div>
+  </section>`;
+}
+
+function renderTitleAssetCard(item) {
+  const metrics = item.metrics || {};
+  return `<article class="asset-item title-asset">
+    <b>${escapeHtml(item.title)}</b>
+    <span>${escapeHtml(item.reason || "真实标题资产")}</span>
+    <div class="metric-row">
+      <span>${escapeHtml(item.platform || "unknown")}</span>
+      <span>分 ${escapeHtml(item.score || 0)}</span>
+      <span>赞${escapeHtml(metrics.likes || 0)}</span>
+      <span>藏${escapeHtml(metrics.saves || 0)}</span>
+      <span>评${escapeHtml(metrics.comments || 0)}</span>
+    </div>
+    <p><strong>公式：</strong>${escapeHtml(item.formula || "待拆解")}</p>
+    ${item.url ? `<a class="source-link" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">打开来源</a>` : ""}
+  </article>`;
 }
 
 async function renderAssets() {

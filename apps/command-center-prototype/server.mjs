@@ -217,6 +217,16 @@ createServer(async (req, res) => {
       return sendJson(res, result);
     }
 
+    if (req.method === 'GET' && url.pathname === '/api/title-assets') {
+      const db = await readDb();
+      const result = buildTitleAssetLibrary(db, {
+        platform: url.searchParams.get('platform') || '',
+        keywords: url.searchParams.get('keywords') || '',
+        limit: url.searchParams.get('limit') || 120,
+      });
+      return sendJson(res, result);
+    }
+
     if (req.method === 'GET' && url.pathname === '/api/content-assets/x-batch') {
       const result = await loadXBatchAssets({
         runIds: url.searchParams.get('runIds') || '',
@@ -1282,6 +1292,85 @@ async function runMediaCrawlerXhsDetail(noteUrl) {
   } catch (error) {
     return { ok: false, message: error.message, stdout: error.stdout?.slice(-1200) || '', stderr: error.stderr?.slice(-1200) || '' };
   }
+}
+
+function buildTitleAssetLibrary(db, options = {}) {
+  const limit = Math.min(Math.max(Number(options.limit || 120), 1), 300);
+  const wantedPlatform = String(options.platform || '').trim().toLowerCase();
+  const keywords = splitQueryWords(String(options.keywords || '')).map((item) => item.toLowerCase());
+  const rows = [
+    ...(Array.isArray(db.contentSamples) ? db.contentSamples : []),
+    ...(Array.isArray(db.assets) ? db.assets : []),
+    ...(Array.isArray(db.candidates) ? db.candidates : []),
+  ];
+  const seen = new Set();
+  const titles = [];
+  for (const row of rows) {
+    const title = cleanTitleAssetText(row.title || row.structured?.selectedTitle || row.text || '');
+    if (!title || title.length < 6) continue;
+    const platform = String(row.platform || row.source || row.sourceTool || row.type || 'unknown').toLowerCase();
+    const haystack = `${title} ${row.content || ''} ${row.keyword || ''} ${row.pain || ''}`.toLowerCase();
+    if (wantedPlatform && wantedPlatform !== 'all' && !platform.includes(wantedPlatform)) continue;
+    if (keywords.length && !keywords.some((word) => haystack.includes(word))) continue;
+    const key = title.replace(/[，。！？?！、\s#]/g, '');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const metrics = normalizeMetrics(row.metrics || row.structured?.metrics || row);
+    const formula = row.formula || row.structured?.formula || inferFormula(`${title} ${row.content || ''}`);
+    titles.push({
+      id: row.id || `title-${seen.size}`,
+      title,
+      platform: row.platform || row.sourceTool || row.source || 'unknown',
+      formula,
+      metrics,
+      score: scoreTitleAsset(title, metrics, formula),
+      reason: explainTitleAsset(title, formula, metrics),
+      url: row.url || row.sourceUrl || row.structured?.sourceUrl || '',
+      sourceTitle: row.title || '',
+      keyword: row.keyword || '',
+      createdAt: row.createdAt || row.publishedAt || row.addedAt || '',
+    });
+  }
+  titles.sort((a, b) => b.score - a.score);
+  if (!titles.length && keywords.length) {
+    const fallback = buildTitleAssetLibrary(db, { ...options, keywords: '', limit });
+    return {
+      ...fallback,
+      filteredTotal: 0,
+      filterMiss: true,
+      message: '当前关键词还没有沉淀标题资产，已展示全库高分标题作参考。',
+    };
+  }
+  return { ok: true, total: titles.length, filteredTotal: titles.length, filterMiss: false, titles: titles.slice(0, limit) };
+}
+
+function cleanTitleAssetText(value = '') {
+  return String(value || '')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80);
+}
+
+function scoreTitleAsset(title, metrics = {}, formula = '') {
+  const m = normalizeMetrics(metrics);
+  const lengthScore = title.length >= 10 && title.length <= 32 ? 18 : title.length <= 45 ? 10 : 4;
+  const tensionScore = /为什么|别|先|不是|而是|如何|怎么|几|第|真正|最/.test(title) ? 18 : 8;
+  const metricScore = Math.min(48, Math.log10(Number(m.likes || 0) + Number(m.saves || 0) * 2 + Number(m.comments || 0) * 3 + 10) * 18);
+  const formulaScore = formula ? 12 : 4;
+  return Math.round(lengthScore + tensionScore + metricScore + formulaScore);
+}
+
+function explainTitleAsset(title, formula, metrics = {}) {
+  const bits = [];
+  if (/为什么|不是|而是|真正/.test(title)) bits.push('有认知反差');
+  if (/别|先|警告|避坑/.test(title)) bits.push('有损失提醒');
+  if (/\d|几|第/.test(title)) bits.push('有数字锚点');
+  if (/如何|怎么|清单|步骤/.test(title)) bits.push('有行动入口');
+  const m = normalizeMetrics(metrics);
+  if (m.likes || m.saves || m.comments) bits.push(`互动：赞${m.likes || 0}/藏${m.saves || 0}/评${m.comments || 0}`);
+  if (formula) bits.push(`公式：${formula}`);
+  return bits.join('；') || '已从真实素材标题沉淀，待后续补充表现数据。';
 }
 
 async function collectXhsSearchViaCdp(keywords, limit = 20) {
