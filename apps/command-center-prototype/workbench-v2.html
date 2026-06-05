@@ -36,10 +36,10 @@
         <b>内容资产库</b>
         <span>素材、问题、标题、结构长期沉淀</span>
       </button>
-      <a class="nav-item nav-link" href="./x-batch.html">
+      <button class="nav-item" data-route="collection">
         <b>内容采集批次</b>
         <span>X 账号采集、好帖筛选、人工入库、爆文拆解卡</span>
-      </a>
+      </button>
       <button class="nav-item" data-route="sources">
         <b>对标账号库</b>
         <span>X、RSS、网页、公众号等信息源</span>
@@ -92,6 +92,17 @@
           <button class="primary" data-action="load-assets">读取历史资产</button>
         </div>
         <div class="asset-board" id="assetBoard"></div>
+      </section>
+
+      <section class="route-panel" data-panel="collection" hidden>
+        <div class="page-head">
+          <div>
+            <span class="eyebrow">COLLECTION</span>
+            <h2>内容采集批次</h2>
+            <p>采集工程是全局能力：先按平台创建批次，筛好帖，人工确认入库，再把拆解卡沉淀到内容资产库。今日工作台只消费已确认资产。</p>
+          </div>
+        </div>
+        <iframe class="embedded-tool" src="./x-batch.html?embedded=1" title="内容采集批次"></iframe>
       </section>
 
       <section class="route-panel" data-panel="sources" hidden>

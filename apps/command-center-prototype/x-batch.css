@@ -23,6 +23,19 @@ body {
   font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
 }
 
+body.embedded {
+  background: transparent;
+}
+
+body.embedded .topbar {
+  display: none;
+}
+
+body.embedded .page {
+  width: 100%;
+  margin: 0;
+}
+
 .topbar {
   position: sticky;
   top: 0;

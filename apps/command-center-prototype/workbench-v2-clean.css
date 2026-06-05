@@ -115,6 +115,14 @@ textarea { resize: vertical; line-height: 1.65; }
 .content { min-width: 0; }
 .route-panel[hidden] { display: none !important; }
 
+.embedded-tool {
+  width: 100%;
+  min-height: 1180px;
+  border: 0;
+  border-radius: 12px;
+  background: #f5f7fb;
+}
+
 .hero, .page-head, .simple-panel, .work-card, .context-card {
   border: 1px solid var(--line);
   border-radius: 18px;

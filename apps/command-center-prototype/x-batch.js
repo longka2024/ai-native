@@ -9,6 +9,10 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 
+if (new URLSearchParams(location.search).get("embedded") === "1") {
+  document.body.classList.add("embedded");
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
