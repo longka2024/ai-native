@@ -14,6 +14,7 @@ const state = {
   draft: "",
   improvedDraft: "",
   copyConfirmed: false,
+  draftRevision: 1,
   logs: [],
   assets: null,
   assetStatus: "未读取",
@@ -128,6 +129,7 @@ function clearAfter(step) {
     state.draft = "";
     state.improvedDraft = "";
     state.copyConfirmed = false;
+    state.draftRevision = 1;
   }
 }
 
@@ -362,6 +364,7 @@ function renderDraftStep() {
     <div class="actions">
       <button class="ghost" data-step-target="6">返回换标题</button>
       <button class="secondary" data-regenerate-draft ${state.selectedTitle ? "" : "disabled"}>按当前标题重写一次</button>
+      <span class="muted-text">当前正文：第 ${state.draftRevision} 版</span>
       <button class="primary" data-step-target="8" ${state.draft ? "" : "disabled"}>下一步：文案体检和优化</button>
     </div>
   </section>`;
@@ -490,11 +493,13 @@ function bindWorkAreaActions() {
       state.draft = "";
       state.improvedDraft = "";
       state.copyConfirmed = false;
+      state.draftRevision = 1;
       setStep(7);
     });
   });
   byId("workArea")?.querySelector("[data-regenerate-draft]")?.addEventListener("click", () => {
-    state.draft = buildDraft({ variant: true });
+    state.draftRevision += 1;
+    state.draft = buildDraft({ variant: true, revision: state.draftRevision });
     state.improvedDraft = "";
     state.copyConfirmed = false;
     renderToday();
@@ -587,7 +592,7 @@ async function collectXAccounts() {
       ...(Array.isArray(result.candidates) ? result.candidates : []),
       ...(Array.isArray(result.assetBuckets?.goodPosts) ? result.assetBuckets.goodPosts : []),
     ]);
-    const topics = buildTopicsFromDb({ contentSamples: batchSamples });
+    const topics = buildTopicsFromLiveXSamples(batchSamples);
     state.assets = result;
     state.topics = topics.slice(0, 10);
     state.selectedTopicId = "";
@@ -634,6 +639,74 @@ function balanceXBatchSamples(samples = []) {
     .filter((sample) => !used.has(sample.sourceUrl || sample.url || sample.id || sample.title))
     .sort((a, b) => (Number(b.contentValueScore || 0) + Number(b.radarScore || 0) / 1000) - (Number(a.contentValueScore || 0) + Number(a.radarScore || 0) / 1000));
   return [...balanced, ...rest].slice(0, 12);
+}
+
+function buildTopicsFromLiveXSamples(samples = []) {
+  return samples
+    .filter(Boolean)
+    .map((item, index) => normalizeSample(item))
+    .filter((sample) => cleanSourceText(`${sample.title} ${sample.body}`).length >= 30)
+    .map((sample, index) => {
+      const title = cleanSourceText(sample.title || sample.body || `X 素材 ${index + 1}`).slice(0, 72);
+      const body = cleanSourceText(sample.body || "");
+      const metrics = sample.metrics || {};
+      const heat = Number(metrics.likes || 0)
+        + Number(metrics.saves || metrics.bookmarks || 0) * 2
+        + Number(metrics.comments || metrics.replies || 0) * 3
+        + Number(metrics.shares || metrics.retweets || 0) * 3
+        + Number(metrics.quotes || 0) * 3;
+      const pain = inferLiveXTopicPain(title, body);
+      return {
+        id: sample.id || `live-x-topic-${index}-${Date.now()}`,
+        title,
+        theme: title,
+        platform: "X",
+        keyword: sample.keyword || "X 账号素材",
+        url: sample.url || "",
+        body,
+        sourceInsight: {
+          theme: title,
+          pain,
+          angle: "这条选题直接来自本轮 X 采集结果，优先学习它的观点、问题意识和结构，不照搬原文。",
+        },
+        metrics: {
+          likes: metrics.likes || 0,
+          saves: metrics.saves || metrics.bookmarks || 0,
+          comments: metrics.comments || metrics.replies || 0,
+          shares: metrics.shares || metrics.retweets || 0,
+          heat,
+        },
+        reason: buildLiveXReason(sample, heat),
+        pain,
+        reuse: `可以先改成 ${currentTarget().title}，后续再扩展成公众号、短视频脚本和朋友圈内容。`,
+        risk: "只学习观点、结构和用户问题，不复制原帖表达。",
+        collectionStatus: "本轮真实采集",
+      };
+    })
+    .sort((a, b) => Number(b.metrics?.heat || 0) - Number(a.metrics?.heat || 0))
+    .slice(0, 10);
+}
+
+function inferLiveXTopicPain(title = "", body = "") {
+  const text = cleanSourceText(`${title} ${body}`);
+  const sentence = text.split(/[。！？!?；;\n]/).find((line) => /难|痛|卡|问题|为什么|怎么|如何|不懂|没效果|踩坑|焦虑|失败|浪费/.test(line));
+  if (sentence) return sentence.slice(0, 96);
+  if (/AI|Agent|内容|自媒体|写作|爆款|素材/.test(text)) {
+    return "用户想用 AI 做内容和自媒体，但缺少可复用素材、判断标准和稳定流程。";
+  }
+  return "这条素材有可复用观点，需要结合目标平台重新找到用户痛点。";
+}
+
+function buildLiveXReason(sample = {}, heat = 0) {
+  const parts = [];
+  const metrics = sample.metrics || {};
+  if (heat >= 50) parts.push("互动信号较强");
+  if (Number(metrics.bookmarks || metrics.saves || 0) > 0) parts.push("有收藏价值");
+  if (Number(metrics.replies || metrics.comments || 0) > 0) parts.push("有讨论信号");
+  if (cleanSourceText(sample.body || "").length >= 120) parts.push("正文信息量足够");
+  return parts.length
+    ? `入选依据：${parts.join("，")}。`
+    : "入选依据：来自本轮真实采集，适合人工判断是否继续创作。";
 }
 
 function scheduleProgressLog(message, ms) {
