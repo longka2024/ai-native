@@ -3546,13 +3546,18 @@ async function readJson(req) {
 
 async function readOperatorAiConfig() {
   const configFile = process.env.XIAOMEI_CONFIG_FILE || 'E:\\Codex\\my-video\\小妹视频工作台配置.txt';
-  const text = await readFile(configFile, 'utf8').catch(() => '');
   const config = {};
-  for (const line of text.split(/\r?\n/)) {
-    const clean = line.trim();
-    if (!clean || clean.startsWith('#') || !clean.includes('=')) continue;
-    const [key, ...rest] = clean.split('=');
-    config[key.trim()] = rest.join('=').trim();
+  for (const file of [join(root, '.env'), configFile]) {
+    const text = await readFile(file, 'utf8').catch(() => '');
+    for (const line of text.split(/\r?\n/)) {
+      const clean = line.trim();
+      if (!clean || clean.startsWith('#') || !clean.includes('=')) continue;
+      const [key, ...rest] = clean.split('=');
+      if (!config[key.trim()]) config[key.trim()] = rest.join('=').trim();
+    }
+  }
+  for (const [key, value] of Object.entries(config)) {
+    if (!process.env[key]) process.env[key] = value;
   }
   const useDeepSeek = Boolean(process.env.DEEPSEEK_API_KEY || config.DEEPSEEK_API_KEY || process.env.DEEPSEEK_BASE_URL || config.DEEPSEEK_BASE_URL);
   return {
@@ -3886,10 +3891,23 @@ async function generateSopRewriteDraft(payload = {}) {
     '必须保留：原帖打中的真实痛点、情绪价值、可复制结构、评论区问题、收藏动机。',
     '必须替换：措辞、案例结论、品牌承诺、行动入口，改成用户自己的业务表达。',
     '美业/护肤/医美内容不得承诺祛斑、根治、必然有效，不替代专业诊断。',
+    '硬约束：xhsCopy.title 必须逐字使用 payload.selectedTitle，禁止模型自拟新标题。',
+    '硬约束：正文必须围绕 payload.topic/sourcePost 的 title、content、pain、comments 写，不得跳到无关案例、无关行业或无关主题。',
+    '硬约束：除非源头素材明确提供真实经历，不得虚构“我上周帮客户”“我见过一个客户”“医生说”等第一人称或权威案例。',
+    '硬约束：小红书正文要像真实运营者写给读者的口语内容，少用“首先/其次/最后/其实根源就一个/正确的废话”等 AI 腔连接。',
     '输出必须是 JSON，不要 Markdown，不要解释。',
   ].join('\n');
   const user = {
     task: '根据第四步选中的源头帖，按 SOP 生成第五步可给客户确认的二创稿。',
+    sourceEvidence: {
+      selectedTitle: asText(payload.selectedTitle),
+      sourceTitle: asText(payload.topic?.title || payload.sourcePost?.title || payload.sourceTopic?.title),
+      sourcePain: asText(payload.topic?.pain || payload.sourcePost?.summary || payload.sourceTopic?.pain),
+      sourceContent: asText(payload.topic?.content || payload.sourcePost?.content || payload.sourceTopic?.content).slice(0, 1200),
+      sourceComments: collectPayloadComments(payload),
+      businessLine: asText(payload.businessLine || payload.keyword),
+      rule: '正文只能使用这些源头证据展开。没有出现在源头证据里的案例、数字、身份、结果，不准编。',
+    },
     requiredOutput: {
       titleChoices: '6 个标题。每个标题必须从源头帖不同角度改写，不能只有一个源头标题变体。',
       selectedTitle: '使用用户已选择标题；如果为空，使用第一个标题。',
@@ -3923,6 +3941,48 @@ async function generateSopRewriteDraft(payload = {}) {
         ok: false,
         error: 'ai_empty_body',
         message: '模型只返回了标题，没有返回可验收正文。',
+      };
+    }
+    const selectedTitle = asText(payload.selectedTitle);
+    const returnedTitle = asText(draft.xhsCopy?.title || draft.selectedTitle);
+    if (selectedTitle && returnedTitle && returnedTitle !== selectedTitle) {
+      return {
+        ok: false,
+        error: 'ai_title_mismatch',
+        message: `模型改写了标题。必须逐字使用用户选中的标题：${selectedTitle}`,
+      };
+    }
+    const sourceText = [
+      payload.topic?.title,
+      payload.topic?.pain,
+      payload.topic?.content,
+      payload.sourcePost?.title,
+      payload.sourcePost?.summary,
+      payload.sourcePost?.content,
+      payload.sourceTopic?.title,
+      payload.sourceTopic?.pain,
+      payload.sourceTopic?.content,
+      ...(collectPayloadComments(payload) || []),
+    ].map(asText).join(' ');
+    const fictionalPattern = /我收到|我见过|我让她|上周|前几天|一个客户|一个姐妹|小眼睛|涨到|掉到|翻\s*\d+\s*倍|月入|宝妈|医生说|专家说/;
+    if (fictionalPattern.test(body) && !fictionalPattern.test(sourceText)) {
+      return {
+        ok: false,
+        error: 'ai_fictional_case',
+        message: '模型虚构了源头素材里不存在的案例、身份、数据或结果。',
+      };
+    }
+    const knownSourcePhrases = ['内容资产库', '不知道发什么', 'AI 味', 'AI味', '素材', '沉淀', 'Agent', '工作流', 'AI自媒体', 'AI 内容'];
+    const anchors = [...new Set([
+      ...splitQueryWords(`${payload.businessLine || ''} ${payload.keyword || ''}`).filter((word) => word.length >= 2),
+      ...knownSourcePhrases.filter((word) => sourceText.includes(word)),
+    ])].slice(0, 10);
+    const hitCount = anchors.filter((word) => body.includes(word)).length;
+    if (anchors.length >= 3 && hitCount < 1) {
+      return {
+        ok: false,
+        error: 'ai_source_drift',
+        message: '正文没有咬住源头素材和业务关键词，疑似跑题。',
       };
     }
     return { ok: true };
@@ -3962,12 +4022,20 @@ async function generateSopRewriteDraft(payload = {}) {
       const content = data.choices?.[0]?.message?.content || '';
       try {
         const draft = normalizeDraftShape(parseJsonObjectFromModel(content), payload);
+        if (payload.selectedTitle) {
+          draft.selectedTitle = asText(payload.selectedTitle);
+          draft.xhsCopy = { ...(draft.xhsCopy || {}), title: asText(payload.selectedTitle) };
+        }
         const bodyCheck = validateDraftBody(draft, requestUser);
         if (!bodyCheck.ok) return { ...bodyCheck, detail: content.slice(0, 500), model };
         return { ok: true, draft, model };
       } catch (error) {
         const textDraft = normalizeDraftFromModelText(content, payload);
         if (textDraft) {
+          if (payload.selectedTitle) {
+            textDraft.selectedTitle = asText(payload.selectedTitle);
+            textDraft.xhsCopy = { ...(textDraft.xhsCopy || {}), title: asText(payload.selectedTitle) };
+          }
           const bodyCheck = validateDraftBody(textDraft, requestUser);
           if (!bodyCheck.ok) return { ...bodyCheck, detail: content.slice(0, 500), model, parseError: error.message };
           return { ok: true, draft: textDraft, model, recoveredFromText: true, parseError: error.message };
@@ -4039,11 +4107,11 @@ async function generateSopRewriteDraft(payload = {}) {
     primary.titleModel = titleModel;
   }
   if (primary.ok) return primary;
-  const retryableErrors = new Set(['ai_parse_or_request_failed', 'ai_request_timeout', 'ai_request_failed', 'ai_empty_body']);
+  const retryableErrors = new Set(['ai_parse_or_request_failed', 'ai_request_timeout', 'ai_request_failed', 'ai_empty_body', 'ai_fictional_case', 'ai_source_drift', 'ai_title_mismatch']);
   if (!retryableErrors.has(primary.error)) return primary;
 
   const retryModel = process.env.COPY_RETRY_MODEL || 'gpt-5.2-chat-latest';
-  if (retryModel === primaryModel && !['ai_parse_or_request_failed', 'ai_empty_body'].includes(primary.error)) return primary;
+  if (retryModel === primaryModel && !['ai_parse_or_request_failed', 'ai_empty_body', 'ai_fictional_case', 'ai_source_drift', 'ai_title_mismatch'].includes(primary.error)) return primary;
   const retryUser = {
     ...user,
     fastTitleStage: seededTitleChoices ? {
@@ -4054,6 +4122,12 @@ async function generateSopRewriteDraft(payload = {}) {
       instruction: '必须保留这些标题。正文只围绕 selectedTitle 写完整可发布稿。',
     } : undefined,
     retryReason: `上一次模型返回不可验收：${primary.message}`,
+    strictRewriteMode: [
+      '禁止故事化。不要写“我收到私信/我见过客户/我让她改/涨了多少”。',
+      '只围绕 sourceEvidence 写：内容资产库、每天不知道发什么、AI 味、长期素材沉淀。',
+      '正文可以写成“很多人会卡在...”这种观察，但不能编具体人物、时间、数据和结果。',
+      '标题必须保持 selectedTitle。正文第一段必须直接回应 selectedTitle。',
+    ],
     requiredOutput: {
       ...user.requiredOutput,
       strictJson: '必须输出单个合法 JSON 对象。不要代码块，不要尾注，不要多余文字，数组元素之间必须有逗号。',

@@ -15,6 +15,10 @@ const state = {
   improvedDraft: "",
   copyConfirmed: false,
   draftRevision: 1,
+  draftStatus: "idle",
+  draftError: "",
+  draftMeta: null,
+  draftReview: null,
   logs: [],
   assets: null,
   assetStatus: "未读取",
@@ -130,6 +134,10 @@ function clearAfter(step) {
     state.improvedDraft = "";
     state.copyConfirmed = false;
     state.draftRevision = 1;
+    state.draftStatus = "idle";
+    state.draftError = "";
+    state.draftMeta = null;
+    state.draftReview = null;
   }
 }
 
@@ -351,11 +359,19 @@ function renderTitleStep() {
 }
 
 function renderDraftStep() {
-  if (!state.draft && state.selectedTitle) state.draft = buildDraft();
+  if (!state.draft && state.selectedTitle && state.draftStatus === "idle") {
+    requestAnimationFrame(() => generateSopDraft());
+  }
+  const isLoading = state.draftStatus === "loading";
+  const draftText = isLoading
+    ? "Longka 内容生产引擎正在按 SOP 写正文...\n\n1. 绑定源头素材和当前标题\n2. 判断用户真实问题\n3. 匹配写作框架\n4. 生成初稿并做人味检查\n5. 输出可进入体检的版本"
+    : state.draft || state.draftError || "请先选择标题。";
   return `<section class="work-card">
-    ${cardHead("生成平台成品", "文案绑定选题、源头素材、目标平台、业务目标和标题。不是只换标题。")}
+    ${cardHead("生成平台成品", "正文必须绑定选题、源头素材、目标平台、业务目标和当前标题。这里不再使用本地固定模板。")}
+    ${state.draftMeta ? `<div class="status-strip">Longka SOP：${escapeHtml(state.draftMeta.model || "AI")} · ${escapeHtml(state.draftMeta.framework || "内容框架")} · ${escapeHtml(state.draftMeta.route || "平台改写")}</div>` : ""}
+    ${state.draftError ? `<div class="status-strip warn">${escapeHtml(state.draftError)}</div>` : ""}
     <div class="draft-box">
-      <div class="draft-text"><pre>${escapeHtml(state.draft || "请先选择标题。")}</pre></div>
+      <div class="draft-text"><pre>${escapeHtml(draftText)}</pre></div>
       <div class="check-panel">
         <h3>绑定证据</h3>
         ${renderBindingEvidence()}
@@ -363,13 +379,12 @@ function renderDraftStep() {
     </div>
     <div class="actions">
       <button class="ghost" data-step-target="6">返回换标题</button>
-      <button class="secondary" data-regenerate-draft ${state.selectedTitle ? "" : "disabled"}>按当前标题重写一次</button>
+      <button class="secondary" data-regenerate-draft ${state.selectedTitle && !isLoading ? "" : "disabled"}>按当前标题重写一次</button>
       <span class="muted-text">当前正文：第 ${state.draftRevision} 版</span>
-      <button class="primary" data-step-target="8" ${state.draft ? "" : "disabled"}>下一步：文案体检和优化</button>
+      <button class="primary" data-step-target="8" ${state.draft && !isLoading ? "" : "disabled"}>下一步：文案体检和优化</button>
     </div>
   </section>`;
 }
-
 function renderCheckStep() {
   if (!state.improvedDraft && state.draft) state.improvedDraft = improveDraft(state.draft);
   const checks = scoreDraft();
@@ -494,15 +509,23 @@ function bindWorkAreaActions() {
       state.improvedDraft = "";
       state.copyConfirmed = false;
       state.draftRevision = 1;
+      state.draftStatus = "idle";
+      state.draftError = "";
+      state.draftMeta = null;
+      state.draftReview = null;
       setStep(7);
     });
   });
   byId("workArea")?.querySelector("[data-regenerate-draft]")?.addEventListener("click", () => {
     state.draftRevision += 1;
-    state.draft = buildDraft({ variant: true, revision: state.draftRevision });
+    state.draft = "";
     state.improvedDraft = "";
     state.copyConfirmed = false;
-    renderToday();
+    state.draftStatus = "idle";
+    state.draftError = "";
+    state.draftMeta = null;
+    state.draftReview = null;
+    generateSopDraft({ force: true });
   });
   byId("workArea")?.querySelector("[data-improve-again]")?.addEventListener("click", () => {
     state.improvedDraft = improveDraft(state.improvedDraft || state.draft, true);
@@ -1065,6 +1088,150 @@ function safeThemeForTitle(topic = {}) {
   return sourceTheme.length > 24 ? sourceTheme.slice(0, 24) : sourceTheme;
 }
 
+async function generateSopDraft() {
+  if (!state.selectedTitle || !selectedTopic()) return;
+  if (state.draftStatus === "loading") return;
+  state.draftStatus = "loading";
+  state.draftError = "";
+  state.copyConfirmed = false;
+  renderToday();
+  try {
+    const payload = buildSopDraftPayload();
+    const res = await fetch("/api/content-draft/rewrite", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || !result.ok || !result.draft) {
+      const message = result.message || result.error || `HTTP ${res.status}`;
+      throw new Error(`AI SOP 文案生成失败：${message}`);
+    }
+    const draft = result.draft;
+    state.draft = formatSopDraft(draft);
+    state.draftMeta = {
+      model: result.model || result.retriedFrom || "Longka",
+      framework: draft.diagnosis?.copyable || draft.contentStrategy?.framework || "SOP",
+      route: draft.contentStrategy?.selectedAngle || currentTarget().title,
+    };
+    state.draftReview = runLongkaReview(state.draft);
+    state.improvedDraft = "";
+    state.draftStatus = "done";
+    state.draftError = "";
+  } catch (error) {
+    state.draftStatus = "error";
+    state.draftError = `${error.message}。系统不会把本地模板当成最终稿，请检查文案模型配置后重试。`;
+    state.draft = "";
+  }
+  renderToday();
+}
+
+function buildSopDraftPayload() {
+  const topic = selectedTopic() || {};
+  const source = topic.source || topic.raw || topic;
+  const titleChoice = state.titleChoices.find((item) => item.title === state.selectedTitle) || {};
+  const sourceContent = topic.content || topic.text || topic.summary || source.content || source.text || "";
+  const comments = Array.isArray(topic.comments) ? topic.comments : Array.isArray(source.comments) ? source.comments : [];
+  const normalizedTopic = {
+    id: topic.id,
+    title: topic.title || topic.theme || state.selectedTitle,
+    theme: topic.theme,
+    pain: topic.pain,
+    rewrite: topic.reuse || topic.reason || "",
+    risk: topic.risk,
+    content: sourceContent,
+    comments,
+    metrics: topic.metrics || source.metrics || {},
+    sources: [{
+      title: topic.title,
+      url: topic.url,
+      platform: topic.platform,
+      content: sourceContent,
+      comments,
+      metrics: topic.metrics || source.metrics || {},
+    }],
+  };
+  return {
+    selectedTitle: state.selectedTitle,
+    titleChoices: state.titleChoices.map((item) => item.title || item).filter(Boolean),
+    selectedFormat: currentTarget().title,
+    platform: currentTarget().platform || state.publishTarget,
+    publishTarget: state.publishTarget,
+    keyword: state.keywords,
+    industry: state.industry,
+    businessLine: state.businessLine,
+    goal: state.goal,
+    keywords: state.keywords,
+    revision: state.draftRevision,
+    titleReason: titleChoice.reason || "",
+    topic: normalizedTopic,
+    sourcePost: {
+      title: topic.title || topic.theme || "",
+      summary: topic.pain || topic.reason || "",
+      content: sourceContent,
+      url: topic.url || "",
+      platform: topic.platform || "",
+      comments,
+      commentQuestions: comments,
+      metrics: topic.metrics || source.metrics || {},
+    },
+    comments,
+    commentQuestions: comments,
+    sourceTopic: {
+      id: topic.id,
+      theme: topic.theme,
+      title: topic.title,
+      url: topic.url,
+      platform: topic.platform,
+      pain: topic.pain,
+      reason: topic.reason,
+      reuse: topic.reuse,
+      risk: topic.risk,
+      metrics: topic.metrics || source.metrics || {},
+      content: sourceContent,
+      comments,
+    },
+    sop: {
+      sourceEvidence: "必须从源头素材提炼真实痛点，不复制原文表达。",
+      dbsContent: "先判断选题是否值得做，再判断形式、标题、表达效率、认知落差和行动入口。",
+      cheatOnContent: "初稿后必须做体检：开头留存、具体感、人味、收藏价值、转化动作。",
+      humanizerZh: "删除模板腔、三段式套话、空泛连接词、过度完整的 AI 句式。",
+      noFallbackTemplate: true,
+    },
+  };
+}
+
+function formatSopDraft(draft = {}) {
+  const copy = draft.xhsCopy || {};
+  const title = state.selectedTitle || draft.selectedTitle || copy.title;
+  const body = copy.body || draft.body || "";
+  const imagePlan = Array.isArray(copy.imagePlan) ? copy.imagePlan : Array.isArray(draft.imagePlan) ? draft.imagePlan : [];
+  const tags = Array.isArray(copy.tags) ? copy.tags : Array.isArray(draft.tags) ? draft.tags : [];
+  const parts = [`标题：${title}`, "", "正文：", body.trim()];
+  if (imagePlan.length) {
+    parts.push("", "配图建议：", ...imagePlan.map((item, index) => `${index + 1}. ${typeof item === "string" ? item : item.title || item.copy || JSON.stringify(item)}`));
+  }
+  if (tags.length) parts.push("", `标签：${tags.map((tag) => String(tag).replace(/^#/, "#")).join(" ")}`);
+  return parts.filter((item) => item !== undefined && item !== null).join("\n");
+}
+
+function runLongkaReview(text = "") {
+  const base = globalThis.LongkaContentCreationBase;
+  if (base?.runEditorialReview) {
+    return base.runEditorialReview({
+      draft: text,
+      brief: {
+        selectedTitle: state.selectedTitle,
+        targetPlatform: currentTarget().title,
+        selectedQuestion: selectedTopic()?.pain || selectedTopic()?.theme,
+        cta: state.goal,
+      },
+      round: state.draftRevision,
+    });
+  }
+  return null;
+}
+
 function buildDraft(options = {}) {
   const topic = selectedTopic();
   if (!topic || !state.selectedTitle) return "";
@@ -1218,26 +1385,50 @@ function renderBindingEvidence() {
 
 function scoreDraft() {
   const text = state.improvedDraft || state.draft || "";
+  const review = state.draftReview || runLongkaReview(text);
+  if (review) {
+    const gate = review.gate || {};
+    const dbs = review.dbs || {};
+    const ai = review.ai || {};
+    const rows = [
+      { name: "开头留存", ok: gate.checks?.answers_question !== false, good: "开头围绕当前主问题，没有泛泛铺垫。", bad: "开头还没有咬住当前标题对应的主问题。" },
+      { name: "源头绑定", ok: Boolean(state.selectedTopicId), good: "正文绑定了选中的素材和标题。", bad: "缺少源头素材绑定，容易写成通用稿。" },
+      { name: "具体感", ok: gate.checks?.not_encyclopedia !== false, good: "不是百科式堆知识，保留了判断路径。", bad: "表达太像百科说明，需要改成具体判断场景。" },
+      { name: "人味表达", ok: ai.ok !== false, good: "没有明显模板腔。", bad: (ai.fixes || ["句式太顺、太完整，需要打散并加入真实口语节奏。"])[0] },
+      { name: "行动入口", ok: gate.checks?.has_action !== false, good: "结尾有低压力下一步。", bad: "结尾缺少可执行动作。" },
+      { name: "合规边界", ok: gate.checks?.no_fake_story !== false, good: "没有虚构身份、绝对承诺或高风险表达。", bad: "有虚构经历或承诺感，需要删掉。" },
+    ];
+    return rows.map((item) => ({
+      score: item.ok ? 88 : 66,
+      name: item.name,
+      reason: item.ok ? item.good : item.bad,
+      warn: !item.ok,
+    }));
+  }
+  const hasAction = /收藏|私信|留言|下一步|行动|测试|评估|对照|评论/.test(text);
   const hasSource = Boolean(state.selectedTopicId);
-  const hasPlatform = text.includes(currentTarget().title) || state.publishTarget !== "topic-only";
-  const hasAction = /收藏|私信|留言|下一步|行动|测试|分镜|配图/.test(text);
-  const hasRisky = /保证|根治|一定有效|确定收益/.test(text);
+  const hasAiSmell = /真正|关键|此外|总之|不是.*而是|首先|其次|最后|希望.*帮助/.test(text);
+  const hasRisky = /保证|根治|一定有效|确定收益|100%/.test(text);
   return [
-    { score: text.length > 280 ? 86 : 72, name: "完整度", reason: text.length > 280 ? "已有标题、正文和行动入口。" : "内容偏短，需要展开判断标准。", warn: text.length <= 280 },
-    { score: hasSource ? 90 : 60, name: "选题绑定", reason: hasSource ? "绑定了第五步选中的选题。" : "缺少选中选题。", warn: !hasSource },
-    { score: hasPlatform ? 86 : 68, name: "平台适配", reason: "成品按当前发布目标组织。", warn: !hasPlatform },
-    { score: hasAction ? 84 : 68, name: "行动入口", reason: hasAction ? "有下一步动作。" : "需要给读者一个低门槛下一步。", warn: !hasAction },
-    { score: hasRisky ? 62 : 86, name: "合规边界", reason: hasRisky ? "存在绝对化表达，需要删除。" : "没有明显绝对承诺。", warn: hasRisky },
+    { score: text.length > 350 ? 84 : 68, name: "完整度", reason: text.length > 350 ? "已有正文、配图或行动入口。" : "正文偏短，难以完成平台内容交付。", warn: text.length <= 350 },
+    { score: hasSource ? 88 : 60, name: "源头绑定", reason: hasSource ? "绑定了选中素材。" : "缺少选中素材。", warn: !hasSource },
+    { score: hasAiSmell ? 64 : 86, name: "人味表达", reason: hasAiSmell ? "有明显 AI 连接词或模板句式。" : "没有明显模板腔。", warn: hasAiSmell },
+    { score: hasAction ? 84 : 66, name: "行动入口", reason: hasAction ? "有下一步动作。" : "需要给读者一个低门槛动作。", warn: !hasAction },
+    { score: hasRisky ? 58 : 88, name: "合规边界", reason: hasRisky ? "存在绝对化表达。" : "没有明显绝对承诺。", warn: hasRisky },
   ];
 }
 
 function improveDraft(text, again = false) {
   if (!text) return "";
-  return text + (again
-    ? "\n\n再补一句更像真人的表达：这不是让你变慢，而是先少踩坑。很多问题真正浪费时间的地方，就是一开始方向没看清。"
-    : "\n\n优化补充：如果你暂时还不确定自己属于哪种情况，先不要急着照搬别人的方案。先做一个小测试，拿到反馈后再决定下一步。");
+  const review = state.draftReview || runLongkaReview(text);
+  const fixes = review?.rewriteBrief?.length ? review.rewriteBrief : [
+    "开头删掉解释腔，直接回答标题里的主问题。",
+    "保留一个真实场景，不要每段都写成完整道理。",
+    "把结尾改成低压力动作：收藏、对照、留言或评估。",
+  ];
+  const note = again ? "第二轮体检修改方向" : "Longka 文案体检修改方向";
+  return `${text}\n\n${note}：\n${fixes.slice(0, 5).map((item, index) => `${index + 1}. ${item}`).join("\n")}`;
 }
-
 function buildDeliveryPlan() {
   if (state.publishTarget === "wechat-article") return ["长文标题", "开头问题", "案例展开", "方法论结构", "结尾转化"];
   if (state.publishTarget === "douyin" || state.publishTarget === "video-account") return ["封面标题", "黄金 3 秒", "口播正文", "分镜字幕", "素材需求"];
