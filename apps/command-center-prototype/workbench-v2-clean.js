@@ -28,24 +28,24 @@ const publishTargets = [
   { id: "video-account", title: "视频号短视频", platform: "video", desc: "信任感、口播、案例、转化动作" },
   { id: "wechat-article", title: "公众号长文", platform: "wechat", desc: "标题、开头、论证、案例、方法论" },
   { id: "moments", title: "朋友圈文案", platform: "moments", desc: "自然表达、信任建立、私聊引导" },
-  { id: "topic-only", title: "只沉淀母题", platform: "asset", desc: "只把素材拆成母题资产，暂不写成品" },
+  { id: "topic-only", title: "只整理选题", platform: "asset", desc: "只把素材整理成可复用选题，暂不写成品" },
 ];
 
 const sourceChannels = [
   { id: "same-platform", title: "同平台对标素材", desc: "默认选择。在哪个平台发，就优先读哪个平台的爆款素材。" },
   { id: "xhs", title: "小红书素材", desc: "适合学习小红书标题、封面、评论痛点、收藏结构。" },
-  { id: "x-history", title: "历史资产", desc: "先复用昨天采集的真实素材，拆成母题跑通闭环。" },
+  { id: "x-history", title: "历史资产", desc: "先复用之前采集的真实素材，找出今天能写的选题。" },
   { id: "x-live", title: "X 账号资产", desc: "只读取 X/推特来源，适合提炼观点、洞察和方法论。" },
-  { id: "all-assets", title: "全库母题复用", desc: "一鱼多吃：从资产库里找好母题，再改写到目标平台。" },
-  { id: "manual", title: "手动导入", desc: "粘贴你看到的好内容，先拆成母题资产。" },
+  { id: "all-assets", title: "全库选题复用", desc: "一鱼多吃：从资产库里找好选题，再改写到目标平台。" },
+  { id: "manual", title: "手动导入", desc: "粘贴你看到的好内容，整理成可写选题。" },
 ];
 
 const steps = [
   ["发布目标", "发到哪里"],
   ["业务信息", "行业和目标"],
-  ["素材来源", "从哪找母题"],
-  ["读取素材", "真实来源"],
-  ["选择母题", "一鱼多吃"],
+  ["素材来源", "从哪找素材"],
+  ["找素材", "采集或复用"],
+  ["选择选题", "今天写哪条"],
   ["标题候选", "按平台改写"],
   ["生成文案", "平台成品"],
   ["体检优化", "改到能发"],
@@ -103,9 +103,9 @@ window.addEventListener("message", (event) => {
   state.useLatestXRunOnly = state.lastXRunIds.length > 0;
   state.logs = [
     "已回到今日工作台。",
-    "下一步：读取已入库 X 资产，生成今天可用的母题候选。",
+    "下一步：读取已保存的 X 素材，生成今天可写的选题。",
   ];
-  state.assetStatus = "准备读取已入库 X 资产";
+  state.assetStatus = "准备读取历史 X 素材";
   setRoute("today");
   setStep(4);
 });
@@ -143,9 +143,9 @@ function renderHeroStatus() {
   $("#heroStatus").innerHTML = `
     <div class="status-row"><b>发布目标</b><span>${escapeHtml(currentTarget().title)}</span></div>
     <div class="status-row"><b>素材来源</b><span>${escapeHtml(currentSource().title)}</span></div>
-    <div class="status-row"><b>候选母题</b><span>${state.topics.length} 个</span></div>
+    <div class="status-row"><b>候选选题</b><span>${state.topics.length} 个</span></div>
     <div class="status-row"><b>文案状态</b><span>${state.copyConfirmed ? "已确认，可制作" : state.draft ? "待确认" : "未生成"}</span></div>
-    <div class="status-row"><b>已选母题</b><span>${escapeHtml(topic?.theme || topic?.title || "未选择")}</span></div>
+    <div class="status-row"><b>已选选题</b><span>${escapeHtml(topic?.theme || topic?.title || "未选择")}</span></div>
   `;
 }
 
@@ -178,7 +178,7 @@ function renderContext() {
     <div><b>业务线</b><span>${escapeHtml(state.businessLine)}</span></div>
     <div><b>目标</b><span>${escapeHtml(state.goal)}</span></div>
     <div><b>关键词</b><span>${escapeHtml(state.keywords)}</span></div>
-    <div><b>已选母题</b><span>${escapeHtml(topic?.theme || "未选择")}</span></div>
+    <div><b>已选选题</b><span>${escapeHtml(topic?.theme || "未选择")}</span></div>
   `;
 }
 
@@ -219,13 +219,13 @@ function renderTargetStep() {
 
 function renderBusinessStep() {
   return `<section class="work-card">
-    ${cardHead("你的行业、业务线和目标是什么？", "系统会用这些信息筛选素材、拆母题，并决定写作角度。")}
+    ${cardHead("你的行业、业务线和目标是什么？", "系统会用这些信息筛选素材、推荐选题，并决定写作角度。")}
     <div class="form-grid">
       <label>行业<input id="industryInput" value="${escapeHtml(state.industry)}" /></label>
       <label>业务线 / 主题<input id="businessLineInput" value="${escapeHtml(state.businessLine)}" /></label>
       <label>内容目标<input id="goalInput" value="${escapeHtml(state.goal)}" /></label>
       <label>关键词，多个用逗号隔开<input id="keywordsInput" value="${escapeHtml(state.keywords)}" /></label>
-      <label class="wide">补充说明<textarea id="noteInput" rows="4" placeholder="例如：我想把一个 AI 自媒体母题，同时改成小红书、公众号和短视频。"></textarea></label>
+      <label class="wide">补充说明<textarea id="noteInput" rows="4" placeholder="例如：我想把一个 AI 自媒体选题，同时改成小红书、公众号和短视频。"></textarea></label>
     </div>
     <div class="actions">
       <button class="ghost" data-step-target="1">返回发布目标</button>
@@ -237,10 +237,10 @@ function renderBusinessStep() {
 function renderSourceStep() {
   const defaultSource = state.sourceChannel === "same-platform" ? sourceTitleForTarget() : currentSource().title;
   return `<section class="work-card">
-    ${cardHead("今天从哪里找母题？", "同平台素材用于学习平台爆款表达；跨平台素材用于提炼观点和方法论，再按目标平台重写。")}
+    ${cardHead("今天从哪里找素材？", "同平台素材用于学习平台表达；跨平台素材用于提炼观点和方法论，再按目标平台重写。")}
     <div class="source-note">
       <b>当前策略：${escapeHtml(defaultSource)}</b>
-      <span>素材来源要标清楚，母题可以复用，最终成品必须按 ${escapeHtml(currentTarget().title)} 重写。</span>
+      <span>素材来源要标清楚，选题可以复用，最终成品必须按 ${escapeHtml(currentTarget().title)} 重写。</span>
     </div>
     <div class="choice-grid">
       ${sourceChannels.map((item) => `<button class="choice-card ${state.sourceChannel === item.id ? "active" : ""}" data-source-channel="${item.id}">
@@ -249,7 +249,7 @@ function renderSourceStep() {
     </div>
     <div class="actions">
       <button class="ghost" data-step-target="2">返回业务信息</button>
-      <button class="primary" data-step-target="4">下一步：读取素材</button>
+      <button class="primary" data-step-target="4">下一步：找素材</button>
       <button class="secondary" data-route-target="assets">查看内容资产库</button>
     </div>
   </section>`;
@@ -258,16 +258,16 @@ function renderSourceStep() {
 function renderCollectStep() {
   const progress = state.topics.length ? "100%" : state.logs.length ? "55%" : "0";
   return `<section class="work-card">
-    ${cardHead(state.sourceChannel === "x-live" ? "你要先采集新帖，还是用已有资产？" : "读取真实素材并拆成母题", state.sourceChannel === "x-live" ? "这是两个不同动作：采集新帖会调用 XCrawl；读取已有资产只用已经沉淀到库里的内容，不会重新采集。" : "如果当前来源没有匹配素材，系统会明确提示，不会跨业务线乱推荐。")}
+    ${cardHead(state.sourceChannel === "x-live" ? "第 4 步：先把今天可写的素材找出来" : "第 4 步：读取真实素材并生成选题", state.sourceChannel === "x-live" ? "你只需要二选一：抓一批新帖子，或者直接用以前保存过的素材。系统会筛出候选选题，然后自动进入第 5 步。" : "如果当前来源没有匹配素材，系统会明确提示，不会跨业务线乱推荐。")}
     ${state.sourceChannel === "x-live" ? renderXCollectControls() : ""}
     <div class="console">
       <div class="console-head"><b>${escapeHtml(sourceTitleForTarget())} 工作窗口</b><span>${escapeHtml(state.assetStatus)}</span></div>
       <div class="progress"><i id="progressBar" style="width:${progress}"></i></div>
-      <pre class="console-log" id="consoleLog">${escapeHtml(state.logs.join("\n") || (state.sourceChannel === "x-live" ? "先在上面二选一：\n1. 采集一批新帖：适合你刚换了 X 账号，想抓当下新内容。\n2. 用已入库资产找话题：适合不想重新采集，直接从之前确认过的资产里找母题。" : "点击按钮后，这里会显示读取、筛选、拆母题和生成候选的进度。"))}</pre>
+      <pre class="console-log" id="consoleLog">${escapeHtml(state.logs.join("\n") || (state.sourceChannel === "x-live" ? "你现在只要选一个动作：\n1. 采集新素材：抓 X 推主最新帖子，系统筛选后进入第 5 步。\n2. 使用历史素材：不重新抓取，直接从保存过的素材里推荐选题。" : "点击按钮后，这里会显示读取、筛选和生成候选选题的进度。"))}</pre>
     </div>
     <div class="actions">
       <button class="ghost" data-step-target="3">返回来源选择</button>
-      ${state.sourceChannel === "x-live" ? "" : `<button class="primary" data-read-materials>读取素材并生成母题候选</button>`}
+      ${state.sourceChannel === "x-live" ? "" : `<button class="primary" data-read-materials>读取素材并生成选题</button>`}
       <button class="secondary" data-demo-materials>用本地预览样本演示流程</button>
       <button class="secondary" data-route-target="assets">查看内容资产库</button>
     </div>
@@ -279,8 +279,8 @@ function renderXCollectControls() {
     <article class="action-tile primary-tile">
       <div>
         <span class="eyebrow">实时采集</span>
-        <h3>采集一批新的 X 推主帖子</h3>
-        <p>适合你换了对标账号，想抓当下新帖。采集完成后，系统会在当前工作台里筛出可用候选，不跳到其他页面。</p>
+        <h3>采集新素材</h3>
+        <p>适合你换了对标账号，想抓当下新帖。点这里后，系统会在当前工作台里采集、筛选，并把结果变成第 5 步可选题。</p>
       </div>
       <label>账号，多个用换行或逗号隔开
         <textarea id="xAccountsInput" rows="4" placeholder="xionghuanwei&#10;snail_9106&#10;Xudong07452910">xionghuanwei
@@ -291,28 +291,28 @@ Xudong07452910</textarea>
         <label>每个账号采集条数<input id="xMaxTweetsInput" type="number" min="5" max="100" value="30" /></label>
         <label>采集页数<input id="xPagesInput" type="number" min="1" max="5" value="1" /></label>
       </div>
-      <button class="primary" data-collect-x ${state.isCollectingX ? "disabled" : ""}>${state.isCollectingX ? "正在采集，请勿重复点击" : "在今日工作台内采集并筛选"}</button>
-      <span class="muted-text">采集、筛选、生成候选都会留在当前今日工作台，不跳转到其他页面。</span>
+      <button class="primary" data-collect-x ${state.isCollectingX ? "disabled" : ""}>${state.isCollectingX ? "正在采集，请勿重复点击" : "采集新素材并进入选题"}</button>
+      <span class="muted-text">不会跳转页面。成功后直接进入第 5 步。</span>
     </article>
     <article class="action-tile">
       <div>
         <span class="eyebrow">复用资产</span>
-        <h3>从已入库 X 资产里找今天的话题</h3>
-        <p>适合你不想重新采集，直接用之前已经确认过、拆解过的帖子资产来找母题。</p>
+        <h3>使用历史素材</h3>
+        <p>适合你不想重新采集，直接用以前保存过的 X 素材，找今天能写的选题。</p>
       </div>
-      <button class="primary" data-read-materials>读取已入库资产并生成母题</button>
-      <span class="muted-text">不重新采集，只从内容资产库读取素材，在当前今日工作台继续走下一步。</span>
+      <button class="primary" data-read-materials>使用历史素材生成选题</button>
+      <span class="muted-text">不会重新采集。成功后直接进入第 5 步。</span>
     </article>
   </div>`;
 }
 
 function renderTopicStep() {
   return `<section class="work-card">
-    ${cardHead("选择一个母题资产", "母题可以一鱼多吃。你现在选择的是核心题材，下一步才按目标平台写标题和成品。")}
-    ${state.topics.length ? `<div class="topic-grid">${state.topics.map(renderTopicCard).join("")}</div>` : `<div class="empty-state"><b>当前来源没有匹配母题</b><span>请换关键词、切换素材来源，或先采集/导入对应平台素材。</span></div>`}
+    ${cardHead("第 5 步：选择一个今天要写的选题", "这里展示的是系统从真实素材里筛出来的可写方向。选一个后，下一步生成平台标题。")}
+    ${state.topics.length ? `<div class="topic-grid">${state.topics.map(renderTopicCard).join("")}</div>` : `<div class="empty-state"><b>当前来源没有匹配选题</b><span>请换关键词、切换素材来源，或先采集/导入对应平台素材。</span></div>`}
     <div class="actions">
-      <button class="ghost" data-step-target="4">返回读取素材</button>
-      <button class="primary" data-step-target="6" ${state.selectedTopicId ? "" : "disabled"}>下一步：生成平台标题</button>
+      <button class="ghost" data-step-target="4">返回重新找素材</button>
+      <button class="primary" data-step-target="6" ${state.selectedTopicId ? "" : "disabled"}>下一步：生成标题</button>
     </div>
   </section>`;
 }
@@ -324,25 +324,25 @@ function renderTopicCard(topic) {
     <p>${escapeHtml(topic.reason)}</p>
     <p><strong>源头标题：</strong>${escapeHtml(topic.title)}</p>
     <p><strong>用户痛点：</strong>${escapeHtml(topic.pain)}</p>
-    <p><strong>一鱼多吃：</strong>${escapeHtml(topic.reuse)}</p>
+    <p><strong>适合怎么写：</strong>${escapeHtml(topic.reuse)}</p>
     <p><strong>风险：</strong>${escapeHtml(topic.risk)}</p>
     <div class="metric-row">${Object.entries(topic.metrics || {}).map(([key, value]) => `<span>${escapeHtml(key)} ${escapeHtml(value)}</span>`).join("")}</div>
     ${topic.url ? `<a class="source-link" href="${escapeHtml(topic.url)}" target="_blank" rel="noreferrer">打开原始素材</a>` : `<span class="muted-text">暂无原链接</span>`}
-    <button class="primary" data-topic-id="${escapeHtml(topic.id)}">选择这个母题</button>
+    <button class="primary" data-topic-id="${escapeHtml(topic.id)}">用这个选题继续</button>
   </article>`;
 }
 
 function renderTitleStep() {
   if (!state.titleChoices.length && state.selectedTopicId) state.titleChoices = buildTitleChoices(selectedTopic());
   return `<section class="work-card">
-    ${cardHead(`生成 ${currentTarget().title} 标题`, "同一个母题，按不同平台调性生成不同标题。选择标题后，正文会跟着重写。")}
+    ${cardHead(`生成 ${currentTarget().title} 标题`, "同一个选题，按不同平台调性生成不同标题。选择标题后，正文会跟着重写。")}
     <div class="title-grid">
       ${state.titleChoices.map((item) => `<button class="title-card ${state.selectedTitle === item.title ? "active" : ""}" data-title-choice="${escapeHtml(item.title)}">
         <b>${escapeHtml(item.title)}</b><span>${escapeHtml(item.reason)}</span>
-      </button>`).join("") || `<div class="empty-state"><b>请先选择母题</b><span>母题确定后才生成平台标题。</span></div>`}
+      </button>`).join("") || `<div class="empty-state"><b>请先选择选题</b><span>选题确定后才生成平台标题。</span></div>`}
     </div>
     <div class="actions">
-      <button class="ghost" data-step-target="5">返回换母题</button>
+      <button class="ghost" data-step-target="5">返回换选题</button>
       <button class="primary" data-step-target="7" ${state.selectedTitle ? "" : "disabled"}>下一步：生成平台成品</button>
     </div>
   </section>`;
@@ -351,7 +351,7 @@ function renderTitleStep() {
 function renderDraftStep() {
   if (!state.draft && state.selectedTitle) state.draft = buildDraft();
   return `<section class="work-card">
-    ${cardHead("生成平台成品", "文案绑定母题、源头素材、目标平台、业务目标和标题。不是只换标题。")}
+    ${cardHead("生成平台成品", "文案绑定选题、源头素材、目标平台、业务目标和标题。不是只换标题。")}
     <div class="draft-box">
       <div class="draft-text"><pre>${escapeHtml(state.draft || "请先选择标题。")}</pre></div>
       <div class="check-panel">
@@ -411,8 +411,8 @@ function renderProductionStep() {
       </article>
       <article class="production-card ${locked ? "locked" : ""}">
         <b>一鱼多吃复用</b>
-        <span>同一个母题后续可继续生成小红书、公众号、朋友圈、短视频版本。</span>
-        <button class="primary" ${locked ? "disabled" : ""} data-production="reuse">加入母题资产库</button>
+        <span>同一个选题后续可继续生成小红书、公众号、朋友圈、短视频版本。</span>
+        <button class="primary" ${locked ? "disabled" : ""} data-production="reuse">保存为可复用选题</button>
       </article>
     </div>
     <div class="actions">
@@ -438,9 +438,9 @@ function renderExportStep() {
 
 function renderArchiveStep() {
   return `<section class="work-card">
-    ${cardHead("沉淀到母题资产库", "本次源头素材、母题、标题、平台版本和体检结果都要回流，后续一鱼多吃。")}
+    ${cardHead("保存为内容资产", "本次源头素材、选题、标题、平台版本和体检结果都要保存，后续一鱼多吃。")}
     <div class="production-grid">
-      <article class="production-card"><b>母题</b><span>${escapeHtml(selectedTopic()?.theme || "未选择")}</span></article>
+      <article class="production-card"><b>选题</b><span>${escapeHtml(selectedTopic()?.theme || "未选择")}</span></article>
       <article class="production-card"><b>下次可复用</b><span>换目标平台后重新生成标题、正文、脚本或长文。</span></article>
     </div>
     <div class="actions">
@@ -531,9 +531,9 @@ async function readMaterials() {
   const topics = buildTopicsFromDb(db);
   state.assets = db;
   if (!topics.length) {
-    state.assetStatus = "无匹配母题";
-    log("当前素材来源没有匹配母题。系统不会从其他平台乱拿素材。");
-    log("建议：换关键词、切换到全库母题复用，或先采集/导入对应平台素材。");
+    state.assetStatus = "没有匹配选题";
+    log("当前素材来源没有匹配选题。系统不会从其他平台乱拿素材。");
+    log("建议：换关键词、切换到历史素材，或先采集/导入对应平台素材。");
     state.topics = [];
     renderToday();
     return;
@@ -541,9 +541,9 @@ async function readMaterials() {
   state.topics = topics.slice(0, 10);
   state.selectedTopicId = "";
   state.titleChoices = [];
-  state.assetStatus = `找到 ${state.topics.length} 个母题`;
-  log(`找到 ${state.topics.length} 个候选母题。`);
-  log("已提取：来源平台、母题、用户痛点、复用方向、风险提醒。");
+  state.assetStatus = `找到 ${state.topics.length} 个选题`;
+  log(`找到 ${state.topics.length} 个候选选题。`);
+  log("已提取：来源平台、选题方向、用户痛点、写作角度、风险提醒。");
   renderToday();
   setStep(5);
 }
@@ -580,7 +580,7 @@ async function collectXAccounts() {
     state.lastXRunIds = (result.results || []).map((item) => item.run?.id).filter(Boolean);
     state.useLatestXRunOnly = state.lastXRunIds.length > 0;
     log(`采集完成：成功账号 ${result.successCount || 0} 个，原始样本 ${result.totalSampleCount || 0} 条。`);
-    if (state.lastXRunIds.length) log(`本轮采集批次：${state.lastXRunIds.join(" / ")}`);
+    if (state.lastXRunIds.length) log("本轮采集已保存，后续可继续复用。");
     log(`好帖候选：${result.candidateCount || 0} 条；淘汰：${result.rejectedCount || 0} 条。`);
     if (result.rejectedStats) log(`淘汰原因：${Object.entries(result.rejectedStats).map(([key, value]) => `${key} ${value}`).join(" / ") || "无"}`);
     const batchSamples = balanceXBatchSamples([
@@ -592,14 +592,14 @@ async function collectXAccounts() {
     state.topics = topics.slice(0, 10);
     state.selectedTopicId = "";
     state.titleChoices = [];
-    state.assetStatus = state.topics.length ? `本轮采集生成 ${state.topics.length} 个母题` : "本轮没有合格母题";
+    state.assetStatus = state.topics.length ? `本轮采集生成 ${state.topics.length} 个选题` : "本轮没有合格选题";
     state.isCollectingX = false;
     if (!state.topics.length) {
-      log("本轮采集没有通过好帖门禁的母题。请换账号、提高采集条数，或降低筛选标准。");
+      log("本轮采集没有找到合适选题。请换账号、提高采集条数，或调整关键词。");
       renderToday();
       return;
     }
-    log(`已基于本轮采集生成 ${state.topics.length} 个候选母题，不读取历史旧数据。`);
+    log(`已基于本轮采集生成 ${state.topics.length} 个候选选题，不读取历史旧数据。`);
     renderToday();
     setStep(5);
   } catch (error) {
@@ -654,7 +654,7 @@ async function readDemoMaterials() {
   state.topics = buildTopicsFromDb(db).slice(0, 10);
   state.selectedTopicId = "";
   state.titleChoices = [];
-  state.assetStatus = `预览 ${state.topics.length} 个母题`;
+  state.assetStatus = `预览 ${state.topics.length} 个选题`;
   renderToday();
   setStep(5);
 }
@@ -697,7 +697,7 @@ function sourceTitleForTarget() {
     "video-account": "视频号同平台素材",
     "wechat-article": "公众号/长文同平台素材",
     moments: "朋友圈/私域素材",
-    "topic-only": "全库母题资产",
+    "topic-only": "全库选题资产",
   };
   return map[state.publishTarget] || currentSource().title;
 }
@@ -888,7 +888,7 @@ function inferTheme(sample, pain) {
   if (title && title.length <= 42 && !looksLikeGenericDiagnosis(title)) return title;
   if (insight.theme) return insight.theme;
   if (title) return title.slice(0, 42);
-  return `${state.businessLine}里一个值得反复改写的母题`;
+  return `${state.businessLine}里一个值得反复改写的选题`;
 }
 
 function inferPain(sample, sourceInsight = extractSourceInsight(sample)) {
@@ -914,7 +914,7 @@ function extractSourceInsight(sample = {}) {
     return {
       theme: "拆了很多爆款还不火，可能漏掉了真正该拆的一层",
       pain: "很多人只抄标题和结构，却没有拆出爆款背后的用户问题、情绪和行动理由。",
-      angle: "从拆爆款的误区切入，讲如何从素材里提炼母题、痛点和表达节奏。",
+      angle: "从拆爆款的误区切入，讲如何从素材里提炼选题、痛点和表达节奏。",
     };
   }
   if (/社群|同频|创业者|连接/.test(text)) {
@@ -953,7 +953,7 @@ function looksLikeGenericDiagnosis(value = "") {
 }
 
 function reuseLineForTarget(theme) {
-  return `母题“${theme}”后续可改成小红书图文、公众号长文、短视频脚本和朋友圈文案。`;
+  return `选题“${theme}”后续可改成小红书图文、公众号长文、短视频脚本和朋友圈文案。`;
 }
 
 function buildTitleChoices(topic) {
@@ -973,7 +973,7 @@ function buildTitleChoices(topic) {
       { title: `你以为${theme}难在工具，其实第一步就错了`, reason: "短视频钩子：反常识。" },
       { title: `${theme}没结果？先看这 3 个判断`, reason: "清单型：适合口播。" },
       { title: `别急着做${theme}，先听我讲一个坑`, reason: "故事型：适合停留。" },
-      { title: `很多人做${theme}，输在没有母题库`, reason: "观点型：适合知识口播。" },
+      { title: `很多人做${theme}，输在没有素材库`, reason: "观点型：适合知识口播。" },
       { title: `一分钟讲清楚${theme}的正确顺序`, reason: "效率型：适合短视频标题。" },
     ];
   }
@@ -1036,7 +1036,7 @@ ${topic.pain}
 
 所以 AI 内容不是不能用模板，而是不能只剩模板。
 
-你可以先从一篇对标内容开始，拆出母题、用户问题和行动入口，再改成自己的表达。
+你可以先从一篇对标内容开始，拆出选题、用户问题和行动入口，再改成自己的表达。
 
 配图建议：
 ${buildDeliveryPlan().map((item, index) => `${index + 1}. ${item}`).join("\n")}
@@ -1076,7 +1076,7 @@ function buildVideoDraft(topic) {
 function buildArticleDraft(topic) {
   return `# ${state.selectedTitle}
 
-## 这个母题为什么值得写
+## 这个选题为什么值得写
 在“${state.industry}”里，很多内容失败不是因为没有观点，而是没有把真实问题拆清楚。
 
 这次源头素材暴露的问题是：${topic.pain}
@@ -1093,7 +1093,7 @@ function buildArticleDraft(topic) {
 我们要复制的是结构和洞察，不是原文表达。围绕“${state.businessLine}”，更适合的写法是：先讲误区，再给判断框架，最后给低门槛行动入口。
 
 ## 四、一鱼多吃
-这个母题后续可以继续改成小红书图文、短视频脚本和朋友圈文案。`;
+这个选题后续可以继续改成小红书图文、短视频脚本和朋友圈文案。`;
 }
 
 function buildMomentsDraft(topic) {
@@ -1114,7 +1114,7 @@ ${topic.pain}
 }
 
 function buildTopicOnlyDraft(topic) {
-  return `母题：${topic.theme}
+  return `选题：${topic.theme}
 
 源头素材：
 ${topic.title}
@@ -1131,9 +1131,9 @@ ${topic.risk}`;
 
 function renderBindingEvidence() {
   const topic = selectedTopic();
-  if (!topic) return "<p>还没有选中母题。</p>";
+  if (!topic) return "<p>还没有选中选题。</p>";
   return `
-    <p><strong>母题：</strong>${escapeHtml(topic.theme)}</p>
+    <p><strong>选题：</strong>${escapeHtml(topic.theme)}</p>
     <p><strong>源头素材：</strong>${escapeHtml(topic.title)}</p>
     <p><strong>来源平台：</strong>${escapeHtml(topic.platform)}</p>
     <p><strong>目标平台：</strong>${escapeHtml(currentTarget().title)}</p>
@@ -1151,7 +1151,7 @@ function scoreDraft() {
   const hasRisky = /保证|根治|一定有效|确定收益/.test(text);
   return [
     { score: text.length > 280 ? 86 : 72, name: "完整度", reason: text.length > 280 ? "已有标题、正文和行动入口。" : "内容偏短，需要展开判断标准。", warn: text.length <= 280 },
-    { score: hasSource ? 90 : 60, name: "母题绑定", reason: hasSource ? "绑定了第五步选中的母题。" : "缺少选中母题。", warn: !hasSource },
+    { score: hasSource ? 90 : 60, name: "选题绑定", reason: hasSource ? "绑定了第五步选中的选题。" : "缺少选中选题。", warn: !hasSource },
     { score: hasPlatform ? 86 : 68, name: "平台适配", reason: "成品按当前发布目标组织。", warn: !hasPlatform },
     { score: hasAction ? 84 : 68, name: "行动入口", reason: hasAction ? "有下一步动作。" : "需要给读者一个低门槛下一步。", warn: !hasAction },
     { score: hasRisky ? 62 : 86, name: "合规边界", reason: hasRisky ? "存在绝对化表达，需要删除。" : "没有明显绝对承诺。", warn: hasRisky },
