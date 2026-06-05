@@ -537,7 +537,9 @@ function bindWorkAreaActions() {
     generateSopDraft({ force: true });
   });
   byId("workArea")?.querySelector("[data-improve-again]")?.addEventListener("click", () => {
+    state.draftRevision += 1;
     state.improvedDraft = improveDraft(state.improvedDraft || state.draft, true);
+    state.draftReview = runLongkaReview(state.improvedDraft);
     renderToday();
   });
   byId("workArea")?.querySelector("[data-confirm-copy]")?.addEventListener("click", () => {
@@ -1589,8 +1591,135 @@ function improveDraft(text, again = false) {
     "保留一个真实场景，不要每段都写成完整道理。",
     "把结尾改成低压力动作：收藏、对照、留言或评估。",
   ];
-  const note = again ? "第二轮体检修改方向" : "Longka 文案体检修改方向";
-  return `${text}\n\n${note}：\n${fixes.slice(0, 5).map((item, index) => `${index + 1}. ${item}`).join("\n")}`;
+  return rewriteDraftByEditorialRules(text, fixes, again);
+}
+
+function rewriteDraftByEditorialRules(text = "", fixes = [], again = false) {
+  const clean = stripEditorialNotes(text);
+  const title = extractDraftField(clean, "标题") || state.selectedTitle || selectedTopic()?.theme || "这件事别急着照搬";
+  const body = extractDraftField(clean, "正文") || clean;
+  const tags = extractDraftField(clean, "标签") || "";
+  const imagePlan = extractDraftField(clean, "配图建议");
+  const rewrittenTitle = rewriteTitleWithSuspense(title);
+  const rewrittenBody = rewriteBodyWithFocus(body, fixes, again);
+  const parts = [
+    `标题：${rewrittenTitle}`,
+    "",
+    "正文：",
+    rewrittenBody,
+  ];
+  if (imagePlan) parts.push("", "配图建议：", compactImagePlan(imagePlan));
+  if (tags) parts.push("", `标签：${compactTags(tags)}`);
+  return parts.join("\n");
+}
+
+function stripEditorialNotes(text = "") {
+  return String(text || "")
+    .replace(/\n+Longka 文案体检修改方向：[\s\S]*$/g, "")
+    .replace(/\n+第二轮体检修改方向：[\s\S]*$/g, "")
+    .replace(/\n+第\d+轮体检修改方向：[\s\S]*$/g, "")
+    .replace(/\n+优化补充：[\s\S]*$/g, "")
+    .trim();
+}
+
+function extractDraftField(text = "", label = "") {
+  const pattern = new RegExp(`${label}[：:]\\s*([\\s\\S]*?)(?=\\n\\s*(标题|正文|标签|配图建议|Longka|第二轮|第\\d+轮|优化补充)[：:]|$)`);
+  const match = String(text || "").match(pattern);
+  return match ? match[1].trim() : "";
+}
+
+function rewriteTitleWithSuspense(title = "") {
+  const clean = String(title || "").replace(/\s+/g, " ").trim();
+  if (!clean) return state.selectedTitle || "这件事别急着照搬";
+  if (/为什么|到底|别急|真正|不是/.test(clean)) return clean;
+  if (clean.length > 24) return `${clean.slice(0, 22)}，问题不在工具`;
+  return `${clean}，先别急着要答案`;
+}
+
+function rewriteBodyWithFocus(body = "", fixes = [], again = false) {
+  const selected = selectedTopic() || {};
+  const question = cleanSourceText(selected.pain || selected.reason || selected.theme || state.businessLine);
+  const raw = stripDraftFieldLabels(body)
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !/^标签[：:]/.test(line))
+    .filter((line) => !/^配图建议[：:]/.test(line))
+    .filter((line) => !/Longka|体检|修改方向|优化补充/.test(line));
+  const lead = buildSharperLead(raw, question, again);
+  const points = buildFocusedPoints(raw).slice(0, 3);
+  const cta = buildLowPressureCta(question);
+  return [
+    lead,
+    "",
+    ...points.flatMap((point, index) => [`${index + 1}. ${point.title}`, point.body, ""]),
+    cta,
+  ].join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function stripDraftFieldLabels(text = "") {
+  return String(text || "")
+    .replace(/^正文[：:]\s*/m, "")
+    .replace(/^标题[：:].*$/m, "")
+    .trim();
+}
+
+function buildSharperLead(lines = [], question = "", again = false) {
+  const useful = lines.find((line) => line.length >= 12 && !/很多人一开始|其实|所以|总结|首先|其次|最后/.test(line));
+  const base = useful || question || "这个问题真正麻烦的地方，不是不会用工具。";
+  if (again) return `我会把问题再收窄一点：${base.replace(/[。！？!?.]$/, "")}。`;
+  return `${base.replace(/[。！？!?.]$/, "")}。`;
+}
+
+function buildFocusedPoints(lines = []) {
+  const clean = lines
+    .map((line) => line.replace(/^\d+[.、]\s*/, "").replace(/^[-•]\s*/, "").trim())
+    .filter((line) => line.length >= 8)
+    .filter((line) => !/标签|配图|Longka|体检|修改方向|优化补充/.test(line));
+  if (clean.length >= 3) {
+    return clean.slice(0, 3).map((line, index) => ({
+      title: index === 0 ? "先把主问题说窄" : index === 1 ? "保留真实判断，不要写成百科" : "给读者一个能马上做的动作",
+      body: line.endsWith("。") ? line : `${line}。`,
+    }));
+  }
+  return [
+    {
+      title: "先判断你卡的是素材，还是表达",
+      body: "如果素材本身很薄，继续换标题、换模型都没用。先把能证明这个观点的案例、评论、截图和反例补齐。",
+    },
+    {
+      title: "只抓一个主问题写，不要一篇塞太满",
+      body: "小红书图文更怕平均用力。围绕一个判断讲透，比把所有类型都讲一遍更容易让人停下来。",
+    },
+    {
+      title: "结尾给一个低压力动作",
+      body: "不要急着卖，也不要硬总结金句。让读者先收藏、对照、留言一个具体问题，后面才有继续转化的空间。",
+    },
+  ];
+}
+
+function buildLowPressureCta(question = "") {
+  const topic = question || selectedTopic()?.theme || state.businessLine;
+  return `如果你也卡在“${topic.slice(0, 24)}”这类问题上，先别急着照搬别人的方案。把你现在最卡的一句话写下来，再决定下一步怎么改。`;
+}
+
+function compactImagePlan(imagePlan = "") {
+  return String(imagePlan || "")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 5)
+    .join("\n");
+}
+
+function compactTags(tags = "") {
+  const clean = String(tags || "")
+    .replace(/^标签[：:]\s*/, "")
+    .replace(/[，,]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 8);
+  return clean.join(" ");
 }
 function buildDeliveryPlan() {
   if (state.publishTarget === "wechat-article") return ["长文标题", "开头问题", "案例展开", "方法论结构", "结尾转化"];
