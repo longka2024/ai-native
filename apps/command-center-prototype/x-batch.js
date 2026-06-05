@@ -2,10 +2,10 @@ const state = {
   runIds: [],
   collecting: false,
   logs: [],
-  progress: 0,
   batch: null,
   lastCard: null,
   embedded: false,
+  flowStep: 1,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -24,6 +24,18 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function setFlowStep(step, guideText) {
+  state.flowStep = Math.max(1, Math.min(5, step));
+  document.querySelectorAll("[data-flow-step]").forEach((button) => {
+    const no = Number(button.dataset.flowStep);
+    button.classList.toggle("active", no === state.flowStep);
+    button.classList.toggle("done", no < state.flowStep);
+  });
+  if (guideText) {
+    $("#operatorGuide").innerHTML = `<b>现在该做什么？</b><span>${escapeHtml(guideText)}</span>`;
+  }
+}
+
 function setStatus(title, detail) {
   $("#batchStatus").innerHTML = `<b>${escapeHtml(title)}</b><span>${escapeHtml(detail)}</span>`;
 }
@@ -35,9 +47,13 @@ function log(message) {
   $("#logBox").scrollTop = $("#logBox").scrollHeight;
 }
 
+function resetLogs(message = "等待开始。") {
+  state.logs = [];
+  $("#logBox").textContent = message;
+}
+
 function setProgress(value) {
-  state.progress = Math.max(0, Math.min(100, value));
-  $("#progressBar").style.width = `${state.progress}%`;
+  $("#progressBar").style.width = `${Math.max(0, Math.min(100, value))}%`;
 }
 
 function cleanAccounts(value) {
@@ -55,7 +71,7 @@ async function startBatch() {
   const pages = Math.max(1, Math.min(5, Number($("#pagesInput").value || 1)));
   if (!accounts.length) {
     setStatus("缺少账号", "请至少输入一个 X 账号");
-    log("没有账号，采集未开始。");
+    setFlowStep(1, "请先输入对标账号。账号可以带 @，也可以一行一个。");
     return;
   }
 
@@ -63,32 +79,34 @@ async function startBatch() {
   state.batch = null;
   state.lastCard = null;
   state.runIds = [];
-  state.logs = [];
+  resetLogs();
   renderLists();
   renderCard();
   renderStats(null);
   setProgress(8);
   setStatus("正在采集", `账号 ${accounts.length} 个，每号 ${maxTweets} 条`);
+  setFlowStep(2, "正在真实采集。等进度完成后，在第 3 步选择值得入库的帖子。");
   $("#startBatchBtn").disabled = true;
   $("#reloadBatchBtn").disabled = true;
+  $("#nextStepCard").hidden = true;
   log(`创建采集批次：${accounts.join(" / ")}`);
   log("正在调用 XCrawl 读取 X 账号最近帖子。这个动作是真实采集，不会填充演示数据。");
 
   const timers = [
     setTimeout(() => {
       if (!state.collecting) return;
-      setProgress(26);
-      log("正在等待接口返回。采集时间和账号数量、X 页面响应有关。");
+      setProgress(30);
+      log("正在等待接口返回。账号越多，等待时间越长。");
     }, 1800),
     setTimeout(() => {
       if (!state.collecting) return;
-      setProgress(48);
+      setProgress(55);
       log("返回后会按收藏、评论、转发、正文信息量和链接质量筛选。");
     }, 5200),
     setTimeout(() => {
       if (!state.collecting) return;
-      setProgress(66);
-      log("如果出现低质量帖子，系统会放到淘汰样本并显示原因。");
+      setProgress(72);
+      log("低质量帖子会进入淘汰样本，并显示大白话原因。");
     }, 9800),
   ];
 
@@ -96,32 +114,63 @@ async function startBatch() {
     const response = await fetch("/api/collectors/xcrawl/x-user-tweets-batch", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        accounts,
-        maxTweets,
-        pages,
-        labelType: "radar_seed",
-      }),
+      body: JSON.stringify({ accounts, maxTweets, pages, labelType: "radar_seed" }),
     });
     const result = await response.json();
     if (!response.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${response.status}`);
 
     state.runIds = (result.results || []).map((item) => item.run?.id).filter(Boolean);
-    setProgress(78);
     log(`采集完成：成功账号 ${result.successCount || 0} 个，原始样本 ${result.totalSampleCount || 0} 条。`);
     log(`本次 runIds：${state.runIds.join(" / ") || "未返回 runId"}`);
-    log("开始按本次 runIds 重新读取数据库，确保页面不混历史素材。");
     await reloadBatch();
     setProgress(100);
     setStatus("本批次已完成", `runIds ${state.runIds.length} 个，只显示当前批次`);
+    setFlowStep(3, "现在看第 3 步。优先从“高价值好帖”里选一条，点“入母题库并拆解”。");
   } catch (error) {
+    setProgress(0);
     setStatus("采集失败", error.message);
+    setFlowStep(1, "采集失败。你可以换账号重试，或者读取最近一次采集批次继续测试。");
     log(`采集失败：${error.message}`);
   } finally {
     timers.forEach(clearTimeout);
     state.collecting = false;
     $("#startBatchBtn").disabled = false;
     $("#reloadBatchBtn").disabled = state.runIds.length === 0;
+  }
+}
+
+async function loadLatestBatch() {
+  state.collecting = false;
+  state.batch = null;
+  state.lastCard = null;
+  resetLogs();
+  setProgress(20);
+  setStatus("正在读取最近批次", "不会重新采集，不消耗采集次数");
+  setFlowStep(2, "正在读取最近一次 X 批次。读取完成后，在第 3 步人工选择入库。");
+  $("#reloadBatchBtn").disabled = true;
+  $("#nextStepCard").hidden = true;
+  log("开始读取最近一次已完成的 X 采集批次。");
+
+  try {
+    const response = await fetch("/api/content-assets/x-latest-batch?limitRuns=3");
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${response.status}`);
+    state.runIds = result.runIds || [];
+    state.batch = result;
+    setProgress(100);
+    renderStats(result);
+    renderLists();
+    renderCard();
+    $("#reloadBatchBtn").disabled = state.runIds.length === 0;
+    log(`已读取最近批次：runIds ${state.runIds.join(" / ")}`);
+    log(`批次结果：高价值 ${result.buckets?.goodPosts?.length || 0} 条，普通素材 ${result.buckets?.assetOnly?.length || 0} 条，淘汰 ${result.buckets?.rejected?.length || 0} 条。`);
+    setStatus("已读取最近批次", `runIds ${state.runIds.length} 个`);
+    setFlowStep(3, "现在看第 3 步。优先从“高价值好帖”里选一条，点“入母题库并拆解”。");
+  } catch (error) {
+    setProgress(0);
+    setStatus("读取失败", error.message);
+    setFlowStep(1, "没有读到最近批次。你可以输入账号重新采集。");
+    log(`读取最近批次失败：${error.message}`);
   }
 }
 
@@ -141,36 +190,6 @@ async function reloadBatch() {
   const asset = result.buckets?.assetOnly?.length || 0;
   const rejected = result.buckets?.rejected?.length || 0;
   log(`当前批次读取完成：高价值 ${good} 条，普通素材 ${asset} 条，淘汰 ${rejected} 条。`);
-}
-
-async function loadLatestBatch() {
-  state.collecting = false;
-  state.batch = null;
-  state.lastCard = null;
-  state.logs = [];
-  setProgress(20);
-  setStatus("正在读取最近批次", "不会重新采集，不消耗采集次数");
-  $("#reloadBatchBtn").disabled = true;
-  log("开始读取最近一次已完成的 X 采集批次。");
-  try {
-    const response = await fetch("/api/content-assets/x-latest-batch?limitRuns=3");
-    const result = await response.json();
-    if (!response.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${response.status}`);
-    state.runIds = result.runIds || [];
-    state.batch = result;
-    setProgress(100);
-    renderStats(result);
-    renderLists();
-    renderCard();
-    $("#reloadBatchBtn").disabled = state.runIds.length === 0;
-    log(`已读取最近批次：runIds ${state.runIds.join(" / ")}`);
-    log(`批次结果：高价值 ${result.buckets?.goodPosts?.length || 0} 条，普通素材 ${result.buckets?.assetOnly?.length || 0} 条，淘汰 ${result.buckets?.rejected?.length || 0} 条。`);
-    setStatus("已读取最近批次", `runIds ${state.runIds.length} 个`);
-  } catch (error) {
-    setProgress(0);
-    setStatus("读取失败", error.message);
-    log(`读取最近批次失败：${error.message}`);
-  }
 }
 
 function renderStats(result) {
@@ -201,7 +220,8 @@ function renderLists() {
 function renderPostList(selector, items, tier) {
   const target = $(selector);
   if (!items.length) {
-    target.innerHTML = `<div class="empty-list">当前批次暂无${tier === "good" ? "高价值好帖" : tier === "asset" ? "普通素材" : "淘汰样本"}。</div>`;
+    const label = tier === "good" ? "高价值好帖" : tier === "asset" ? "普通素材" : "淘汰样本";
+    target.innerHTML = `<div class="empty-list">当前批次暂无${label}。</div>`;
     return;
   }
   target.innerHTML = items.map((item) => renderPostCard(item, tier)).join("");
@@ -269,6 +289,7 @@ function rejectActionHint(reason) {
 
 async function confirmAsset(sampleId, destination) {
   setStatus("正在入库", `${sampleId} -> ${destination}`);
+  setFlowStep(3, "正在保存你的人工选择。保存完成后会生成拆解卡。");
   log(`人工确认：${sampleId} -> ${destination}`);
   const response = await fetch("/api/content-assets/confirm", {
     method: "POST",
@@ -279,31 +300,31 @@ async function confirmAsset(sampleId, destination) {
   if (!response.ok || !result.ok) {
     log(`入库失败：${result.message || result.error || `HTTP ${response.status}`}`);
     setStatus("入库失败", result.message || result.error || `HTTP ${response.status}`);
+    setFlowStep(3, "入库失败。可以换一条帖子重试，或先把它放入反例库。");
     return;
   }
+
   state.lastCard = result.deconstruction;
   if (destination === "discard") {
     log("已丢弃，不生成拆解卡。");
     setStatus("已丢弃", "该样本不会进入创作资产");
-  } else {
-    log("已确认入库，并生成爆文拆解卡。");
-    setStatus("已生成拆解卡", result.sample?.title || sampleId);
-    $("#useAssetsBtn").disabled = false;
-    $("#nextStepCard").hidden = false;
+    return;
   }
+
+  log("已确认入库，并生成爆文拆解卡。");
+  setStatus("已生成拆解卡", result.sample?.title || sampleId);
+  $("#useAssetsBtn").disabled = false;
+  $("#nextStepCard").hidden = false;
   renderCard();
-  if (destination !== "discard") {
-    setTimeout(() => {
-      $("#cardPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 150);
-  }
+  setFlowStep(4, "拆解卡已经生成。先检查卡片内容，再点“回今日工作台继续创作”。");
+  setTimeout(() => $("#cardPanel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
 }
 
 function renderCard() {
   const card = state.lastCard;
   if (!card) {
     $("#deconstructionCard").className = "empty-card";
-    $("#deconstructionCard").innerHTML = "还没有确认入库的帖子。";
+    $("#deconstructionCard").innerHTML = "还没有确认入库的帖子。请先在上方选择一条高价值好帖，点击“入母题库并拆解”。";
     return;
   }
   $("#deconstructionCard").className = "decon-grid";
@@ -348,21 +369,22 @@ function block(title, lines) {
 function clearBatch() {
   state.runIds = [];
   state.collecting = false;
-  state.logs = [];
   state.batch = null;
   state.lastCard = null;
+  resetLogs();
   setProgress(0);
-  setStatus("未开始", "输入 X 账号后开始采集");
-  $("#logBox").textContent = "等待开始采集。";
-  $("#reloadBatchBtn").disabled = true;
+  setStatus("等待开始", "选择采新帖或读取最近批次");
   renderStats(null);
   renderLists();
   renderCard();
+  $("#reloadBatchBtn").disabled = true;
   $("#useAssetsBtn").disabled = true;
   $("#nextStepCard").hidden = true;
+  setFlowStep(1, "如果你只是测试，直接点“读取最近一次 X 采集批次”。如果你换了账号或想抓新内容，再点“开始真实采集”。");
 }
 
 function useAssetsInWorkbench() {
+  setFlowStep(5, "正在回今日工作台。下一步从已确认 X 资产里找母题。");
   if (window.parent && window.parent !== window) {
     window.parent.postMessage({
       type: "longka-use-confirmed-x-assets",
@@ -378,7 +400,6 @@ document.addEventListener("click", (event) => {
   const confirmButton = event.target.closest("[data-confirm]");
   if (confirmButton) {
     confirmAsset(confirmButton.dataset.confirm, confirmButton.dataset.destination);
-    return;
   }
 });
 
@@ -392,7 +413,5 @@ $("#viewCardBtn").addEventListener("click", () => $("#cardPanel")?.scrollIntoVie
 
 clearBatch();
 if (state.embedded) {
-  setTimeout(() => {
-    loadLatestBatch();
-  }, 250);
+  setTimeout(loadLatestBatch, 250);
 }

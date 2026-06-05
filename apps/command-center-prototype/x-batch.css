@@ -121,6 +121,49 @@ p {
   font-size: 20px;
 }
 
+.flow-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 16px;
+}
+
+.flow-steps button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: #344054;
+  text-align: left;
+}
+
+.flow-steps b {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: #e8eef5;
+}
+
+.flow-steps .active {
+  border-color: #7cc6b0;
+  background: #effaf6;
+}
+
+.flow-steps .active b {
+  background: var(--brand);
+  color: #fff;
+}
+
+.flow-steps .done b {
+  background: var(--good);
+  color: #fff;
+}
+
 .panel {
   margin-top: 16px;
   padding: 22px;
@@ -142,6 +185,57 @@ h3 {
 
 .panel-head p {
   margin: 6px 0 0;
+  line-height: 1.6;
+}
+
+.guide-panel {
+  display: grid;
+  gap: 8px;
+  border-color: #b7ddcf;
+  background: #f0fbf7;
+}
+
+.guide-panel b {
+  color: #0f4f3d;
+}
+
+.guide-panel span {
+  color: #456257;
+  line-height: 1.6;
+}
+
+.guide-panel div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.guide-panel[hidden] {
+  display: none;
+}
+
+.mode-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, .8fr) minmax(0, 1.2fr);
+  gap: 14px;
+}
+
+.mode-card {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.mode-card h3 {
+  font-size: 19px;
+}
+
+.mode-card p {
+  margin: 0;
   line-height: 1.6;
 }
 
@@ -426,6 +520,8 @@ button:disabled {
 @media (max-width: 980px) {
   .hero,
   .form-grid,
+  .flow-steps,
+  .mode-grid,
   .result-grid,
   .decon-grid,
   .stats-grid {
