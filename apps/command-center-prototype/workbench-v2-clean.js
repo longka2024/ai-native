@@ -2493,47 +2493,80 @@ function extractTopicSignals(topic = {}) {
 function buildTopicDrivenTitleChoices(topic = {}) {
   const signal = extractTopicSignals(topic);
   if (!signal.text || signal.text.length < 8) return [];
-  const target = state.publishTarget;
-  const main = signal.main;
-  const second = signal.second;
-  const third = signal.third;
-  const contrastTitle = signal.contrastA && signal.contrastB
-    ? `${main}的重点不是${signal.contrastA}，而是${signal.contrastB}`
-    : `${main}真正该看的，不是${second}，而是${third}`;
+  return dedupeTitleChoices(titleFormulaLibraryForTarget(state.publishTarget).map((formula) => {
+    const title = applyTitleFormula(formula, signal);
+    return titleChoice(title, `公式：${formula.name}｜替换：${formula.slots.join(" / ")}｜绑定当前选题`);
+  }));
+}
+
+function titleFormulaLibraryForTarget(target) {
+  const common = [
+    { name: "不是 A，而是 B", pattern: "contrast", slots: ["选题", "表层认知", "真实变化"] },
+    { name: "别把 X 当成 Y", pattern: "misread", slots: ["选题", "误区"] },
+    { name: "X 背后真正变的是 Y", pattern: "behind", slots: ["选题", "真实变化"] },
+    { name: "为什么 X 会影响 Y", pattern: "why-impact", slots: ["选题", "影响对象"] },
+    { name: "普通人看 X，先抓 3 点", pattern: "three-points", slots: ["选题"] },
+  ];
   if (target === "moments") {
-    return dedupeTitleChoices([
-      titleChoice(`我最近重新理解了${main}`, "朋友圈角度：像真人观察，不写成文章标题。"),
-      titleChoice(`${main}这事，真正让我停下来的点是${third}`, "朋友圈角度：先讲发现，再接个人判断。"),
-      titleChoice(`以前我也以为关键是${second}`, "朋友圈角度：用反差开头，适合自然表达。"),
-      titleChoice(`关于${main}，我现在更在意${third}`, "朋友圈角度：压低营销感，保留观点。"),
-      titleChoice(`今天看到一个关于${main}的判断，挺值得拆`, "朋友圈角度：适合引出复盘和私聊。"),
-    ]);
-  }
-  if (target === "douyin" || target === "video-account") {
-    return dedupeTitleChoices([
-      titleChoice(contrastTitle, "短视频钩子：反常识开场，直接绑定当前选题。"),
-      titleChoice(`${main}不是新概念，真正变的是${third}`, "观点型：适合视频号解释和抖音停留。"),
-      titleChoice(`别再把${main}只理解成${second}`, "避坑型：3 秒内制造停顿。"),
-      titleChoice(`${main}背后，其实是${third}在变`, "解释型：适合从现象讲到本质。"),
-      titleChoice(`为什么我说${main}会影响${second}`, "问题型：适合口播展开。"),
-    ]);
+    return [
+      { name: "最近重新理解 X", pattern: "moments-observe", slots: ["选题"] },
+      { name: "以前以为是 A，其实是 B", pattern: "moments-contrast", slots: ["表层认知", "真实变化"] },
+      { name: "X 让我停下来的点", pattern: "moments-stop", slots: ["选题", "真实变化"] },
+      { name: "关于 X，我现在更在意 Y", pattern: "moments-care", slots: ["选题", "真实变化"] },
+      { name: "今天看到一个 X 判断", pattern: "moments-note", slots: ["选题"] },
+    ];
   }
   if (target === "wechat-article") {
-    return dedupeTitleChoices([
-      titleChoice(contrastTitle, "长文论点：先给判断，再展开证据和方法。"),
-      titleChoice(`从${main}看懂${third}：为什么这不是一次普通变化`, "长文结构：适合写背景、案例和推演。"),
-      titleChoice(`${main}背后的真正问题：${second}只是表层`, "分析型：适合公众号深度拆解。"),
-      titleChoice(`为什么${main}会成为${third}的信号`, "解释型：适合行业观察。"),
-      titleChoice(`${main}之后，${second}应该怎么重新理解`, "方法型：适合落到行动建议。"),
-    ]);
+    return [
+      common[0],
+      { name: "从 X 看懂 Y", pattern: "from-to", slots: ["选题", "真实变化"] },
+      { name: "X 背后的真正问题", pattern: "deep-problem", slots: ["选题", "表层认知"] },
+      common[3],
+      { name: "X 之后，Y 怎么重理解", pattern: "after-rethink", slots: ["选题", "影响对象"] },
+    ];
   }
-  return dedupeTitleChoices([
-    titleChoice(contrastTitle, "小红书观点：用“不是/而是”抓住当前选题矛盾。"),
-    titleChoice(`${main}别只看热闹，真正值得存的是${third}`, "收藏型：从当前素材提炼可复用价值。"),
-    titleChoice(`我为什么建议你重新理解${main}`, "判断型：适合做图文封面。"),
-    titleChoice(`${main}这件事，很多人看漏了${third}`, "信息差型：适合引发点击。"),
-    titleChoice(`普通人看${main}，先抓住这 3 个变化`, "清单型：适合拆成 5 张图文。"),
-  ]);
+  if (target === "douyin" || target === "video-account") {
+    return [
+      common[0],
+      { name: "X 不是新概念", pattern: "not-new", slots: ["选题", "真实变化"] },
+      common[1],
+      common[2],
+      common[3],
+    ];
+  }
+  return common;
+}
+
+function applyTitleFormula(formula, signal) {
+  const main = cleanTitleSlot(signal.main);
+  const second = cleanTitleSlot(signal.contrastA || signal.second);
+  const third = cleanTitleSlot(signal.contrastB || signal.third);
+  const impact = cleanTitleSlot(signal.keywords.find((item) => item !== main && item !== second && item !== third) || signal.second);
+  const map = {
+    contrast: `${main}的重点不是${second}，而是${third}`,
+    misread: `别再把${main}只理解成${second}`,
+    behind: `${main}背后，真正变的是${third}`,
+    "why-impact": `为什么${main}会影响${impact}`,
+    "three-points": `普通人看${main}，先抓住这 3 个变化`,
+    "moments-observe": `我最近重新理解了${main}`,
+    "moments-contrast": `以前我也以为关键是${second}，后来发现是${third}`,
+    "moments-stop": `${main}这事，真正让我停下来的点是${third}`,
+    "moments-care": `关于${main}，我现在更在意${third}`,
+    "moments-note": `今天看到一个关于${main}的判断，挺值得拆`,
+    "from-to": `从${main}看懂${third}：为什么这不是一次普通变化`,
+    "deep-problem": `${main}背后的真正问题：${second}只是表层`,
+    "after-rethink": `${main}之后，${impact}应该怎么重新理解`,
+    "not-new": `${main}不是新概念，真正变的是${third}`,
+  };
+  return map[formula.pattern] || `${main}真正该看的，不是${second}，而是${third}`;
+}
+
+function cleanTitleSlot(value = "") {
+  const clean = cleanSourceText(value)
+    .replace(/^(关于|这个|那个|一种|一个|很多|真正|关键|当前)/, "")
+    .replace(/[，。！？；：、,.!?;:]+$/g, "")
+    .trim();
+  return clean.length > 18 ? clean.slice(0, 18) : clean || state.businessLine || "这件事";
 }
 
 function buildTitleChoices(topic, titleAssets = state.titleAssets) {
