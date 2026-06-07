@@ -748,15 +748,15 @@ async function pollXiaoheiCards({ jobId, total }) {
     if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
     if (result.manifest) applyRemoteVisualManifest(result.manifest);
     const count = state.xhsCardManifest?.count || 0;
-    state.xhsCardProgress = { done: count, total };
-    state.xhsCardExportMessage = `43 后台出图中：已完成 ${count}/${total} 张。你可以停留等待，也可以稍后再点继续查询。`;
-    if (["done", "partial", "error"].includes(result.status) && count >= total) {
+    if (count >= total) {
       state.xhsCardExportStatus = "done";
       state.xhsCardProgress = null;
-      state.xhsCardExportMessage = `43 已生成 ${count} 张小黑漫画图，下面可以逐张打开检查。`;
+      state.xhsCardExportMessage = `43 已生成 ${count} 张${visualRouteNameClean(state.visualStyle)}，下面可以逐张打开检查。`;
       renderToday();
       return;
     }
+    state.xhsCardProgress = { done: count, total };
+    state.xhsCardExportMessage = `43 后台出图中：已完成 ${count}/${total} 张。你可以停留等待，也可以稍后再点继续查询。`;
     if (["partial", "error"].includes(result.status) && count > 0) {
       state.xhsCardExportStatus = "error";
       state.xhsCardProgress = null;
@@ -1670,6 +1670,16 @@ function applyRemoteVisualManifest(manifest) {
     return false;
   }
   state.xhsCardManifest = manifest;
+  const files = Array.isArray(manifest.publicFiles) ? manifest.publicFiles : [];
+  const count = Number(manifest.count || files.length || 0);
+  if (count >= 5) {
+    state.xhsCardExportStatus = "done";
+    state.xhsCardProgress = null;
+    state.xhsCardExportMessage = `43 已生成 ${count} 张${visualRouteNameClean(state.visualStyle)}，下面可以逐张打开检查。`;
+  } else if (count > 0 && state.xhsCardExportStatus === "loading") {
+    state.xhsCardProgress = { done: count, total: 5 };
+    state.xhsCardExportMessage = `43 后台出图中：已完成 ${count}/5 张。已生成的图片会先显示。`;
+  }
   return true;
 }
 
