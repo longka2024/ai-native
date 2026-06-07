@@ -2442,9 +2442,7 @@ function topicTextForTitle(topic = {}) {
   return cleanSourceText([
     topic.theme,
     topic.title,
-    topic.pain,
-    topic.reason,
-    topic.reuse,
+    topic.body,
     topic.content,
     topic.raw?.title,
     topic.raw?.theme,
@@ -2456,6 +2454,8 @@ function topicTextForTitle(topic = {}) {
 
 function extractTopicSignals(topic = {}) {
   const text = topicTextForTitle(topic);
+  const caseSignal = extractCaseTitleSignal(text);
+  if (caseSignal) return caseSignal;
   const clauses = text
     .split(/[。！？!?；;\n\r]+/)
     .map((item) => item.trim())
@@ -2473,14 +2473,15 @@ function extractTopicSignals(topic = {}) {
     if (/AI|Agent|FDE|自媒体|企业|落地|组织|工作流|岗位|采购|部署|培训|知识库|资产库|小红书|公众号|视频号|朋友圈|模型|爆款|人味|复写|复盘|工具/.test(word)) push(word);
   }
   const contrast = text.match(/不是([^，。！？;；]{2,24})[，,]?\s*而是([^，。！？;；]{2,32})/);
-  const main = keep[0] || topic.theme || topic.title || state.businessLine;
-  const second = keep.find((item) => item !== main) || state.businessLine || "这件事";
-  const third = keep.find((item) => item !== main && item !== second) || "关键变化";
-  const sourceTitle = cleanSourceText(topic.title || topic.theme || clauses[0] || main).slice(0, 42);
+  const cleanKeywords = keep.filter((item) => isGoodTitleSlot(item));
+  const sourceTitle = cleanSourceText(topic.title || topic.theme || clauses[0] || "").slice(0, 42);
+  const main = cleanTitleSlot(cleanKeywords[0] || sourceTitle || state.businessLine);
+  const second = cleanTitleSlot(cleanKeywords.find((item) => item !== main) || inferSurfaceMisread(text) || state.businessLine || "这件事");
+  const third = cleanTitleSlot(cleanKeywords.find((item) => item !== main && item !== second) || inferRealValue(text) || "关键变化");
   return {
     text,
     clauses,
-    keywords: keep,
+    keywords: cleanKeywords,
     main,
     second,
     third,
@@ -2488,6 +2489,46 @@ function extractTopicSignals(topic = {}) {
     contrastA: contrast?.[1]?.trim() || "",
     contrastB: contrast?.[2]?.trim() || "",
   };
+}
+
+function extractCaseTitleSignal(text = "") {
+  const clean = cleanSourceText(text);
+  const money = clean.match(/(?:收益|收入|变现|利润|流量|阅读|播放|涨粉)[^，。！？]{0,12}?(\d+(?:\.\d+)?\s*[万千百]?\+?)/);
+  const daily = /一天|每日|每天|日更|24h|24小时/.test(clean);
+  const account = clean.match(/([^，。！？\s]{0,10}(?:公众号流量主|公众号|小红书账号|账号|视频号|自媒体|项目|副业))/);
+  const location = clean.match(/(小地方|县城|本地|三四线|大城市|普通人|新人|新手)/);
+  if (!money && !account) return null;
+  const main = cleanTitleSlot(account?.[1] || location?.[1] || "这个真实案例").replace(/^.*?(公众号流量主|公众号|小红书账号|账号|视频号|自媒体|项目|副业)$/, "$1");
+  const result = cleanTitleSlot(`${daily ? "一天" : ""}${money ? `${money[1]}收益` : "跑出结果"}`);
+  const contrastA = cleanTitleSlot(location?.[1] || "大城市流量");
+  const contrastB = cleanTitleSlot(result || "稳定收益");
+  return {
+    text: clean,
+    clauses: [clean.slice(0, 80)],
+    keywords: [main, result, contrastA, contrastB].filter(Boolean),
+    main,
+    second: contrastA,
+    third: contrastB,
+    sourceTitle: clean.slice(0, 42),
+    contrastA,
+    contrastB,
+    mode: "case",
+  };
+}
+
+function inferSurfaceMisread(text = "") {
+  if (/收益|收入|变现|利润/.test(text)) return "大城市流量";
+  if (/AI|Agent|工具/.test(text)) return "买工具";
+  if (/标题|爆款|流量/.test(text)) return "套公式";
+  return state.businessLine || "表面动作";
+}
+
+function inferRealValue(text = "") {
+  if (/收益|收入|变现|利润/.test(text)) return "真实收益模型";
+  if (/案例|数据|实操|复盘/.test(text)) return "真实案例";
+  if (/AI|Agent|工具/.test(text)) return "工作流变化";
+  if (/内容|素材|资产/.test(text)) return "内容资产";
+  return "关键变化";
 }
 
 function buildTopicDrivenTitleChoices(topic = {}) {
@@ -2542,6 +2583,17 @@ function applyTitleFormula(formula, signal) {
   const second = cleanTitleSlot(signal.contrastA || signal.second);
   const third = cleanTitleSlot(signal.contrastB || signal.third);
   const impact = cleanTitleSlot(signal.keywords.find((item) => item !== main && item !== second && item !== third) || signal.second);
+  if (signal.mode === "case") {
+    const caseMap = {
+      contrast: `${main}的重点不是${second}，而是${third}`,
+      misread: `别小看${main}，真正香的是${third}`,
+      behind: `${main}背后，藏着一套${third}`,
+      "why-impact": `为什么${main}能跑出${third}`,
+      "three-points": `看懂${main}，先抓这 3 个点`,
+      "not-new": `${main}不是偶然，真正关键是${third}`,
+    };
+    if (caseMap[formula.pattern]) return caseMap[formula.pattern];
+  }
   const map = {
     contrast: `${main}的重点不是${second}，而是${third}`,
     misread: `别再把${main}只理解成${second}`,
@@ -2564,9 +2616,18 @@ function applyTitleFormula(formula, signal) {
 function cleanTitleSlot(value = "") {
   const clean = cleanSourceText(value)
     .replace(/^(关于|这个|那个|一种|一个|很多|真正|关键|当前)/, "")
+    .replace(/(可以先改成|后续再扩展成|视频号短视频|抖音短视频|公众号长文|小红书图文|朋友圈文案|短视频脚本|平台成品|发布目标)/g, "")
     .replace(/[，。！？；：、,.!?;:]+$/g, "")
     .trim();
   return clean.length > 18 ? clean.slice(0, 18) : clean || state.businessLine || "这件事";
+}
+
+function isGoodTitleSlot(value = "") {
+  const clean = cleanTitleSlot(value);
+  if (!clean || clean.length < 2) return false;
+  if (/视频号短视频|公众号|朋友圈|后续|扩展|当前选题|发布目标|目标平台|生成|标题|正文|平台成品/.test(clean)) return false;
+  if (/^[\d\s]+$/.test(clean)) return false;
+  return true;
 }
 
 function buildTitleChoices(topic, titleAssets = state.titleAssets) {
