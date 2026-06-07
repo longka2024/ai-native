@@ -23,6 +23,22 @@ const state = {
   draftError: "",
   draftMeta: null,
   draftReview: null,
+  copyVersions: [],
+  currentCopyVersionId: "",
+  confirmedCopyVersionId: "",
+  pendingRevision: null,
+  visualStyle: "xiaohei-metaphor",
+  xhsCardPlan: [],
+  xhsCardExportStatus: "idle",
+  xhsCardExportMessage: "",
+  xhsCardOperation: "",
+  xhsCardProgress: null,
+  xhsCardJobBase: "",
+  xhsCardAsyncJobId: "",
+  xhsCardManifest: null,
+  finalWorks: [],
+  archiveMessage: "",
+  editingMetricsWorkId: "",
   logs: [],
   assets: null,
   assetStatus: "未读取",
@@ -48,6 +64,34 @@ const sourceChannels = [
   { id: "all-assets", title: "全库选题复用", desc: "一鱼多吃：从资产库里找好选题，再改写到目标平台。" },
   { id: "manual", title: "手动导入", desc: "粘贴你看到的好内容，整理成可写选题。" },
 ];
+
+const visualStyles = [
+  {
+    id: "xiaohei-metaphor",
+    title: "小黑漫画隐喻",
+    desc: "适合观点型、避坑型、方法论内容。用角色和场景讲明白，不做大字报。",
+    route: "43 小黑真出图",
+    assetLabel: "小黑手绘漫画 / 观点隐喻",
+  },
+  {
+    id: "xhs-knowledge-card",
+    title: "小红书知识卡",
+    desc: "适合清单、步骤、对比和收藏型内容。文字少、层级清楚、适合手机看。",
+    route: "HTML 卡片 / PNG 导出",
+    assetLabel: "小红书知识卡 / 信息图",
+  },
+  {
+    id: "guizang-editorial",
+    title: "归藏杂志风",
+    desc: "适合方法论、行业洞察、投资人展示。更像高级 Deck，不适合生活口吻内容。",
+    route: "open-design / guizang deck",
+    assetLabel: "归藏编辑风 / 杂志 Deck",
+  },
+];
+
+function currentVisualStyle() {
+  return visualStyles.find((item) => item.id === state.visualStyle) || visualStyles[0];
+}
 
 const steps = [
   ["发布目标", "发到哪里"],
@@ -80,6 +124,91 @@ function byId(id) {
   return document.getElementById(id);
 }
 
+const WORKBENCH_SNAPSHOT_KEY = "longka-workbench-v2-snapshot";
+
+function persistWorkbenchSnapshot() {
+  try {
+    const snapshot = {
+      savedAt: new Date().toISOString(),
+      route: state.route,
+      step: state.step,
+      publishTarget: state.publishTarget,
+      sourceChannel: state.sourceChannel,
+      industry: state.industry,
+      businessLine: state.businessLine,
+      goal: state.goal,
+      keywords: state.keywords,
+      topics: state.topics,
+      selectedTopicId: state.selectedTopicId,
+      titleChoices: state.titleChoices,
+      titleAssets: state.titleAssets,
+      titleAssetMessage: state.titleAssetMessage,
+      titleAssetKey: state.titleAssetKey,
+      selectedTitle: state.selectedTitle,
+      draft: state.draft,
+      improvedDraft: state.improvedDraft,
+      copyConfirmed: state.copyConfirmed,
+      draftRevision: state.draftRevision,
+      draftMeta: state.draftMeta,
+      draftReview: state.draftReview,
+      copyVersions: state.copyVersions,
+      currentCopyVersionId: state.currentCopyVersionId,
+      confirmedCopyVersionId: state.confirmedCopyVersionId,
+      visualStyle: state.visualStyle,
+      xhsCardPlan: state.xhsCardPlan,
+      xhsCardExportStatus: state.xhsCardExportStatus === "loading" ? "idle" : state.xhsCardExportStatus,
+      xhsCardExportMessage: state.xhsCardExportStatus === "loading" ? "已恢复上次出图任务，可继续生成或查询结果。" : state.xhsCardExportMessage,
+      xhsCardOperation: state.xhsCardOperation,
+      xhsCardJobBase: state.xhsCardJobBase,
+      xhsCardAsyncJobId: state.xhsCardAsyncJobId,
+      xhsCardManifest: state.xhsCardManifest,
+      finalWorks: state.finalWorks,
+      archiveMessage: state.archiveMessage,
+      logs: state.logs,
+      assets: state.assets,
+      assetStatus: state.assetStatus,
+      lastXRunIds: state.lastXRunIds,
+      useLatestXRunOnly: state.useLatestXRunOnly,
+    };
+    localStorage.setItem(WORKBENCH_SNAPSHOT_KEY, JSON.stringify(snapshot));
+  } catch (error) {
+    console.warn("Longka snapshot save failed", error);
+  }
+}
+
+function restoreWorkbenchSnapshot() {
+  try {
+    const raw = localStorage.getItem(WORKBENCH_SNAPSHOT_KEY);
+    if (!raw) return false;
+    const snapshot = JSON.parse(raw);
+    if (!snapshot || typeof snapshot !== "object") return false;
+    Object.assign(state, snapshot, {
+      titleAssetLoading: false,
+      draftStatus: "idle",
+      draftError: "",
+      pendingRevision: null,
+      xhsCardProgress: null,
+      isCollectingX: false,
+    });
+    state.step = Math.max(1, Math.min(12, Number(state.step || 1)));
+    state.logs = [`已恢复上次工作进度：${new Date(snapshot.savedAt || Date.now()).toLocaleString()}`, ...(state.logs || [])].slice(0, 10);
+    return true;
+  } catch (error) {
+    console.warn("Longka snapshot restore failed", error);
+    return false;
+  }
+}
+
+function simpleHash(value) {
+  let hash = 2166136261;
+  const text = String(value || "");
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash >>> 0).toString(36);
+}
+
 function currentTarget() {
   return publishTargets.find((item) => item.id === state.publishTarget) || publishTargets[0];
 }
@@ -90,6 +219,568 @@ function currentSource() {
 
 function selectedTopic() {
   return state.topics.find((item) => item.id === state.selectedTopicId) || null;
+}
+
+function normalizeCopyText(value = "") {
+  return String(value || "").replace(/\r\n/g, "\n").trim();
+}
+
+function activeCopyText() {
+  return normalizeCopyText(state.improvedDraft || state.draft || "");
+}
+
+function rememberCopyVersion(copy, label = "初稿") {
+  const text = normalizeCopyText(copy);
+  if (!text) return null;
+  const last = state.copyVersions[state.copyVersions.length - 1];
+  if (last && normalizeCopyText(last.copy) === text && last.title === state.selectedTitle) {
+    state.currentCopyVersionId = last.id;
+    return last;
+  }
+  const review = runLongkaReview(text);
+  const version = {
+    id: `copy-${Date.now()}-${state.copyVersions.length + 1}`,
+    round: state.copyVersions.length + 1,
+    title: state.selectedTitle,
+    copy: text,
+    score: review?.score || 0,
+    label,
+    review,
+    createdAt: new Date().toISOString(),
+    confirmed: false,
+  };
+  state.copyVersions = [...state.copyVersions, version].slice(-10);
+  state.currentCopyVersionId = version.id;
+  return version;
+}
+
+function currentCopySnapshot(label = "当前版本") {
+  const copy = activeCopyText();
+  if (!copy) return null;
+  const current = state.copyVersions.find((item) => item.id === state.currentCopyVersionId);
+  return {
+    id: current?.id || "",
+    round: current?.round || state.copyVersions.length,
+    title: state.selectedTitle,
+    copy,
+    score: current?.score || runLongkaReview(copy)?.score || 0,
+    label,
+  };
+}
+
+function clearCopyConfirmation() {
+  state.copyConfirmed = false;
+  state.confirmedCopyVersionId = "";
+  state.copyVersions = state.copyVersions.map((item) => ({ ...item, confirmed: false }));
+}
+
+function restoreCopyVersion(id, approve = false) {
+  const version = state.copyVersions.find((item) => item.id === id);
+  if (!version) return;
+  state.selectedTitle = version.title || state.selectedTitle;
+  state.draft = version.copy;
+  state.improvedDraft = "";
+  state.draftReview = version.review || runLongkaReview(version.copy);
+  state.currentCopyVersionId = version.id;
+  state.draftStatus = "done";
+  state.draftError = "";
+  if (approve) {
+    state.copyConfirmed = true;
+    state.confirmedCopyVersionId = version.id;
+    state.copyVersions = state.copyVersions.map((item) => ({ ...item, confirmed: item.id === version.id }));
+    setStep(10);
+    return;
+  }
+  clearCopyConfirmation();
+  renderToday();
+}
+
+function renderCopyVersionList() {
+  if (!state.copyVersions.length) return "";
+  const best = state.copyVersions.reduce((winner, item) => (!winner || item.score > winner.score ? item : winner), null);
+  return `<div class="copy-version-list">
+    <b>版本记录</b>
+    ${state.copyVersions.slice().reverse().map((item) => `<div class="copy-version-item ${item.id === state.currentCopyVersionId ? "active" : ""} ${item.id === state.confirmedCopyVersionId ? "confirmed" : ""}">
+      <button type="button" data-copy-version="${escapeHtml(item.id)}">
+        <span>第 ${item.round} 版${best?.id === item.id ? " · 当前最佳" : ""}${item.id === state.currentCopyVersionId ? " · 当前查看" : ""}${item.id === state.confirmedCopyVersionId ? " · 已确认" : ""}</span>
+        <strong>${item.score}/100</strong>
+        <small>${escapeHtml(item.label)}</small>
+      </button>
+      <div class="copy-version-actions">
+        <button class="secondary" type="button" data-copy-restore="${escapeHtml(item.id)}">恢复此版</button>
+        <button class="primary" type="button" data-copy-confirm="${escapeHtml(item.id)}">确认此版</button>
+      </div>
+    </div>`).join("")}
+  </div>`;
+}
+
+function confirmedCopyText() {
+  const confirmed = state.copyVersions.find((item) => item.id === state.confirmedCopyVersionId);
+  return normalizeCopyText(confirmed?.copy || activeCopyText());
+}
+
+function extractBodyLinesForCards(copy = "") {
+  return normalizeCopyText(copy)
+    .split(/\n+/)
+    .map((line) => line.replace(/^(标题|正文|配图建议|标签)[:：]\s*/u, "").trim())
+    .filter((line) => line && !/^#/.test(line))
+    .slice(0, 12);
+}
+
+function buildXhsCardPlanFromConfirmedCopy() {
+  const copy = confirmedCopyText();
+  const topic = selectedTopic() || {};
+  const lines = extractBodyLinesForCards(copy);
+  const title = state.selectedTitle || topic.theme || topic.title || "AI 内容创作为什么总是没流量";
+  const pain = lines.find((line) => /没流量|AI|内容|素材|选题|爆款|不会写|卡住/.test(line)) || topic.pain || "很多人不是不会用 AI，而是没有自己的内容资产库。";
+  const method = lines.find((line) => /先|再|系统|资产|拆解|复用|标准|流程/.test(line)) || "先沉淀素材，再拆解爆点，最后让 AI 按你的资产重写。";
+  const checklist = [
+    "先收集真实高质量素材",
+    "拆标题、开头、结构和用户痛点",
+    "把可复用部分存进资产库",
+    "写作时先匹配资产，再生成内容",
+  ];
+  const action = lines.find((line) => /私信|评论|收藏|下一步|评估|咨询|试/.test(line)) || "先拿一个主题跑通：素材 -> 文案 -> 图文，再逐步沉淀自己的内容系统。";
+  return [
+    { type: "cover", role: "封面", title, text: "别再只让 AI 凭空写爆款，先把内容资产库搭起来。" },
+    { type: "pain", role: "问题卡", title: "为什么 AI 写文案没流量", text: pain },
+    { type: "method", role: "方法卡", title: "真正该做的是这套系统", text: method },
+    { type: "checklist", role: "清单卡", title: "每天按这 4 步跑", text: checklist.join("\n") },
+    { type: "action", role: "行动卡", title: "今天先做一个最小闭环", text: action },
+  ];
+}
+
+function ensureXhsCardPlan() {
+  if (!state.xhsCardPlan.length && state.copyConfirmed) {
+    state.xhsCardPlan = buildCleanXhsCardPlanFromConfirmedCopy();
+  }
+  return state.xhsCardPlan;
+}
+
+function buildCleanXhsCardPlanFromConfirmedCopy() {
+  const copy = confirmedCopyText();
+  const topic = selectedTopic() || {};
+  const visual = currentVisualStyle();
+  const lines = extractBodyLinesForCards(copy);
+  const title = state.selectedTitle || topic.theme || topic.title || "AI 内容创作为什么总是没流量";
+  const pain = lines.find((line) => /没流量|AI|内容|素材|选题|爆款|卡住|不好用|写不出/.test(line)) || topic.pain || "很多人不是不会用 AI，而是没有自己的内容资产库，所以每次写作都像从零开始。";
+  const action = lines.find((line) => /私信|评论|收藏|下一步|评估|咨询|测试|行动/.test(line)) || "先拿一个主题跑通：素材 -> 文案 -> 图文，再逐步沉淀自己的内容系统。";
+  const sourceName = topic.source || topic.platform || currentSource()?.title || "内容资产库";
+  const bodyLead = lines[0] || pain;
+  return [
+    {
+      type: "cover",
+      role: "封面",
+      title,
+      text: "别再让 AI 凭空写爆款，先把素材、拆解和复用串成一套系统。",
+      visualStyle: visual.id,
+      carouselJob: "第 1 张：负责让人停下来",
+      visualBrief: visual.id === "xiaohei-metaphor"
+        ? "小黑站在一堆散落 prompt 和素材卡前，旁边是一台正在整理内容资产的机器。画面只保留必要短标题，不写过程提示。"
+        : "杂志感封面。大标题压住屏幕，中间用“素材库/拆解卡/标题库/成稿”四个层级做视觉钩子。",
+      readerTakeaway: "这不是普通 AI 写作教程，而是一套能持续投喂的内容系统。",
+      imagePrompt: "3:4 Xiaohongshu cover, editorial magazine style, Chinese typography, AI content asset system, layered archive cards, premium but warm, no fake UI text except provided title."
+    },
+    {
+      type: "pain",
+      role: "问题页",
+      title: "为什么你用 AI 写，还是没流量",
+      text: pain,
+      visualStyle: visual.id,
+      carouselJob: "第 2 张：放大用户痛点",
+      visualBrief: visual.id === "xiaohei-metaphor"
+        ? "小黑拿着一张写满标题的纸，却面对空空的资料柜。重点表达“不是工具问题，是没有积累”。"
+        : "左侧是零散 prompt、标题和草稿堆在一起，右侧是空的内容资产库，形成强反差。",
+      readerTakeaway: "问题不是工具差，而是没有长期积累和可复用标准。",
+      imagePrompt: "3:4 Rednote infographic, contrast layout, messy AI prompts versus organized empty content library, readable Chinese labels, clean editorial look."
+    },
+    {
+      type: "assets",
+      role: "资产页",
+      title: "真正有用的是这 4 个库",
+      text: ["爆款素材库", "标题公式库", "用户问题库", "结构拆解库"].join("\n"),
+      visualStyle: visual.id,
+      carouselJob: "第 3 张：给出系统框架",
+      visualBrief: visual.id === "xiaohei-metaphor"
+        ? "小黑把四个抽屉贴上标签：素材、标题、问题、结构。画面像整理工作台，不要大段文字。"
+        : "四宫格资产地图，每一格有一个清晰用途，不堆废话。",
+      readerTakeaway: "爆款不是临时套模板，而是调用已经沉淀好的资产。",
+      imagePrompt: "3:4 Xiaohongshu knowledge card, four quadrant asset map, title formula library, user question library, content structure library, viral sample library, Chinese, high clarity."
+    },
+    {
+      type: "flow",
+      role: "流程页",
+      title: "每天按这条线跑",
+      text: ["采集好内容", "拆标题和开头", "沉淀到资产库", "再生成成稿"].join("\n"),
+      visualStyle: visual.id,
+      carouselJob: "第 4 张：让用户知道怎么做",
+      visualBrief: visual.id === "xiaohei-metaphor"
+        ? "小黑沿着一条传送带完成采集、拆解、入库、创作四步。每步用小图标表达，不写长句。"
+        : "竖向流程线，四个节点有明确动词，让普通用户知道下一步点什么。",
+      readerTakeaway: "用户每天只需要按流程执行，而不是重新想一遍怎么做。",
+      imagePrompt: "3:4 Rednote workflow card, vertical pipeline, collect, deconstruct, archive, create, strong hierarchy, premium Chinese infographic."
+    },
+    {
+      type: "action",
+      role: "行动页",
+      title: "今天先跑通一个最小闭环",
+      text: action || bodyLead,
+      visualStyle: visual.id,
+      carouselJob: "第 5 张：收束到收藏和行动",
+      visualBrief: visual.id === "xiaohei-metaphor"
+        ? `小黑把一张完成的图文卡放进“内容资产库”盒子，旁边留出下一平台复用的空位。只表达完成闭环，不写“第几张/负责人”等过程语。`
+        : `行动清单页。底部保留“从 ${sourceName} 开始”的来源感，避免像空泛鸡汤。`,
+      readerTakeaway: "看完以后知道今天先做什么，而不是只收藏不行动。",
+      imagePrompt: "3:4 Xiaohongshu final CTA card, checklist, content workflow, warm professional style, action oriented, Chinese typography."
+    }
+  ];
+}
+
+function renderCleanXhsCardPreview() {
+  const cards = ensureXhsCardPlan();
+  if (!cards.length) return `<div class="empty-state"><b>请先确认文案</b><span>确认文案后，才会生成小红书图文卡片预览。</span></div>`;
+  const hasRealImages = Array.isArray(state.xhsCardManifest?.publicFiles) && state.xhsCardManifest.publicFiles.length > 0;
+  const visual = currentVisualStyle();
+  return `<div class="xhs-card-preview-panel">
+    <div class="visual-workspace-head">
+      <div>
+        <b>图文生产工作区</b>
+        <span>当前绑定：${escapeHtml(state.selectedTitle || selectedTopic()?.theme || "未选择标题")} · ${escapeHtml(visual.title)}</span>
+      </div>
+      <em>${escapeHtml(visual.route)}</em>
+    </div>
+    ${renderVisualStylePicker()}
+    ${hasRealImages ? "" : `<div class="status-strip warn">这里先把文案拆成 5 页可执行出图 brief。最终能发布的结果，以 43 返回的真实图片或导出的 PNG 为准。</div>`}
+    ${renderCurrentCopyForImage()}
+    ${renderXhsGeneratedGallery()}
+    <details class="xhs-carousel-plan" ${hasRealImages ? "" : "open"}>
+      <summary>查看 5 页出图说明</summary>
+      ${cards.map((card, index) => `<div><span>P${index + 1}</span><strong>${escapeHtml(card.role)}</strong><em>${escapeHtml(card.carouselJob || card.visualBrief || "按轮播顺序展示")}</em></div>`).join("")}
+    </details>
+    ${state.xhsCardManifest ? `<div class="status-strip success">已生成：${escapeHtml(state.xhsCardManifest.count || cards.length)} 张。${escapeHtml(state.xhsCardManifest.jobId || state.xhsCardManifest.outputDir || "")}</div>` : ""}
+    ${state.xhsCardExportMessage ? `<div class="status-strip ${state.xhsCardExportStatus === "error" ? "warn" : ""}">${escapeHtml(state.xhsCardExportMessage)}</div>` : ""}
+  </div>`;
+}
+
+function renderVisualStylePicker() {
+  return `<div class="visual-style-grid">
+    ${visualStyles.map((item) => `<button type="button" class="visual-style-option ${item.id === state.visualStyle ? "active" : ""}" data-visual-style="${escapeHtml(item.id)}">
+      <b>${escapeHtml(item.title)}</b>
+      <span>${escapeHtml(item.desc)}</span>
+      <em>${escapeHtml(item.route)}</em>
+    </button>`).join("")}
+  </div>`;
+}
+
+function renderCurrentCopyForImage() {
+  const confirmed = state.copyVersions.find((item) => item.id === state.confirmedCopyVersionId);
+  const copy = confirmedCopyText();
+  const title = state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "未选择标题";
+  const summary = copy.split(/\n+/).map((line) => line.trim()).filter(Boolean).slice(0, 4).join("\n");
+  return `<div class="xhs-current-copy">
+    <div class="xhs-current-copy-head">
+      <b>当前用于出图的文案</b>
+      <span>${confirmed ? `已确认版本：第 ${confirmed.round} 版 / ${confirmed.score || "-"} 分` : "已确认当前正文"}</span>
+    </div>
+    <strong>${escapeHtml(title)}</strong>
+    <pre>${escapeHtml(summary || copy || "暂无文案摘要")}</pre>
+    <div class="xhs-current-copy-actions">
+      <button class="secondary" type="button" data-step-target="7">重新生成文案</button>
+      <button class="ghost" type="button" data-step-target="9">查看/更换确认版本</button>
+    </div>
+  </div>`;
+}
+
+function renderXhsGeneratedGallery() {
+  const files = Array.isArray(state.xhsCardManifest?.publicFiles) ? state.xhsCardManifest.publicFiles : [];
+  const isXiaohei = String(state.xhsCardManifest?.renderer || "").includes("43-gpt-image-2-xiaohei");
+  if (state.xhsCardExportStatus === "loading" && state.xhsCardOperation === "xiaohei") {
+    const done = Number(state.xhsCardProgress?.done || files.length || 0);
+    const total = Number(state.xhsCardProgress?.total || 5);
+    return `<div class="xhs-generated-empty loading">
+      <b>43 正在生成小黑漫画图</b>
+      <span>正在逐张生成：${done}/${total}。已生成的图片会先保留，避免 5 张一起请求超时后全丢。</span>
+      ${files.length ? `<div class="xhs-generated-grid partial">
+        ${files.map((file, index) => {
+          const raw = String(file);
+          const src = /^https?:\/\//.test(raw) ? raw : `./${raw.replace(/^\/+/, "")}`;
+          return `<a href="${escapeHtml(src)}" target="_blank" rel="noreferrer">
+            <img src="${escapeHtml(src)}" alt="小黑漫画图 ${index + 1}" loading="lazy" />
+            <span>P${index + 1}</span>
+          </a>`;
+        }).join("")}
+      </div>` : ""}
+    </div>`;
+  }
+  if (state.xhsCardExportStatus === "loading") {
+    return `<div class="xhs-generated-empty loading">
+      <b>正在导出拆页方案</b>
+      <span>这一步只是导出网页 brief PNG，用来检查每页承载，不是最终小黑漫画图。</span>
+    </div>`;
+  }
+  if (!files.length) {
+    return `<div class="xhs-generated-empty">
+      <b>还没有生成小黑图</b>
+      <span>确认当前文案后，点击“生成 5 张小黑漫画图”，这里会直接显示 43 返回的真实图片。</span>
+      <button class="secondary" type="button" data-restore-latest-xiaohei>查询当前主题已生成图片</button>
+    </div>`;
+  }
+  return `<div class="xhs-generated-gallery">
+    <div class="xhs-generated-head">
+      <b>${isXiaohei ? "43 小黑真出图结果" : "拆页方案导出结果"}</b>
+      <span>${isXiaohei ? "这些图片来自 43 出图服务，可点击打开原图检查。" : "这些只是网页方案 PNG，不是小黑漫画成品。"}</span>
+    </div>
+    <div class="xhs-generated-grid">
+      ${files.map((file, index) => {
+        const raw = String(file);
+        const src = /^https?:\/\//.test(raw) ? raw : `./${raw.replace(/^\/+/, "")}`;
+        return `<a href="${escapeHtml(src)}" target="_blank" rel="noreferrer">
+          <img src="${escapeHtml(src)}" alt="${isXiaohei ? "小黑漫画图" : "小红书拆页图"} ${index + 1}" loading="lazy" />
+          <span>P${index + 1}</span>
+        </a>`;
+      }).join("")}
+    </div>
+  </div>`;
+}
+
+function renderXhsCarouselCard(card, index) {
+  const page = String(index + 1).padStart(2, "0");
+  const role = escapeHtml(card.role || "内容页");
+  const job = escapeHtml(card.carouselJob || "");
+  const title = escapeHtml(card.title || "");
+  const text = escapeHtml(card.text || "");
+  const takeaway = escapeHtml(card.readerTakeaway || "");
+  const brief = escapeHtml(card.visualBrief || "");
+  const items = String(card.text || "").split(/\n+/).map((line) => line.trim()).filter(Boolean).slice(0, 6);
+  const ops = `<div class="xhs-card-ops"><span>P${index + 1} / ${role}</span><em>${job}</em></div>`;
+  if (index === 0) {
+    return `<div class="xhs-card-wrap">${ops}<article class="xhs-preview-card xhs-recipe-cover ${escapeHtml(card.type)}">
+        <h3>${title}</h3>
+        <div class="xhs-cover-scene">
+          <div class="xhs-archive-stack"><i></i><i></i><i></i></div>
+          <div class="xhs-xiaohei"><b></b><span></span></div>
+        </div>
+        <p>${text}</p>
+      </article></div>`;
+  }
+  if (index === 1) {
+    return `<div class="xhs-card-wrap">${ops}<article class="xhs-preview-card xhs-recipe-contrast ${escapeHtml(card.type)}">
+        <h3>${title}</h3>
+        <div class="xhs-contrast-board">
+          <section><b>只靠工具</b><span>prompt</span><span>模板</span><span>换标题</span></section>
+          <section><b>缺的系统</b><span>素材</span><span>拆解</span><span>复用</span></section>
+        </div>
+        <p>${text}</p>
+      </article></div>`;
+  }
+  if (index === 2) {
+    return `<div class="xhs-card-wrap">${ops}<article class="xhs-preview-card xhs-recipe-matrix ${escapeHtml(card.type)}">
+        <h3>${title}</h3>
+        <div class="xhs-asset-matrix">
+          ${(items.length ? items : ["爆款素材库", "标题公式库", "用户问题库", "结构拆解库"]).slice(0, 4).map((item, itemIndex) => `<div><em>0${itemIndex + 1}</em><strong>${escapeHtml(item)}</strong><span>${["看什么值得写", "标题不再乱编", "知道用户在问啥", "复用爆款结构"][itemIndex] || "沉淀资产"}</span></div>`).join("")}
+        </div>
+      </article></div>`;
+  }
+  if (index === 3) {
+    return `<div class="xhs-card-wrap">${ops}<article class="xhs-preview-card xhs-recipe-flow ${escapeHtml(card.type)}">
+        <h3>${title}</h3>
+        <div class="xhs-flow-line">
+          ${(items.length ? items : ["采集好内容", "拆标题和开头", "沉淀到资产库", "再生成成稿"]).slice(0, 4).map((item, itemIndex) => `<div><em>${itemIndex + 1}</em><strong>${escapeHtml(item)}</strong></div>`).join("")}
+        </div>
+        <p>${takeaway || text}</p>
+      </article></div>`;
+  }
+  return `<div class="xhs-card-wrap">${ops}<article class="xhs-preview-card xhs-recipe-action ${escapeHtml(card.type)}">
+      <h3>${title}</h3>
+      <div class="xhs-action-ledger">
+        <div><span>今天先做</span><strong>跑通一个主题闭环</strong></div>
+        <div><span>不要再做</span><strong>只让 AI 临时发挥</strong></div>
+        <div><span>下一步</span><strong>${text}</strong></div>
+      </div>
+    </article></div>`;
+}
+
+async function exportCleanXhsCardPlan() {
+  if (!state.copyConfirmed) return;
+  const cards = ensureXhsCardPlan();
+  if (!cards.length) return;
+  const visual = currentVisualStyle();
+  state.xhsCardExportStatus = "loading";
+  state.xhsCardOperation = "plan";
+  state.xhsCardProgress = null;
+  state.xhsCardExportMessage = "正在导出拆页方案 PNG。注意：这不是小黑漫画真出图。";
+  state.xhsCardManifest = null;
+  renderToday();
+  try {
+    const res = await fetch("/api/xhs-cards/export-plan", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: state.selectedTitle,
+        body: confirmedCopyText(),
+        topicId: selectedTopic()?.id || `day2-xhs-${Date.now()}`,
+        cards,
+        layoutPlan: cards.map((card, index) => ({
+          page: index + 1,
+          role: card.role,
+          carouselJob: card.carouselJob,
+          visualBrief: card.visualBrief,
+          readerTakeaway: card.readerTakeaway,
+          imagePrompt: card.imagePrompt
+        })),
+        visualRoute: {
+          theme: "AI 自媒体 / 内容资产库",
+          style: visual.assetLabel,
+          visualStyleId: visual.id,
+          note: "Web preview is the stable fallback. Real image/video generation routes to 43-generation when selected."
+        }
+      })
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
+    state.xhsCardExportStatus = "done";
+    state.xhsCardOperation = "plan";
+    state.xhsCardExportMessage = "拆页方案 PNG 已导出，可用于检查每页承载，不作为最终配图。";
+    state.xhsCardManifest = result.manifest || null;
+  } catch (error) {
+    state.xhsCardExportStatus = "error";
+    state.xhsCardOperation = "plan";
+    state.xhsCardExportMessage = `导出失败：${error.message}。网页卡片预览仍可用于演示，但不能冒充已出图。`;
+    state.xhsCardManifest = null;
+  }
+  renderToday();
+}
+
+async function generateXiaoheiCards() {
+  if (!state.copyConfirmed) return;
+  const cards = ensureXhsCardPlan();
+  if (!cards.length) return;
+  const visual = currentVisualStyle();
+  state.xhsCardJobBase = buildCurrentXiaoheiJobId();
+  state.xhsCardExportStatus = "loading";
+  state.xhsCardOperation = "xiaohei";
+  state.xhsCardProgress = { done: 0, total: cards.length };
+  state.xhsCardAsyncJobId = state.xhsCardJobBase;
+  state.xhsCardExportMessage = "43 已启动后台出图任务，页面会自动轮询结果。";
+  state.xhsCardManifest = {
+    renderer: "43-gpt-image-2-xiaohei-async",
+    count: 0,
+    files: [],
+    publicFiles: [],
+    jobIds: [],
+    style: "xiaohei-handdrawn",
+    visualStyleId: visual.id,
+  };
+  renderToday();
+  try {
+    const res = await fetch("/api/xhs-cards/generate-xiaohei/start", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "",
+        body: confirmedCopyText(),
+        topicId: selectedTopic()?.id || `xhs-xiaohei-${Date.now()}`,
+        jobId: state.xhsCardAsyncJobId,
+        visualStyle: visual.id,
+        visualStyleTitle: visual.title,
+        cards: cards.map((card, index) => ({
+          page: index + 1,
+          role: card.role,
+          title: card.title,
+          text: card.text,
+          visualBrief: card.visualBrief,
+          readerTakeaway: card.readerTakeaway,
+          carouselJob: card.carouselJob,
+        })),
+      }),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
+    state.xhsCardAsyncJobId = result.jobId || state.xhsCardAsyncJobId;
+    if (result.manifest) state.xhsCardManifest = result.manifest;
+    await pollXiaoheiCards({ jobId: state.xhsCardAsyncJobId, total: cards.length });
+  } catch (error) {
+    state.xhsCardExportStatus = "error";
+    state.xhsCardOperation = "xiaohei";
+    state.xhsCardProgress = null;
+    const count = state.xhsCardManifest?.count || 0;
+    state.xhsCardExportMessage = `43 小黑出图中断：${error.message}。已生成 ${count} 张会保留显示，未生成的不冒充成品。`;
+    if (!count) state.xhsCardManifest = null;
+  }
+  renderToday();
+}
+
+async function pollXiaoheiCards({ jobId, total }) {
+  for (let round = 0; round < 90; round += 1) {
+    const res = await fetch(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=${encodeURIComponent(total)}`);
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
+    if (result.manifest) state.xhsCardManifest = result.manifest;
+    const count = state.xhsCardManifest?.count || 0;
+    state.xhsCardProgress = { done: count, total };
+    state.xhsCardExportMessage = `43 后台出图中：已完成 ${count}/${total} 张。你可以停留等待，也可以稍后再点继续查询。`;
+    if (["done", "partial", "error"].includes(result.status) && count >= total) {
+      state.xhsCardExportStatus = "done";
+      state.xhsCardProgress = null;
+      state.xhsCardExportMessage = `43 已生成 ${count} 张小黑漫画图，下面可以逐张打开检查。`;
+      renderToday();
+      return;
+    }
+    if (["partial", "error"].includes(result.status) && count > 0) {
+      state.xhsCardExportStatus = "error";
+      state.xhsCardProgress = null;
+      state.xhsCardExportMessage = `43 当前已生成 ${count}/${total} 张。未完成页可再次点击继续补齐。`;
+      renderToday();
+      return;
+    }
+    renderToday();
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+  }
+  state.xhsCardExportStatus = "error";
+  state.xhsCardProgress = null;
+  state.xhsCardExportMessage = `轮询等待超时，但后台任务 ${jobId} 可能仍在继续。请稍后再次点击查询/补齐。`;
+}
+
+async function restoreLatestXiaoheiCards() {
+  const jobId = state.xhsCardAsyncJobId || state.xhsCardJobBase || buildCurrentXiaoheiJobId();
+  state.xhsCardExportStatus = "loading";
+  state.xhsCardOperation = "xiaohei";
+  state.xhsCardAsyncJobId = jobId;
+  state.xhsCardJobBase = jobId;
+  state.xhsCardExportMessage = `正在从 43 恢复当前主题的小黑图：${jobId}`;
+  renderToday();
+  try {
+    const res = await fetch(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=5`);
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
+    state.xhsCardManifest = result.manifest || null;
+    state.xhsCardAsyncJobId = result.jobId || jobId;
+    state.xhsCardJobBase = result.jobId || jobId;
+    const count = state.xhsCardManifest?.count || 0;
+    state.xhsCardExportStatus = count >= 5 ? "done" : (count > 0 ? "error" : "idle");
+    state.xhsCardOperation = "xiaohei";
+    state.xhsCardProgress = null;
+    state.xhsCardExportMessage = count
+      ? `已恢复当前主题 ${count}/5 张小黑图。`
+      : "当前主题还没有生成过小黑图，请点击生成 5 张小黑漫画图。";
+  } catch (error) {
+    state.xhsCardExportStatus = "error";
+    state.xhsCardProgress = null;
+    state.xhsCardManifest = null;
+    state.xhsCardExportMessage = `恢复当前主题失败：${error.message}`;
+  }
+  renderToday();
+}
+
+function buildCurrentXiaoheiJobId() {
+  const seed = [
+    selectedTopic()?.id || "topic",
+    state.confirmedCopyVersionId || state.currentCopyVersionId || "copy",
+    state.visualStyle || "visual",
+    state.selectedTitle || "title",
+    simpleHash(confirmedCopyText() || ""),
+  ].join("-");
+  return `longka-xhs-${simpleHash(seed)}`;
 }
 
 function setRoute(route) {
@@ -142,7 +833,42 @@ function clearAfter(step) {
     state.draftError = "";
     state.draftMeta = null;
     state.draftReview = null;
+    state.copyVersions = [];
+    state.currentCopyVersionId = "";
+    state.confirmedCopyVersionId = "";
+    state.pendingRevision = null;
   }
+  if (step <= 9) {
+    clearProductionState();
+  }
+}
+
+function clearProductionState() {
+  state.visualStyle = state.visualStyle || "xiaohei-metaphor";
+  state.xhsCardPlan = [];
+  state.xhsCardExportStatus = "idle";
+  state.xhsCardExportMessage = "";
+  state.xhsCardOperation = "";
+  state.xhsCardAsyncJobId = "";
+  state.xhsCardJobBase = "";
+  state.xhsCardProgress = null;
+  state.xhsCardManifest = null;
+}
+
+function changeVisualStyle(styleId) {
+  if (!visualStyles.some((item) => item.id === styleId)) return;
+  if (state.visualStyle === styleId) return;
+  state.visualStyle = styleId;
+  state.xhsCardPlan = [];
+  state.xhsCardExportStatus = "idle";
+  state.xhsCardExportMessage = "已切换视觉风格。旧图不会复用，请重新生成当前风格的图文结果。";
+  state.xhsCardOperation = "";
+  state.xhsCardAsyncJobId = "";
+  state.xhsCardJobBase = "";
+  state.xhsCardProgress = null;
+  state.xhsCardManifest = null;
+  ensureXhsCardPlan();
+  renderToday();
 }
 
 function renderToday() {
@@ -150,6 +876,7 @@ function renderToday() {
   renderStepRail();
   renderContext();
   renderWorkArea();
+  persistWorkbenchSnapshot();
 }
 
 function renderHeroStatus() {
@@ -354,6 +1081,7 @@ function renderTitleStep() {
     : state.titleAssetMessage || (state.titleAssets.length ? `已读取 ${state.titleAssets.length} 条标题资产，候选标题会优先参考同类公式。` : "当前先用本地公式兜住流程，标题资产读取完成后会自动刷新。");
   return `<section class="work-card">
     ${cardHead(`生成 ${currentTarget().title} 标题`, "同一个选题，按不同平台调性生成不同标题。选择标题后，正文会跟着重写。")}
+    ${String(state.selectedTopicId || "").startsWith("reuse-") ? `<div class="status-strip success">一鱼多吃任务：当前母题来自已完成作品。现在要按 ${escapeHtml(currentTarget().title)} 重新选标题和结构，不沿用原平台正文。</div>` : ""}
     <div class="status-strip">${escapeHtml(assetHint)}</div>
     <div class="title-grid">
       ${state.titleChoices.map((item) => `<button class="title-card ${state.selectedTitle === item.title ? "active" : ""}" data-title-choice="${escapeHtml(item.title)}">
@@ -386,6 +1114,8 @@ function renderDraftStep() {
         ${renderBindingEvidence()}
       </div>
     </div>
+    ${renderWechatArticleImageLayout(draftText)}
+    ${renderCopyVersionList()}
     <div class="actions">
       <button class="ghost" data-step-target="6">返回换标题</button>
       <button class="secondary" data-regenerate-draft ${state.selectedTitle && !isLoading ? "" : "disabled"}>按当前标题重写一次</button>
@@ -394,8 +1124,96 @@ function renderDraftStep() {
     </div>
   </section>`;
 }
+
+function getReusableImagesForCurrentTopic() {
+  const topic = selectedTopic() || {};
+  const rawImages = Array.isArray(topic.raw?.images) ? topic.raw.images : [];
+  const manifestImages = Array.isArray(state.xhsCardManifest?.publicFiles) ? state.xhsCardManifest.publicFiles : [];
+  return rawImages.length ? rawImages : manifestImages;
+}
+
+function renderWechatArticleImageLayout(copy = "") {
+  if (state.publishTarget !== "wechat-article" || !copy || state.draftStatus === "loading") return "";
+  const images = getReusableImagesForCurrentTopic().slice(0, 5);
+  if (!images.length) {
+    return `<div class="article-layout-preview">
+      <div class="title-group-head"><b>公众号图文排版稿</b><span>当前母题没有可复用图片，生成长文后只展示文字版。</span></div>
+    </div>`;
+  }
+  const body = stripDraftTitleLabels(copy);
+  const blocks = splitArticleBlocks(body);
+  const slots = buildWechatImageSlots(blocks, images);
+  return `<div class="article-layout-preview">
+    <div class="title-group-head">
+      <b>公众号图文排版稿</b>
+      <span>已把小黑图按语义插入正文：痛点、框架、流程、行动段落。点击图片可打开原图。</span>
+    </div>
+    <article class="wechat-article-preview">
+      ${blocks.map((block, index) => `${renderArticleBlock(block)}${slots[index] ? renderArticleImageSlot(slots[index]) : ""}`).join("")}
+    </article>
+  </div>`;
+}
+
+function stripDraftTitleLabels(copy = "") {
+  return String(copy || "")
+    .replace(/^标题：.*\n+/m, "")
+    .replace(/^正文：\n?/m, "")
+    .replace(/\n+配图建议：[\s\S]*$/m, "")
+    .replace(/\n+标签：[\s\S]*$/m, "")
+    .trim();
+}
+
+function splitArticleBlocks(copy = "") {
+  const lines = String(copy || "").split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const blocks = [];
+  let current = [];
+  for (const line of lines) {
+    if (/^#{1,3}\s+|^第?[一二三四五六七八九十]+[、.．]|^##\s*/.test(line) && current.length) {
+      blocks.push(current.join("\n"));
+      current = [line];
+    } else {
+      current.push(line);
+    }
+  }
+  if (current.length) blocks.push(current.join("\n"));
+  return blocks.slice(0, 12);
+}
+
+function buildWechatImageSlots(blocks = [], images = []) {
+  const slots = {};
+  const rules = [
+    { page: 1, after: 0, label: "首屏/封面图", reason: "放在开头后，承担停留和主题识别。" },
+    { page: 2, keywords: /问题|痛点|为什么|卡住|焦虑|失败|没流量/, label: "痛点解释图", reason: "插在痛点段后，帮助读者理解问题。" },
+    { page: 3, keywords: /框架|系统|资产|结构|方法论|信号/, label: "框架图", reason: "插在方法框架段后，增强收藏价值。" },
+    { page: 4, keywords: /步骤|流程|怎么做|路径|执行|每天/, label: "流程图", reason: "插在执行步骤段后，降低理解成本。" },
+    { page: 5, after: Math.max(0, blocks.length - 2), label: "行动收束图", reason: "插在结尾行动前，强化下一步。" },
+  ];
+  for (const rule of rules) {
+    const image = images[rule.page - 1];
+    if (!image) continue;
+    let index = Number.isInteger(rule.after) ? rule.after : blocks.findIndex((block) => rule.keywords?.test(block));
+    if (index < 0) index = Math.min(rule.page - 1, Math.max(0, blocks.length - 1));
+    while (slots[index]) index = Math.min(blocks.length - 1, index + 1);
+    slots[index] = { ...rule, image };
+  }
+  return slots;
+}
+
+function renderArticleBlock(block = "") {
+  const safe = escapeHtml(block);
+  if (/^#\s+/.test(block)) return `<h1>${safe.replace(/^#\s+/, "")}</h1>`;
+  if (/^##\s+/.test(block)) return `<h2>${safe.replace(/^##\s+/, "")}</h2>`;
+  if (/^第?[一二三四五六七八九十]+[、.．]/.test(block)) return `<h2>${safe}</h2>`;
+  return `<p>${safe.replace(/\n/g, "<br>")}</p>`;
+}
+
+function renderArticleImageSlot(slot) {
+  return `<figure class="wechat-image-slot">
+    <a href="${escapeHtml(slot.image)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(slot.image)}" alt="${escapeHtml(slot.label)}" loading="lazy" /></a>
+    <figcaption>P${slot.page} · ${escapeHtml(slot.label)}：${escapeHtml(slot.reason)}</figcaption>
+  </figure>`;
+}
 function renderCheckStep() {
-  if (!state.improvedDraft && state.draft) state.improvedDraft = improveDraft(state.draft);
   const checks = scoreDraft();
   return `<section class="work-card">
     ${cardHead("Longka 文案体检", "正文生成后才评分。评分说依据，再给优化方向。")}
@@ -406,6 +1224,7 @@ function renderCheckStep() {
         ${checks.map((item) => `<div class="check-row ${item.warn ? "warn" : ""}"><b>${item.score}</b><p><strong>${escapeHtml(item.name)}</strong><br>${escapeHtml(item.reason)}</p></div>`).join("")}
       </div>
     </div>
+    ${renderCopyVersionList()}
     <div class="actions">
       <button class="ghost" data-step-target="7">返回正文</button>
       <button class="secondary" data-improve-again>继续优化一次</button>
@@ -428,17 +1247,24 @@ function renderConfirmStep() {
 
 function renderProductionStep() {
   const locked = !state.copyConfirmed;
+  if (state.publishTarget !== "xhs") return renderNonXhsProductionStep(locked);
+  ensureXhsCardPlan();
+  const visual = currentVisualStyle();
+  const primaryLabel = visual.id === "xiaohei-metaphor" ? "生成 5 张小黑漫画图" : "生成 5 张当前风格图";
+  const loadingLabel = visual.id === "xiaohei-metaphor" ? "43 正在生成..." : "正在生成...";
   return `<section class="work-card">
-    ${cardHead("制作分流", "确认文案前，这里锁住。确认后可按目标平台进入图文、长文或视频任务。")}
+    ${cardHead("小红书图文成稿", "确认文案后，生成 5 张小红书轮播配图，并在本页直接回显结果。")}
+    ${renderCleanXhsCardPreview()}
     <div class="production-grid">
       <article class="production-card ${locked ? "locked" : ""}">
-        <b>${escapeHtml(currentTarget().title)} 交付方案</b>
-        <span>${escapeHtml(buildDeliveryPlan().join(" / "))}</span>
-        <button class="primary" ${locked ? "disabled" : ""} data-production="delivery">生成交付方案</button>
+        <b>${escapeHtml(visual.title)}</b>
+        <span>按当前确认文案和视觉风格生成 5 张小红书轮播图，并在本页回显真实图片或导出结果。</span>
+        <button class="primary" ${locked || state.xhsCardExportStatus === "loading" ? "disabled" : ""} data-generate-xiaohei-cards>${state.xhsCardExportStatus === "loading" && state.xhsCardOperation === "xiaohei" ? loadingLabel : primaryLabel}</button>
+        <button class="secondary" ${locked || state.xhsCardExportStatus === "loading" ? "disabled" : ""} data-export-xhs-cards>${state.xhsCardExportStatus === "loading" && state.xhsCardOperation === "plan" ? "正在导出方案..." : "仅导出拆页方案"}</button>
       </article>
       <article class="production-card ${locked ? "locked" : ""}">
         <b>一鱼多吃复用</b>
-        <span>同一个选题后续可继续生成小红书、公众号、朋友圈、短视频版本。</span>
+        <span>同一母题后续可继续改成公众号、朋友圈、视频号或短视频脚本。</span>
         <button class="primary" ${locked ? "disabled" : ""} data-production="reuse">保存为可复用选题</button>
       </article>
     </div>
@@ -449,32 +1275,199 @@ function renderProductionStep() {
   </section>`;
 }
 
+function renderNonXhsProductionStep(locked) {
+  const copy = confirmedCopyText();
+  const images = getReusableImagesForCurrentTopic();
+  const isWechat = state.publishTarget === "wechat-article";
+  const isVideo = state.publishTarget === "douyin" || state.publishTarget === "video-account";
+  return `<section class="work-card">
+    ${cardHead(`${currentTarget().title} 成稿`, "当前是跨平台复用任务：保留母题，按目标平台重新组织正文、脚本和配图策略。")}
+    <div class="production-grid">
+      <article class="production-card ${locked ? "locked" : ""}">
+        <b>${isWechat ? "公众号图文排版" : isVideo ? "视频脚本/分镜" : "平台文案"}</b>
+        <span>${isWechat ? "长文会自动匹配可复用小黑图的插入位置。" : isVideo ? "脚本要重新拆成钩子、口播、镜头和字幕。" : "按当前平台重新表达，不沿用原平台结构。"}</span>
+      </article>
+      <article class="production-card ${locked ? "locked" : ""}">
+        <b>可复用图片</b>
+        <span>${images.length ? `${images.length} 张，可按语义复用或后续重做。` : "当前母题没有可复用图片，可只输出文字或后续补图。"}</span>
+      </article>
+    </div>
+    ${isWechat ? renderWechatArticleImageLayout(copy) : ""}
+    ${isVideo ? renderVideoProductionPreview(copy) : ""}
+    <div class="actions">
+      <button class="ghost" data-step-target="9">返回确认文案</button>
+      <button class="primary" data-step-target="11" ${state.copyConfirmed ? "" : "disabled"}>下一步：导出交付</button>
+    </div>
+  </section>`;
+}
+
+function renderVideoProductionPreview(copy = "") {
+  const lines = String(copy || "").split(/\n+/).map((line) => line.trim()).filter(Boolean).slice(0, 10);
+  return `<div class="article-layout-preview">
+    <div class="title-group-head"><b>视频脚本预览</b><span>这里检查钩子、口播、分镜和字幕节奏，后续可接视频生产模块。</span></div>
+    <div class="asset-grid">
+      ${lines.map((line, index) => `<article class="asset-item"><b>${index === 0 ? "标题/钩子" : `段落 ${index}`}</b><span>${escapeHtml(line)}</span></article>`).join("")}
+    </div>
+  </div>`;
+}
+
 function renderExportStep() {
+  const files = Array.isArray(state.xhsCardManifest?.publicFiles) ? state.xhsCardManifest.publicFiles : [];
+  const ready = state.copyConfirmed && Boolean(confirmedCopyText());
+  const copy = confirmedCopyText();
   return `<section class="work-card">
     ${cardHead("导出交付", "这里给运营人员可复制、可交接、可复盘的结果。")}
+    ${!ready ? `<div class="status-strip warn">还没有确认成稿。请先返回确认文案。</div>` : `<div class="status-strip success">已生成 ${escapeHtml(currentTarget().title)} 成稿${files.length ? `，并带 ${files.length} 张可复用图片。` : "。"}</div>`}
     <div class="production-grid">
-      <article class="production-card"><b>当前平台</b><span>${escapeHtml(currentTarget().title)}</span></article>
-      <article class="production-card"><b>交付清单</b><span>${escapeHtml(buildDeliveryPlan().join(" / "))}</span></article>
+      <article class="production-card"><b>标题</b><span>${escapeHtml(state.selectedTitle || selectedTopic()?.theme || "未选择标题")}</span></article>
+      <article class="production-card"><b>交付清单</b><span>${buildDeliveryPlan().join(" / ")}${files.length ? ` / ${files.length} 张图片` : ""}</span></article>
+    </div>
+    <div class="draft-box">
+      <div class="draft-text"><h3>发布正文</h3><pre>${escapeHtml(copy || "暂无确认文案")}</pre></div>
+      <div class="check-panel">
+        <h3>图片文件</h3>
+        ${files.length ? files.map((url, index) => `<p><strong>P${index + 1}</strong><br><a class="source-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">打开第 ${index + 1} 张图</a></p>`).join("") : `<p>当前平台以文字/脚本交付为主，图片可后续补充或从母题复用。</p>`}
+      </div>
     </div>
     <div class="actions">
       <button class="ghost" data-step-target="10">返回制作分流</button>
-      <button class="primary" data-step-target="12">下一步：沉淀资产</button>
+      <button class="primary" data-step-target="12" ${ready ? "" : "disabled"}>下一步：沉淀资产</button>
     </div>
   </section>`;
 }
 
 function renderArchiveStep() {
+  const files = Array.isArray(state.xhsCardManifest?.publicFiles) ? state.xhsCardManifest.publicFiles : [];
+  const reusableImages = getReusableImagesForCurrentTopic();
+  const archived = state.finalWorks.some((item) => item.id === currentFinalWorkId());
+  const ready = state.copyConfirmed && Boolean(confirmedCopyText());
+  const canSave = ready && (state.publishTarget !== "xhs" || files.length > 0);
   return `<section class="work-card">
-    ${cardHead("保存为内容资产", "本次源头素材、选题、标题、平台版本和体检结果都要保存，后续一鱼多吃。")}
+    ${cardHead("保存为母题资产", "不是只收藏成品，而是把这次内容沉淀成可复盘、可拆解、可切换平台再生产的母题资产。")}
+    ${state.archiveMessage ? `<div class="status-strip success">${escapeHtml(state.archiveMessage)}</div>` : ""}
     <div class="production-grid">
-      <article class="production-card"><b>选题</b><span>${escapeHtml(selectedTopic()?.theme || "未选择")}</span></article>
-      <article class="production-card"><b>下次可复用</b><span>换目标平台后重新生成标题、正文、脚本或长文。</span></article>
+      <article class="production-card"><b>1. 平台成稿</b><span>${escapeHtml(currentTarget().title)} · ${files.length || reusableImages.length} 张可用图 / ${confirmedCopyText().length} 字正文 / 可回看交付链接。</span></article>
+      <article class="production-card"><b>2. 母题复用</b><span>${escapeHtml(selectedTopic()?.theme || "本次选题")} 后续可切换成公众号、视频号、抖音、朋友圈或小红书二版。</span></article>
+      <article class="production-card"><b>3. 拆解资产</b><span>沉淀标题、结构、开头、配图策略和表现数据，反哺下一次创作。</span></article>
     </div>
     <div class="actions">
       <button class="ghost" data-step-target="11">返回导出</button>
+      <button class="secondary" data-archive-final-work ${canSave ? "" : "disabled"}>${archived ? "已保存到资产库" : "保存本次成稿"}</button>
       <button class="primary" data-route-target="assets">查看内容资产库</button>
     </div>
   </section>`;
+}
+
+function currentFinalWorkId() {
+  return [
+    selectedTopic()?.id || "topic",
+    state.publishTarget || "platform",
+    state.confirmedCopyVersionId || state.currentCopyVersionId || "copy",
+    state.xhsCardManifest?.jobId || state.xhsCardAsyncJobId || "no-images",
+  ].join("__");
+}
+
+function buildFinalWorkAsset() {
+  const files = Array.isArray(state.xhsCardManifest?.publicFiles) ? state.xhsCardManifest.publicFiles : [];
+  const reusableImages = getReusableImagesForCurrentTopic();
+  const topic = selectedTopic();
+  const target = currentTarget();
+  const body = confirmedCopyText();
+  const visual = currentVisualStyle();
+  return {
+    id: currentFinalWorkId(),
+    type: "final-work",
+    platform: target.title,
+    platformId: target.id,
+    title: state.selectedTitle || topic?.theme || "未命名成稿",
+    topic: topic?.theme || topic?.title || "",
+    sourceUrl: topic?.url || "",
+    sourcePlatform: topic?.platform || currentSource().title,
+    body,
+    images: files.length ? files : reusableImages,
+    visualStyleId: visual.id,
+    visualStyle: visual.assetLabel,
+    jobId: state.xhsCardManifest?.jobId || state.xhsCardAsyncJobId || "",
+    createdAt: new Date().toISOString(),
+    reusePlan: buildPlatformReusePlan(target.id),
+    extractedAssets: buildPlatformExtractedAssets(target.id, body),
+  };
+}
+
+function archiveFinalWork() {
+  const asset = buildFinalWorkAsset();
+  if (!asset.body) {
+    state.archiveMessage = "还没有确认正文，不能保存为母题资产。";
+    renderToday();
+    return;
+  }
+  if (state.publishTarget === "xhs" && !asset.images.length) {
+    state.archiveMessage = "小红书图文还没有真实图片，不能保存为可发布图文成稿。";
+    renderToday();
+    return;
+  }
+  const withoutCurrent = state.finalWorks.filter((item) => item.id !== asset.id);
+  state.finalWorks = [asset, ...withoutCurrent].slice(0, 30);
+  persistWorkbenchSnapshot();
+  state.archiveMessage = `已保存：${asset.platform} 版本已进入母题资产库，可继续切换到其他平台复用。`;
+  renderToday();
+}
+
+function buildPlatformReusePlan(platformId) {
+  const common = [
+    "小红书：改成 5 张图文轮播，首屏必须有强钩子和明确收藏价值。",
+    "公众号：扩写成长文，增加论证、案例和方法步骤，图片按语义插入。",
+    "视频号/抖音：改成口播脚本、分镜、字幕节奏和封面方向。",
+    "朋友圈：压缩成观点、经历、信任背书和私聊入口。",
+  ];
+  if (platformId === "xhs") return common;
+  if (platformId === "wechat-article") return ["公众号长文已完成，后续优先拆出标题、开头、案例和图片插入策略。", ...common.filter((line) => !line.startsWith("公众号"))];
+  if (platformId === "douyin" || platformId === "video-account") return ["视频脚本已完成，后续优先复用钩子、分镜和口播节奏。", ...common.filter((line) => !line.includes("视频号"))];
+  if (platformId === "moments") return ["朋友圈文案已完成，后续优先复用自然表达、信任铺垫和私聊入口。", ...common.filter((line) => !line.startsWith("朋友圈"))];
+  return common;
+}
+
+function buildPlatformExtractedAssets(platformId, body = "") {
+  const lines = String(body || "").split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const base = {
+    title: state.selectedTitle || "",
+    hook: lines[0] || state.selectedTitle || "",
+  };
+  if (platformId === "xhs") {
+    const cards = ensureXhsCardPlan();
+    const visual = currentVisualStyle();
+    return {
+      ...base,
+      structure: cards.map((card) => card.role).join(" -> "),
+      visualStyle: visual.assetLabel,
+    };
+  }
+  if (platformId === "wechat-article") {
+    return {
+      ...base,
+      structure: "标题 -> 开头判断 -> 问题拆解 -> 案例/方法 -> 行动建议",
+      visualStyle: "公众号长文配图 / 语义插图",
+    };
+  }
+  if (platformId === "douyin" || platformId === "video-account") {
+    return {
+      ...base,
+      structure: "3 秒钩子 -> 痛点解释 -> 观点展开 -> 行动建议 -> 评论/私信引导",
+      visualStyle: "短视频封面 / 分镜参考",
+    };
+  }
+  if (platformId === "moments") {
+    return {
+      ...base,
+      structure: "真实感开头 -> 观点 -> 个人判断 -> 轻 CTA",
+      visualStyle: "朋友圈轻配图",
+    };
+  }
+  return {
+    ...base,
+    structure: "平台成稿结构",
+    visualStyle: "按平台复用",
+  };
 }
 
 function bindWorkAreaActions() {
@@ -529,24 +1522,58 @@ function bindWorkAreaActions() {
     state.draftRevision += 1;
     state.draft = "";
     state.improvedDraft = "";
-    state.copyConfirmed = false;
+    clearCopyConfirmation();
+    state.draftStatus = "idle";
+    state.draftError = "";
+    state.draftMeta = null;
+    state.draftReview = null;
+    state.pendingRevision = null;
+    generateSopDraft({ force: true });
+  });
+  byId("workArea")?.querySelector("[data-improve-again]")?.addEventListener("click", () => {
+    const snapshot = currentCopySnapshot("优化前版本");
+    if (!snapshot?.copy) return;
+    state.draftRevision += 1;
+    state.pendingRevision = {
+      currentDraft: snapshot,
+      qualityFeedback: state.draftReview || runLongkaReview(snapshot.copy),
+      instruction: "Rewrite the current copy into a complete new version. Do not append suggestions only.",
+    };
+    clearCopyConfirmation();
+    state.draft = "";
+    state.improvedDraft = "";
     state.draftStatus = "idle";
     state.draftError = "";
     state.draftMeta = null;
     state.draftReview = null;
     generateSopDraft({ force: true });
   });
-  byId("workArea")?.querySelector("[data-improve-again]")?.addEventListener("click", () => {
-    state.draftRevision += 1;
-    state.improvedDraft = improveDraft(state.improvedDraft || state.draft, true);
-    state.draftReview = runLongkaReview(state.improvedDraft);
-    renderToday();
+  byId("workArea")?.querySelectorAll("[data-copy-version]").forEach((button) => {
+    button.addEventListener("click", () => restoreCopyVersion(button.dataset.copyVersion));
+  });
+  byId("workArea")?.querySelectorAll("[data-copy-restore]").forEach((button) => {
+    button.addEventListener("click", () => restoreCopyVersion(button.dataset.copyRestore));
+  });
+  byId("workArea")?.querySelectorAll("[data-copy-confirm]").forEach((button) => {
+    button.addEventListener("click", () => restoreCopyVersion(button.dataset.copyConfirm, true));
   });
   byId("workArea")?.querySelector("[data-confirm-copy]")?.addEventListener("click", () => {
     if (!state.draft) return;
+    const version = state.copyVersions.find((item) => item.id === state.currentCopyVersionId) || rememberCopyVersion(activeCopyText(), "确认版本");
+    if (version) {
+      state.confirmedCopyVersionId = version.id;
+      state.copyVersions = state.copyVersions.map((item) => ({ ...item, confirmed: item.id === version.id }));
+    }
     state.copyConfirmed = true;
     setStep(10);
   });
+  byId("workArea")?.querySelectorAll("[data-visual-style]").forEach((button) => {
+    button.addEventListener("click", () => changeVisualStyle(button.dataset.visualStyle));
+  });
+  byId("workArea")?.querySelector("[data-generate-xiaohei-cards]")?.addEventListener("click", () => generateXiaoheiCards());
+  byId("workArea")?.querySelector("[data-restore-latest-xiaohei]")?.addEventListener("click", () => restoreLatestXiaoheiCards());
+  byId("workArea")?.querySelector("[data-export-xhs-cards]")?.addEventListener("click", () => exportCleanXhsCardPlan());
+  byId("workArea")?.querySelector("[data-archive-final-work]")?.addEventListener("click", () => archiveFinalWork());
 }
 
 function saveBusinessInputs() {
@@ -1280,7 +2307,9 @@ async function generateSopDraft() {
       route: draft.contentStrategy?.selectedAngle || currentTarget().title,
     };
     state.draftReview = runLongkaReview(state.draft);
+    rememberCopyVersion(state.draft, state.pendingRevision ? `AI 优化第 ${state.draftRevision} 版` : "AI 初稿");
     state.improvedDraft = "";
+    state.pendingRevision = null;
     state.draftStatus = "done";
     state.draftError = "";
   } catch (error) {
@@ -1342,6 +2371,23 @@ function buildSopDraftPayload() {
     },
     comments,
     commentQuestions: comments,
+    currentDraft: state.pendingRevision?.currentDraft ? {
+      title: state.pendingRevision.currentDraft.title,
+      copy: state.pendingRevision.currentDraft.copy,
+      versionId: state.pendingRevision.currentDraft.id,
+      round: state.pendingRevision.currentDraft.round,
+      score: state.pendingRevision.currentDraft.score,
+      label: state.pendingRevision.currentDraft.label,
+    } : null,
+    qualityFeedback: state.pendingRevision ? {
+      score: state.pendingRevision.qualityFeedback?.score || 0,
+      level: state.pendingRevision.qualityFeedback?.level || "",
+      instructions: [
+        state.pendingRevision.instruction,
+        ...(state.pendingRevision.qualityFeedback?.rewriteBrief || []),
+      ].filter(Boolean).slice(0, 8),
+      required: "Rewrite from currentDraft.copy into a complete publishable new version. Do not append advice only.",
+    } : null,
     sourceTopic: {
       id: topic.id,
       theme: topic.theme,
@@ -1361,15 +2407,58 @@ function buildSopDraftPayload() {
       dbsContent: "先判断选题是否值得做，再判断形式、标题、表达效率、认知落差和行动入口。",
       cheatOnContent: "初稿后必须做体检：开头留存、具体感、人味、收藏价值、转化动作。",
       humanizerZh: "删除模板腔、三段式套话、空泛连接词、过度完整的 AI 句式。",
+      platformStyle: platformStyleInstruction(),
       noFallbackTemplate: true,
     },
   };
+}
+
+function platformStyleInstruction() {
+  if (state.publishTarget === "moments") {
+    return [
+      "朋友圈文案不是文章，不要标题、不要标签、不要配图建议、不要“正文：”。",
+      "只输出一条真人朋友圈动态，控制在 120-260 字。",
+      "语气像运营者随手发圈：有最近发生的场景、有一句判断、有一点经验，不要教程腔。",
+      "可以分 3-5 个短段，中间允许空行；不要编号清单，不要一二三步骤。",
+      "结尾轻一点，可以是“有需要我把方法发你”这种私聊入口，不要硬广。"
+    ].join("\n");
+  }
+  if (state.publishTarget === "wechat-article") {
+    return [
+      "公众号长文不是小红书短正文，不要标签，不要配图建议列表。",
+      "需要有标题、开头问题、正文小标题、论证、案例/场景、方法和结尾。",
+      "结构可以用 Markdown 标题，但正文要像一篇完整文章，不要写成轮播卡片说明。",
+      "允许 900-1800 字，重点是观点展开和信任感，不要每段都短促喊口号。"
+    ].join("\n");
+  }
+  if (state.publishTarget === "douyin" || state.publishTarget === "video-account") {
+    return [
+      "短视频脚本不是图文正文，不要标签，不要配图建议，不要公众号式长段落。",
+      "必须按：封面标题、3秒钩子、口播正文、分镜/画面、字幕关键词、结尾互动来写。",
+      "口播要短句，适合真人说出来；每段控制在 1-3 句。",
+      "视频号更偏信任和解释，抖音更偏钩子和节奏。"
+    ].join("\n");
+  }
+  return [
+    "小红书图文要有标题、正文、配图建议和标签。",
+    "正文要口语、有场景、有收藏价值，适合图文笔记，不要写成公众号长文。",
+    "配图建议必须对应轮播页，不要写泛泛的装饰图。"
+  ].join("\n");
 }
 
 function formatSopDraft(draft = {}) {
   const copy = draft.xhsCopy || {};
   const title = state.selectedTitle || draft.selectedTitle || copy.title;
   const body = copy.body || draft.body || "";
+  if (state.publishTarget === "moments") {
+    return formatMomentsSopDraft(body || draft.copy || draft.text || "");
+  }
+  if (state.publishTarget === "wechat-article") {
+    return formatWechatSopDraft({ title, body: body || draft.copy || draft.text || "", draft });
+  }
+  if (state.publishTarget === "douyin" || state.publishTarget === "video-account") {
+    return formatVideoSopDraft({ title, body: body || draft.copy || draft.text || "", draft });
+  }
   const imagePlan = Array.isArray(copy.imagePlan) ? copy.imagePlan : Array.isArray(draft.imagePlan) ? draft.imagePlan : [];
   const tags = Array.isArray(copy.tags) ? copy.tags : Array.isArray(draft.tags) ? draft.tags : [];
   const parts = [`标题：${title}`, "", "正文：", body.trim()];
@@ -1378,6 +2467,68 @@ function formatSopDraft(draft = {}) {
   }
   if (tags.length) parts.push("", `标签：${tags.map((tag) => String(tag).replace(/^#/, "#")).join(" ")}`);
   return parts.filter((item) => item !== undefined && item !== null).join("\n");
+}
+
+function formatWechatSopDraft({ title = "", body = "", draft = {} } = {}) {
+  const clean = stripPlatformNoise(body || draft.article?.body || draft.article || "");
+  const articleTitle = title || state.selectedTitle || selectedTopic()?.theme || "未命名长文";
+  if (/^#\s+/m.test(clean) || /^##\s+/m.test(clean)) {
+    return clean.replace(/^标题[：:].*$/gm, "").trim();
+  }
+  const paragraphs = clean.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  if (paragraphs.length >= 5 && clean.length > 500) {
+    return [`# ${articleTitle}`, "", ...paragraphs].join("\n\n");
+  }
+  return buildArticleDraft(selectedTopic() || {});
+}
+
+function formatVideoSopDraft({ title = "", body = "", draft = {} } = {}) {
+  const video = draft.videoScript || {};
+  const shotList = Array.isArray(video.shotList) ? video.shotList : [];
+  if (video.hook || video.voiceover || shotList.length) {
+    const parts = [
+      `封面标题：${title || video.title || state.selectedTitle || ""}`,
+      "",
+      `3秒钩子：${video.hook || ""}`,
+      "",
+      "口播正文：",
+      String(video.voiceover || body || "").trim(),
+    ];
+    if (shotList.length) {
+      parts.push("", "分镜/画面：", ...shotList.map((item, index) => `${index + 1}. ${typeof item === "string" ? item : item.shot || item.copy || JSON.stringify(item)}`));
+    }
+    if (video.riskNote) parts.push("", `风险提醒：${video.riskNote}`);
+    return parts.filter(Boolean).join("\n");
+  }
+  const clean = stripPlatformNoise(body);
+  if (/0-3 秒|3秒|钩子|口播|分镜|字幕/.test(clean)) return clean;
+  return buildVideoDraft(selectedTopic() || {});
+}
+
+function formatMomentsSopDraft(raw = "") {
+  const topic = selectedTopic() || {};
+  const clean = String(raw || "")
+    .replace(/^标题[：:].*$/gm, "")
+    .replace(/^正文[：:]\s*/gm, "")
+    .replace(/\n+配图建议[：:][\s\S]*$/m, "")
+    .replace(/\n+标签[：:][\s\S]*$/m, "")
+    .replace(/^[-*]\s*/gm, "")
+    .trim();
+  const lines = clean.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const withoutLists = lines.filter((line) => !/^\d+[.、]/.test(line));
+  const compact = withoutLists.join("\n\n").trim();
+  if (compact && compact.length <= 360) return compact;
+  if (compact) return compact.slice(0, 320).replace(/[，。；、][^，。；、]*$/, "。");
+  return buildMomentsDraft(topic);
+}
+
+function stripPlatformNoise(raw = "") {
+  return String(raw || "")
+    .replace(/^标题[：:].*$/gm, "")
+    .replace(/^正文[：:]\s*/gm, "")
+    .replace(/\n+配图建议[：:][\s\S]*$/m, "")
+    .replace(/\n+标签[：:][\s\S]*$/m, "")
+    .trim();
 }
 
 function runLongkaReview(text = "") {
@@ -1502,20 +2653,16 @@ function buildArticleDraft(topic) {
 }
 
 function buildMomentsDraft(topic) {
-  return `今天看到一个挺典型的问题：
+  const pain = topic.pain || "很多内容不是没价值，就是换个平台以后还沿用同一套写法。";
+  return `最近越来越觉得，内容不能偷懒直接搬。
 
-${topic.pain}
+比如同一个选题，小红书可以写得像干货清单，但发朋友圈就不一样。朋友圈里大家看的不是“步骤”，而是你最近真的发现了什么、踩过什么坑。
 
-很多人不是没有行动力，而是一开始没有判断标准，所以越试越乱。
+我这两天拆到一个点：${pain}
 
-我现在更建议先做一件事：别急着照搬别人，先把自己的情况拆清楚。
+所以现在我会先把核心判断留下，再换成更像自己说话的表达。别一上来就讲方法，先讲你为什么突然有这个感受。
 
-如果你也在做“${state.businessLine}”，可以先从 3 个问题开始：
-1. 现在最卡的是认知、方法，还是执行？
-2. 有没有真实案例或数据可以参考？
-3. 下一步能不能先做一个低成本测试？
-
-先判断，再行动，通常比一上来就猛冲稳得多。`;
+有需要的话，我把这套“一个选题改成不同平台”的小流程发你。`;
 }
 
 function buildTopicOnlyDraft(topic) {
@@ -1537,12 +2684,13 @@ ${topic.risk}`;
 function renderBindingEvidence() {
   const topic = selectedTopic();
   if (!topic) return "<p>还没有选中选题。</p>";
+  const titleLabel = state.publishTarget === "moments" ? "选中角度" : "选中标题";
   return `
     <p><strong>选题：</strong>${escapeHtml(topic.theme)}</p>
     <p><strong>源头素材：</strong>${escapeHtml(topic.title)}</p>
     <p><strong>来源平台：</strong>${escapeHtml(topic.platform)}</p>
     <p><strong>目标平台：</strong>${escapeHtml(currentTarget().title)}</p>
-    <p><strong>选中标题：</strong>${escapeHtml(state.selectedTitle)}</p>
+    <p><strong>${escapeHtml(titleLabel)}：</strong>${escapeHtml(state.selectedTitle)}</p>
     <p><strong>风险边界：</strong>${escapeHtml(topic.risk)}</p>
     ${topic.url ? `<p><a class="source-link" href="${escapeHtml(topic.url)}" target="_blank" rel="noreferrer">打开原始素材核对</a></p>` : ""}
   `;
@@ -1598,6 +2746,15 @@ function rewriteDraftByEditorialRules(text = "", fixes = [], again = false) {
   const clean = stripEditorialNotes(text);
   const title = extractDraftField(clean, "标题") || state.selectedTitle || selectedTopic()?.theme || "这件事别急着照搬";
   const body = extractDraftField(clean, "正文") || clean;
+  if (state.publishTarget === "moments") {
+    return formatMomentsSopDraft(rewriteBodyWithFocus(body, fixes, again));
+  }
+  if (state.publishTarget === "wechat-article") {
+    return formatWechatSopDraft({ title, body: rewriteBodyWithFocus(body, fixes, again) });
+  }
+  if (state.publishTarget === "douyin" || state.publishTarget === "video-account") {
+    return formatVideoSopDraft({ title, body: rewriteBodyWithFocus(body, fixes, again) });
+  }
   const tags = extractDraftField(clean, "标签") || "";
   const imagePlan = extractDraftField(clean, "配图建议");
   const rewrittenTitle = rewriteTitleWithSuspense(title);
@@ -1876,11 +3033,198 @@ async function renderAssets() {
   state.sourceChannel = "all-assets";
   const topics = buildTopicsFromDb(db).slice(0, 9);
   state.sourceChannel = oldSource;
-  $("#assetBoard").innerHTML = `<div class="asset-grid">${topics.map((item) => `<article class="asset-item">
+  $("#assetBoard").innerHTML = `
+    <section class="asset-lane">
+      <div class="asset-summary asset-command">
+        <b>内容资产库分两层</b>
+        <span>源素材资产负责找选题；成稿作品资产负责复盘、一鱼多吃、沉淀标题/结构/图文风格。不是简单收藏夹。</span>
+      </div>
+      ${state.finalWorks.length ? `<div class="title-group-head"><b>已完成作品</b><span>${state.finalWorks.length} 个可复用成稿</span></div>
+      <div class="asset-grid">${state.finalWorks.map(renderFinalWorkAsset).join("")}</div>` : `<article class="empty-state"><b>还没有成稿作品</b><span>从今日工作台完成第 10 步出图后，在第 12 步保存，这里会出现可复盘作品。</span></article>`}
+    </section>
+    <section class="asset-lane">
+      <div class="title-group-head"><b>源素材 / 母题候选</b><span>用于后续继续找选题和一鱼多吃。</span></div>
+      <div class="asset-grid">${topics.map((item) => `<article class="asset-item">
     <b>${escapeHtml(item.theme)}</b>
     <span>${escapeHtml(item.reason)}</span>
     ${item.url ? `<a class="source-link" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">打开来源</a>` : ""}
-  </article>`).join("") || `<article class="empty-state"><b>暂无资产</b><span>先读取或导入素材。</span></article>`}</div>`;
+  </article>`).join("") || `<article class="empty-state"><b>暂无源素材</b><span>先读取或导入素材。</span></article>`}</div>
+    </section>`;
+}
+
+function renderFinalWorkAsset(item) {
+  const images = Array.isArray(item.images) ? item.images : [];
+  const metrics = item.publishMetrics || {};
+  const views = Number(metrics.views || 0);
+  const likes = Number(metrics.likes || 0);
+  const saves = Number(metrics.saves || 0);
+  const comments = Number(metrics.comments || 0);
+  const shares = Number(metrics.shares || 0);
+  const saveRate = views ? `${((saves / views) * 100).toFixed(1)}%` : "待补";
+  const engageRate = views ? `${(((likes + saves + comments + shares) / views) * 100).toFixed(1)}%` : "待补";
+  const isEditing = state.editingMetricsWorkId === item.id;
+  const platformId = item.platformId || inferPlatformIdFromTitle(item.platform);
+  const availableTargets = publishTargets.filter((target) => target.id !== "topic-only" && target.id !== platformId);
+  return `<article class="asset-item final-work-asset">
+    <b>${escapeHtml(item.title)}</b>
+    <span>${escapeHtml(item.platform)} 版本 · ${escapeHtml(images.length || 0)} 张可用图 · ${new Date(item.createdAt).toLocaleString()}</span>
+    <p><strong>复用母题：</strong>${escapeHtml(item.topic || "未记录")}</p>
+    <p><strong>拆解资产：</strong>${escapeHtml(item.extractedAssets?.structure || "")}</p>
+    <div class="asset-usage-panel">
+      <b>下一步怎么用</b>
+      <ol>
+        <li><strong>继续生产：</strong>点下面的平台按钮，把同一个母题改成另一个平台版本。</li>
+        <li><strong>发布复盘：</strong>发出去后补阅读、点赞、收藏、评论，判断这个母题值不值得继续做。</li>
+        <li><strong>沉淀资产：</strong>把标题、开头、结构和配图策略继续拆进标题库/结构库/图文风格库。</li>
+        <li><strong>训练语料：</strong>表现好的归为正例，表现差的归为反例，后续进入平台指纹库。</li>
+      </ol>
+    </div>
+    <div class="metric-row">
+      <span>成稿作品</span><span>复用母题</span><span>待补发布数据</span>
+    </div>
+    <div class="asset-review-panel">
+      <b>发布复盘数据</b>
+      <em>数据来源：第一版由运营发布后，从小红书/公众号/视频号后台手动填写；后续接发布回流后自动更新。</em>
+      <div class="asset-review-grid">
+        <span>阅读/播放 <strong>${views || "待补"}</strong></span>
+        <span>点赞 <strong>${likes || "待补"}</strong></span>
+        <span>收藏 <strong>${saves || "待补"}</strong></span>
+        <span>评论 <strong>${comments || "待补"}</strong></span>
+        <span>转发 <strong>${shares || "待补"}</strong></span>
+        <span>收藏率 <strong>${saveRate}</strong></span>
+        <span>互动率 <strong>${engageRate}</strong></span>
+      </div>
+      ${isEditing ? renderPublishMetricsForm(item) : `<p>${escapeHtml(buildReviewConclusion(item))}</p>`}
+    </div>
+    <div class="xhs-generated-grid asset-image-grid">
+      ${images.slice(0, 5).map((url, index) => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer" title="打开 P${index + 1} 原图">
+        <img src="${escapeHtml(url)}" alt="成稿图 P${index + 1}" loading="lazy" />
+        <span>P${index + 1}</span>
+      </a>`).join("")}
+    </div>
+    <div class="asset-reuse-panel">
+      <b>选择下一个平台版本</b>
+      <span>当前已有 ${escapeHtml(item.platform)} 版本。下面会保留母题，但按目标平台重新写标题、结构、正文和图片策略。</span>
+      <div class="asset-action-row">
+        ${availableTargets.map((target) => `<button class="secondary" type="button" data-reuse-work="${escapeHtml(item.id)}" data-reuse-target="${escapeHtml(target.id)}">改成${escapeHtml(target.title)}</button>`).join("")}
+      </div>
+    </div>
+    <div class="asset-action-row">
+      <button class="secondary" type="button" data-edit-metrics="${escapeHtml(item.id)}">${isEditing ? "收起数据表" : "补发布数据"}</button>
+      <button class="secondary" type="button" data-deconstruct-work="${escapeHtml(item.id)}">拆成标题/结构资产</button>
+    </div>
+  </article>`;
+}
+
+function inferPlatformIdFromTitle(title = "") {
+  if (/小红书/.test(title)) return "xhs";
+  if (/公众号|长文/.test(title)) return "wechat-article";
+  if (/抖音/.test(title)) return "douyin";
+  if (/视频号/.test(title)) return "video-account";
+  if (/朋友圈/.test(title)) return "moments";
+  return "";
+}
+
+function renderPublishMetricsForm(item) {
+  const metrics = item.publishMetrics || {};
+  return `<div class="publish-metrics-form" data-metrics-form="${escapeHtml(item.id)}">
+    <label>阅读/播放<input type="number" min="0" data-metric-field="views" value="${escapeHtml(metrics.views || "")}"></label>
+    <label>点赞<input type="number" min="0" data-metric-field="likes" value="${escapeHtml(metrics.likes || "")}"></label>
+    <label>收藏<input type="number" min="0" data-metric-field="saves" value="${escapeHtml(metrics.saves || "")}"></label>
+    <label>评论<input type="number" min="0" data-metric-field="comments" value="${escapeHtml(metrics.comments || "")}"></label>
+    <label>转发<input type="number" min="0" data-metric-field="shares" value="${escapeHtml(metrics.shares || "")}"></label>
+    <label>复盘结论<input type="text" data-metric-field="note" value="${escapeHtml(metrics.note || "")}" placeholder="比如：收藏高，适合继续做清单型"></label>
+    <button class="primary" type="button" data-save-metrics="${escapeHtml(item.id)}">保存复盘数据</button>
+  </div>`;
+}
+
+function buildReviewConclusion(item) {
+  const metrics = item.publishMetrics || {};
+  const views = Number(metrics.views || 0);
+  if (!views) return "还没补数据。发布后从平台后台把阅读、点赞、收藏、评论填进来，系统才能判断这个母题是正例、反例，还是值得二次改写。";
+  const saves = Number(metrics.saves || 0);
+  const comments = Number(metrics.comments || 0);
+  const saveRate = saves / Math.max(views, 1);
+  if (metrics.note) return metrics.note;
+  if (saveRate >= 0.03) return "收藏率不错：这类母题适合继续拆成清单、教程或长文。";
+  if (comments >= 10) return "评论信号不错：优先回收评论里的用户问题，补进客户问题库。";
+  return "数据一般：保留为反例，后续对比标题、开头和图片首屏问题。";
+}
+
+function toggleMetricsEditor(id) {
+  state.editingMetricsWorkId = state.editingMetricsWorkId === id ? "" : id;
+  renderAssetPage("assets");
+}
+
+function savePublishMetrics(id) {
+  const form = byId("assetBoard")?.querySelector(`[data-metrics-form="${CSS.escape(id)}"]`);
+  if (!form) return;
+  const metrics = {};
+  form.querySelectorAll("[data-metric-field]").forEach((input) => {
+    const key = input.dataset.metricField;
+    metrics[key] = input.type === "number" ? Number(input.value || 0) : input.value.trim();
+  });
+  state.finalWorks = state.finalWorks.map((item) => item.id === id ? {
+    ...item,
+    publishMetrics: metrics,
+    reviewedAt: new Date().toISOString(),
+  } : item);
+  state.editingMetricsWorkId = "";
+  persistWorkbenchSnapshot();
+  renderAssetPage("assets");
+}
+
+function reuseFinalWork(id, target) {
+  const work = state.finalWorks.find((item) => item.id === id);
+  if (!work) return;
+  state.publishTarget = target;
+  const reuseTopic = {
+    id: `reuse-${work.id}-${target}`,
+    title: work.title,
+    theme: work.topic || work.title,
+    platform: work.platform,
+    keyword: state.keywords,
+    url: work.sourceUrl || "",
+    content: [
+      `原成稿标题：${work.title}`,
+      `原平台：${work.platform}`,
+      `母题：${work.topic || work.title}`,
+      `原正文：${work.body}`,
+      `原结构：${work.extractedAssets?.structure || ""}`,
+      `复用要求：按 ${publishTargets.find((item) => item.id === target)?.title || target} 重新生成，保留母题，不沿用原平台正文结构。`,
+    ].join("\n"),
+    pain: `这个母题已经做过 ${work.platform || "一个平台"} 成稿，现在要改写成 ${publishTargets.find((item) => item.id === target)?.title || target}。`,
+    reason: "来自已完成作品资产的一鱼多吃复用。",
+    reuse: "必须重新匹配目标平台：标题、结构、正文长度、表达方式和转化动作都要变化。",
+    metrics: work.publishMetrics || {},
+    raw: work,
+  };
+  state.topics = [reuseTopic, ...state.topics.filter((item) => item.id !== reuseTopic.id)].slice(0, 10);
+  state.selectedTopicId = reuseTopic.id;
+  state.titleAssets = [];
+  state.titleAssetMessage = "";
+  state.titleAssetKey = "";
+  state.titleChoices = buildTitleChoices(reuseTopic, []);
+  state.selectedTitle = "";
+  state.draft = "";
+  state.improvedDraft = "";
+  state.copyConfirmed = false;
+  state.copyVersions = [];
+  state.currentCopyVersionId = "";
+  state.confirmedCopyVersionId = "";
+  state.xhsCardManifest = null;
+  state.draftMeta = null;
+  state.draftReview = null;
+  state.archiveMessage = `已把「${work.title}」作为母题切到 ${currentTarget().title}。请先选新标题，再按该平台重写正文和配图策略。`;
+  setRoute("today");
+  setStep(6);
+}
+
+function deconstructFinalWork(id) {
+  const work = state.finalWorks.find((item) => item.id === id);
+  if (!work) return;
+  state.archiveMessage = `已拆解：标题「${work.extractedAssets?.title || work.title}」、结构「${work.extractedAssets?.structure || "未记录"}」、图文风格「${work.extractedAssets?.visualStyle || "未记录"}」。后续会正式写入标题库/结构库。`;
+  renderAssetPage("assets");
 }
 
 function sampleAssetItems(label) {
@@ -1932,4 +3276,27 @@ document.addEventListener("click", (event) => {
   if (name === "import-state") alert("导入资料库入口已保留。");
 });
 
+document.addEventListener("click", (event) => {
+  const editMetrics = event.target.closest("[data-edit-metrics]");
+  if (editMetrics) {
+    toggleMetricsEditor(editMetrics.dataset.editMetrics);
+    return;
+  }
+  const saveMetrics = event.target.closest("[data-save-metrics]");
+  if (saveMetrics) {
+    savePublishMetrics(saveMetrics.dataset.saveMetrics);
+    return;
+  }
+  const reuse = event.target.closest("[data-reuse-work]");
+  if (reuse) {
+    reuseFinalWork(reuse.dataset.reuseWork, reuse.dataset.reuseTarget || "wechat-article");
+    return;
+  }
+  const deconstruct = event.target.closest("[data-deconstruct-work]");
+  if (deconstruct) {
+    deconstructFinalWork(deconstruct.dataset.deconstructWork);
+  }
+});
+
+restoreWorkbenchSnapshot();
 renderToday();

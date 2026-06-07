@@ -35,3 +35,9 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Command center generated assets and local runtime data
+apps/command-center-prototype/exports/
+apps/command-center-prototype/test-artifacts/
+apps/command-center-prototype/data/customer-assets/
+apps/command-center-prototype/data/*.backup*.json
+apps/command-center-prototype/data/*.empty-before-restore*.json
