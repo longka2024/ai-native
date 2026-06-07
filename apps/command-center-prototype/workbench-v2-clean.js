@@ -2395,8 +2395,8 @@ async function ensureTitleAssetsForCurrentTopic() {
     const result = await res.json();
     state.titleAssets = Array.isArray(result.titles) ? result.titles : [];
     state.titleAssetMessage = result.filterMiss
-      ? "当前方向标题资产不足，已临时参考全库高分标题；建议继续采集本方向爆款标题。"
-      : `当前方向已匹配 ${state.titleAssets.length} 条标题资产，候选标题会参考真实爆款公式。`;
+      ? "当前方向标题资产不足：本次先基于当前选题生成临时标题，标题库只做辅助参考。"
+      : `当前方向已匹配 ${state.titleAssets.length} 条标题资产，候选标题会参考真实爆款公式，但仍优先绑定当前选题。`;
     state.titleChoices = buildTitleChoices(topic, state.titleAssets);
     if (!state.titleChoices.some((item) => item.title === state.selectedTitle)) state.selectedTitle = "";
   } catch (error) {
@@ -2438,12 +2438,112 @@ function rewriteTitleFromAsset(seed, formula = "", example = "") {
   return `${core}不是照搬爆款，而是先建资产`;
 }
 
+function topicTextForTitle(topic = {}) {
+  return cleanSourceText([
+    topic.theme,
+    topic.title,
+    topic.pain,
+    topic.reason,
+    topic.reuse,
+    topic.content,
+    topic.raw?.title,
+    topic.raw?.theme,
+    topic.raw?.text,
+    topic.raw?.content,
+    topic.raw?.description,
+  ].filter(Boolean).join(" "));
+}
+
+function extractTopicSignals(topic = {}) {
+  const text = topicTextForTitle(topic);
+  const clauses = text
+    .split(/[。！？!?；;\n\r]+/)
+    .map((item) => item.trim())
+    .filter((item) => item.length >= 4)
+    .slice(0, 8);
+  const keep = [];
+  const push = (value) => {
+    const word = String(value || "").trim();
+    if (word && !keep.includes(word) && keep.length < 8) keep.push(word);
+  };
+  const tokenPattern = /[A-Za-z][A-Za-z0-9_-]{1,20}|[\u4e00-\u9fa5]{2,12}/g;
+  for (const match of text.matchAll(tokenPattern)) {
+    const word = match[0];
+    if (/^(这个|那个|因为|所以|但是|如果|不是|而是|真正|可以|已经|现在|昨天|今天|一个|一种|很多|时候|内容|选题|素材)$/.test(word)) continue;
+    if (/AI|Agent|FDE|自媒体|企业|落地|组织|工作流|岗位|采购|部署|培训|知识库|资产库|小红书|公众号|视频号|朋友圈|模型|爆款|人味|复写|复盘|工具/.test(word)) push(word);
+  }
+  const contrast = text.match(/不是([^，。！？;；]{2,24})[，,]?\s*而是([^，。！？;；]{2,32})/);
+  const main = keep[0] || topic.theme || topic.title || state.businessLine;
+  const second = keep.find((item) => item !== main) || state.businessLine || "这件事";
+  const third = keep.find((item) => item !== main && item !== second) || "关键变化";
+  const sourceTitle = cleanSourceText(topic.title || topic.theme || clauses[0] || main).slice(0, 42);
+  return {
+    text,
+    clauses,
+    keywords: keep,
+    main,
+    second,
+    third,
+    sourceTitle,
+    contrastA: contrast?.[1]?.trim() || "",
+    contrastB: contrast?.[2]?.trim() || "",
+  };
+}
+
+function buildTopicDrivenTitleChoices(topic = {}) {
+  const signal = extractTopicSignals(topic);
+  if (!signal.text || signal.text.length < 8) return [];
+  const target = state.publishTarget;
+  const main = signal.main;
+  const second = signal.second;
+  const third = signal.third;
+  const contrastTitle = signal.contrastA && signal.contrastB
+    ? `${main}的重点不是${signal.contrastA}，而是${signal.contrastB}`
+    : `${main}真正该看的，不是${second}，而是${third}`;
+  if (target === "moments") {
+    return dedupeTitleChoices([
+      titleChoice(`我最近重新理解了${main}`, "朋友圈角度：像真人观察，不写成文章标题。"),
+      titleChoice(`${main}这事，真正让我停下来的点是${third}`, "朋友圈角度：先讲发现，再接个人判断。"),
+      titleChoice(`以前我也以为关键是${second}`, "朋友圈角度：用反差开头，适合自然表达。"),
+      titleChoice(`关于${main}，我现在更在意${third}`, "朋友圈角度：压低营销感，保留观点。"),
+      titleChoice(`今天看到一个关于${main}的判断，挺值得拆`, "朋友圈角度：适合引出复盘和私聊。"),
+    ]);
+  }
+  if (target === "douyin" || target === "video-account") {
+    return dedupeTitleChoices([
+      titleChoice(contrastTitle, "短视频钩子：反常识开场，直接绑定当前选题。"),
+      titleChoice(`${main}不是新概念，真正变的是${third}`, "观点型：适合视频号解释和抖音停留。"),
+      titleChoice(`别再把${main}只理解成${second}`, "避坑型：3 秒内制造停顿。"),
+      titleChoice(`${main}背后，其实是${third}在变`, "解释型：适合从现象讲到本质。"),
+      titleChoice(`为什么我说${main}会影响${second}`, "问题型：适合口播展开。"),
+    ]);
+  }
+  if (target === "wechat-article") {
+    return dedupeTitleChoices([
+      titleChoice(contrastTitle, "长文论点：先给判断，再展开证据和方法。"),
+      titleChoice(`从${main}看懂${third}：为什么这不是一次普通变化`, "长文结构：适合写背景、案例和推演。"),
+      titleChoice(`${main}背后的真正问题：${second}只是表层`, "分析型：适合公众号深度拆解。"),
+      titleChoice(`为什么${main}会成为${third}的信号`, "解释型：适合行业观察。"),
+      titleChoice(`${main}之后，${second}应该怎么重新理解`, "方法型：适合落到行动建议。"),
+    ]);
+  }
+  return dedupeTitleChoices([
+    titleChoice(contrastTitle, "小红书观点：用“不是/而是”抓住当前选题矛盾。"),
+    titleChoice(`${main}别只看热闹，真正值得存的是${third}`, "收藏型：从当前素材提炼可复用价值。"),
+    titleChoice(`我为什么建议你重新理解${main}`, "判断型：适合做图文封面。"),
+    titleChoice(`${main}这件事，很多人看漏了${third}`, "信息差型：适合引发点击。"),
+    titleChoice(`普通人看${main}，先抓住这 3 个变化`, "清单型：适合拆成 5 张图文。"),
+  ]);
+}
+
 function buildTitleChoices(topic, titleAssets = state.titleAssets) {
   if (!topic) return [];
   const seed = buildTitleSeed(topic);
   const assetChoices = buildAssetBackedTitleChoices(topic, titleAssets);
+  const topicChoices = buildTopicDrivenTitleChoices(topic);
   if (state.publishTarget === "wechat-article") {
     return dedupeTitleChoices([
+      ...topicChoices,
       ...assetChoices,
       titleChoice(`为什么${seed.problem}，不是换工具就能解决的？`, "认知冲突型：适合长文展开问题本质。"),
       titleChoice(`${seed.asset}这件事，我建议内容创作者早点补上`, "行动建议型：适合公众号方法论。"),
@@ -2455,6 +2555,7 @@ function buildTitleChoices(topic, titleAssets = state.titleAssets) {
   }
   if (state.publishTarget === "douyin" || state.publishTarget === "video-account") {
     return dedupeTitleChoices([
+      ...topicChoices,
       ...assetChoices,
       titleChoice(`你不是缺选题，是缺${seed.asset}`, "短视频钩子：一句话打断旧认知。"),
       titleChoice(`${seed.scene}？先做这 3 个动作`, "清单型：适合口播脚本。"),
@@ -2466,6 +2567,7 @@ function buildTitleChoices(topic, titleAssets = state.titleAssets) {
   }
   const pool = xhsTitlePoolForSeed(seed);
   return dedupeTitleChoices([
+    ...topicChoices,
     ...assetChoices,
     ...pool.map((item) => titleChoice(item.title, item.reason)),
   ]);
