@@ -452,7 +452,7 @@ function buildCleanXhsCardPlanFromConfirmedCopy() {
 function renderCleanXhsCardPreview() {
   const cards = ensureXhsCardPlan();
   if (!cards.length) return `<div class="empty-state"><b>${zh("&#35831;&#20808;&#30830;&#35748;&#25991;&#26696;")}</b><span>${zh("&#30830;&#35748;&#25991;&#26696;&#21518;&#65292;&#25165;&#20250;&#29983;&#25104;&#21487;&#25191;&#34892;&#30340;&#20986;&#22270; brief&#12290;")}</span></div>`;
-  const hasRealImages = Array.isArray(state.xhsCardManifest?.publicFiles) && state.xhsCardManifest.publicFiles.length > 0;
+  const hasRealImages = Array.isArray(currentVisualManifest()?.publicFiles) && currentVisualManifest().publicFiles.length > 0;
   const visual = currentVisualStyle();
   return `<div class="xhs-card-preview-panel">
     <div class="visual-workspace-head">
@@ -469,7 +469,7 @@ function renderCleanXhsCardPreview() {
       <summary>${zh("&#26597;&#30475; 5 &#39029;&#20986;&#22270; brief")}</summary>
       ${cards.map((card, index) => `<div><span>P${index + 1}</span><strong>${escapeHtml(card.role)}</strong><em>${escapeHtml(card.carouselJob || card.visualBrief || "brief")}</em></div>`).join("")}
     </details>
-    ${state.xhsCardManifest ? `<div class="status-strip success">${zh("&#24050;&#29983;&#25104;")}: ${escapeHtml(state.xhsCardManifest.count || cards.length)} ${zh("&#24352;")} / ${escapeHtml(state.xhsCardManifest.jobId || state.xhsCardManifest.outputDir || "")}</div>` : ""}
+    ${currentVisualManifest() ? `<div class="status-strip success">${zh("&#24050;&#29983;&#25104;")}: ${escapeHtml(currentVisualManifest().count || cards.length)} ${zh("&#24352;")} / ${escapeHtml(currentVisualManifest().jobId || currentVisualManifest().outputDir || "")}</div>` : ""}
     ${state.xhsCardExportMessage ? `<div class="status-strip ${state.xhsCardExportStatus === "error" ? "warn" : ""}">${escapeHtml(state.xhsCardExportMessage)}</div>` : ""}
   </div>`;
 }
@@ -504,7 +504,7 @@ function renderCurrentCopyForImage() {
 }
 
 function renderXhsGeneratedGallery() {
-  const files = Array.isArray(state.xhsCardManifest?.publicFiles) ? state.xhsCardManifest.publicFiles : [];
+  const files = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
   const isXiaohei = String(state.xhsCardManifest?.renderer || "").includes("43-gpt-image-2-xiaohei");
   if (state.xhsCardExportStatus === "loading" && state.xhsCardOperation === "xiaohei") {
     const done = Number(state.xhsCardProgress?.done || files.length || 0);
@@ -653,7 +653,7 @@ async function exportCleanXhsCardPlan() {
     state.xhsCardExportStatus = "done";
     state.xhsCardOperation = "plan";
     state.xhsCardExportMessage = "拆页方案 PNG 已导出，可用于检查每页承载，不作为最终配图。";
-    state.xhsCardManifest = result.manifest || null;
+    applyRemoteVisualManifest(result.manifest || null);
   } catch (error) {
     state.xhsCardExportStatus = "error";
     state.xhsCardOperation = "plan";
@@ -668,7 +668,8 @@ async function generateXiaoheiCards() {
   const cards = ensureXhsCardPlan();
   if (!cards.length) return;
   const visual = currentVisualStyle();
-  state.xhsCardJobBase = `${buildCurrentXiaoheiJobId()}-${visual.id}`;
+  if (state.xhsCardManifest && !manifestMatchesCurrentVisual()) state.xhsCardManifest = null;
+  state.xhsCardJobBase = buildCurrentXiaoheiJobId();
   state.xhsCardExportStatus = "loading";
   state.xhsCardOperation = "xiaohei";
   state.xhsCardProgress = { done: 0, total: cards.length };
@@ -712,7 +713,7 @@ async function generateXiaoheiCards() {
     const result = await res.json().catch(() => ({}));
     if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
     state.xhsCardAsyncJobId = result.jobId || state.xhsCardAsyncJobId;
-    if (result.manifest) state.xhsCardManifest = result.manifest;
+    if (result.manifest) applyRemoteVisualManifest(result.manifest);
     await pollXiaoheiCards({ jobId: state.xhsCardAsyncJobId, total: cards.length });
   } catch (error) {
     state.xhsCardExportStatus = "error";
@@ -730,7 +731,7 @@ async function pollXiaoheiCards({ jobId, total }) {
     const res = await fetch(apiPath(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=${encodeURIComponent(total)}`));
     const result = await res.json().catch(() => ({}));
     if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
-    if (result.manifest) state.xhsCardManifest = result.manifest;
+    if (result.manifest) applyRemoteVisualManifest(result.manifest);
     const count = state.xhsCardManifest?.count || 0;
     state.xhsCardProgress = { done: count, total };
     state.xhsCardExportMessage = `43 后台出图中：已完成 ${count}/${total} 张。你可以停留等待，也可以稍后再点继续查询。`;
@@ -768,7 +769,7 @@ async function restoreLatestXiaoheiCards() {
     const res = await fetch(apiPath(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=5`));
     const result = await res.json().catch(() => ({}));
     if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
-    state.xhsCardManifest = result.manifest || null;
+    applyRemoteVisualManifest(result.manifest || null);
     state.xhsCardAsyncJobId = result.jobId || jobId;
     state.xhsCardJobBase = result.jobId || jobId;
     const count = state.xhsCardManifest?.count || 0;
@@ -1145,7 +1146,7 @@ function renderDraftStep() {
 function getReusableImagesForCurrentTopic() {
   const topic = selectedTopic() || {};
   const rawImages = Array.isArray(topic.raw?.images) ? topic.raw.images : [];
-  const manifestImages = Array.isArray(state.xhsCardManifest?.publicFiles) ? state.xhsCardManifest.publicFiles : [];
+  const manifestImages = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
   return rawImages.length ? rawImages : manifestImages;
 }
 
@@ -1329,7 +1330,7 @@ function renderVideoProductionPreview(copy = "") {
 }
 
 function renderExportStep() {
-  const files = Array.isArray(state.xhsCardManifest?.publicFiles) ? state.xhsCardManifest.publicFiles : [];
+  const files = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
   const ready = state.copyConfirmed && Boolean(confirmedCopyText());
   const copy = confirmedCopyText();
   return `<section class="work-card">
@@ -1354,7 +1355,7 @@ function renderExportStep() {
 }
 
 function renderArchiveStep() {
-  const files = Array.isArray(state.xhsCardManifest?.publicFiles) ? state.xhsCardManifest.publicFiles : [];
+  const files = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
   const reusableImages = getReusableImagesForCurrentTopic();
   const archived = state.finalWorks.some((item) => item.id === currentFinalWorkId());
   const ready = state.copyConfirmed && Boolean(confirmedCopyText());
@@ -1385,7 +1386,7 @@ function currentFinalWorkId() {
 }
 
 function buildFinalWorkAsset() {
-  const files = Array.isArray(state.xhsCardManifest?.publicFiles) ? state.xhsCardManifest.publicFiles : [];
+  const files = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
   const reusableImages = getReusableImagesForCurrentTopic();
   const topic = selectedTopic();
   const target = currentTarget();
@@ -1493,7 +1494,7 @@ function renderProductionStepLegacyCleanRoutes() {
   ensureXhsCardPlan();
   const visual = currentVisualStyle();
   const topic = selectedTopic();
-  const files = Array.isArray(state.xhsCardManifest?.publicFiles) ? state.xhsCardManifest.publicFiles : [];
+  const files = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
   const isLoading = state.xhsCardExportStatus === "loading";
   return `<section class="work-card">
     ${cardHead("小红书图文制作", "同一个母题可以选择不同视觉路线：小黑漫画、卷卷整理、归藏杂志卡、宝玉知识卡。先绑定当前文案，再选择风格生产。")}
@@ -1629,11 +1630,38 @@ function visualPlatformForCurrentTarget() {
   return "xhs";
 }
 
+function manifestMatchesCurrentVisual(manifest = state.xhsCardManifest) {
+  if (!manifest) return false;
+  const style = String(manifest.style || "");
+  if (style && style !== state.visualStyle) return false;
+  const files = Array.isArray(manifest.files) ? manifest.files : [];
+  if (files.some((file) => String(file.style || "") && String(file.style) !== state.visualStyle)) return false;
+  const publicFiles = Array.isArray(manifest.publicFiles) ? manifest.publicFiles : [];
+  if (publicFiles.some((url) => !String(url).includes(state.visualStyle))) return false;
+  return true;
+}
+
+function currentVisualManifest() {
+  return manifestMatchesCurrentVisual() ? state.xhsCardManifest : null;
+}
+
+function applyRemoteVisualManifest(manifest) {
+  if (!manifestMatchesCurrentVisual(manifest)) {
+    state.xhsCardManifest = null;
+    state.xhsCardExportStatus = "idle";
+    state.xhsCardProgress = null;
+    state.xhsCardExportMessage = zh("&#24403;&#21069;&#35270;&#35273;&#36335;&#32447;&#24050;&#20999;&#25442;&#65292;&#26087;&#39118;&#26684;&#22270;&#29255;&#19981;&#20877;&#22797;&#29992;&#12290;&#35831;&#37325;&#26032;&#29983;&#25104;&#24403;&#21069;&#39118;&#26684;&#22270;&#12290;");
+    return false;
+  }
+  state.xhsCardManifest = manifest;
+  return true;
+}
+
 function renderProductionStep() {
   const locked = !state.copyConfirmed;
   ensureXhsCardPlan();
   const topic = selectedTopic();
-  const files = Array.isArray(state.xhsCardManifest?.publicFiles) ? state.xhsCardManifest.publicFiles : [];
+  const files = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
   const isLoading = state.xhsCardExportStatus === "loading";
   const rec = autoApplyRecommendedVisualStyle();
   const copy = confirmedCopyText();
