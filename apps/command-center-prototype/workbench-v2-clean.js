@@ -860,6 +860,7 @@ function clearAfter(step) {
 
 function clearProductionState() {
   state.visualStyle = state.visualStyle || "xiaohei-metaphor";
+  state.visualStyleTouched = false;
   state.xhsCardPlan = [];
   state.xhsCardExportStatus = "idle";
   state.xhsCardExportMessage = "";
@@ -873,6 +874,7 @@ function clearProductionState() {
 function changeVisualStyle(styleId) {
   if (!visualStyles.some((item) => item.id === styleId)) return;
   if (state.visualStyle === styleId) return;
+  state.visualStyleTouched = true;
   state.visualStyle = styleId;
   state.xhsCardPlan = [];
   state.xhsCardExportStatus = "idle";
@@ -1633,7 +1635,7 @@ function renderProductionStep() {
   const topic = selectedTopic();
   const files = Array.isArray(state.xhsCardManifest?.publicFiles) ? state.xhsCardManifest.publicFiles : [];
   const isLoading = state.xhsCardExportStatus === "loading";
-  const rec = recommendVisualRouteClean();
+  const rec = autoApplyRecommendedVisualStyle();
   const copy = confirmedCopyText();
   const isWechat = state.publishTarget === "wechat-article";
   const isVideo = state.publishTarget === "douyin" || state.publishTarget === "video-account";
@@ -1669,6 +1671,23 @@ function renderProductionStep() {
     ${files.length ? `<div class="status-strip success">${zh("&#24050;&#29983;&#25104;")} ${files.length} ${zh("&#24352;&#22270;&#29255;&#65292;&#21487;&#20197;&#23548;&#20986;&#25110;&#20445;&#23384;&#20026;&#27597;&#39064;&#36164;&#20135;&#12290;")}</div>` : ""}
     <div class="actions"><button class="ghost" data-step-target="9">${zh("&#36820;&#22238;&#30830;&#35748;&#25991;&#26696;")}</button><button class="primary" data-step-target="11" ${state.copyConfirmed ? "" : "disabled"}>${zh("&#19979;&#19968;&#27493;&#65306;&#23548;&#20986;&#20132;&#20184;")}</button></div>
   </section>`;
+}
+
+function autoApplyRecommendedVisualStyle() {
+  const rec = recommendVisualRouteClean();
+  if (!state.visualStyleTouched && rec.id && rec.id !== state.visualStyle && state.xhsCardExportStatus !== "loading") {
+    state.visualStyle = rec.id;
+    state.xhsCardPlan = [];
+    state.xhsCardExportStatus = "idle";
+    state.xhsCardExportMessage = zh("&#24050;&#25353;&#24403;&#21069;&#20869;&#23481;&#33258;&#21160;&#20999;&#21040;&#25512;&#33616;&#37197;&#22270;&#36335;&#32447;&#12290;");
+    state.xhsCardOperation = "";
+    state.xhsCardAsyncJobId = "";
+    state.xhsCardJobBase = "";
+    state.xhsCardProgress = null;
+    state.xhsCardManifest = null;
+    ensureXhsCardPlan();
+  }
+  return rec;
 }
 
 function renderVisualRoutePickerClean(locked, recommendedId = "") {
