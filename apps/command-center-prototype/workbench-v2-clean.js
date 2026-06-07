@@ -379,6 +379,7 @@ function buildCleanXhsCardPlanFromConfirmedCopy() {
   const visual = currentVisualStyle();
   const lines = extractBodyLinesForCards(copy);
   const title = state.selectedTitle || topic.theme || topic.title || "AI 内容创作为什么总是没流量";
+  return buildTopicBoundVisualCards({ copy, topic, visual, lines, title });
   const pain = lines.find((line) => /没流量|AI|内容|素材|选题|爆款|卡住|不好用|写不出/.test(line)) || topic.pain || "很多人不是不会用 AI，而是没有自己的内容资产库，所以每次写作都像从零开始。";
   const action = lines.find((line) => /私信|评论|收藏|下一步|评估|咨询|测试|行动/.test(line)) || "先拿一个主题跑通：素材 -> 文案 -> 图文，再逐步沉淀自己的内容系统。";
   const sourceName = topic.source || topic.platform || currentSource()?.title || "内容资产库";
@@ -450,6 +451,102 @@ function buildCleanXhsCardPlanFromConfirmedCopy() {
       imagePrompt: "3:4 Xiaohongshu final CTA card, checklist, content workflow, warm professional style, action oriented, Chinese typography."
     }
   ];
+}
+
+function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVisualStyle(), lines = [], title = "" } = {}) {
+  const signal = extractVisualTopicSignals({ copy, topic, title, lines });
+  const styleBrief = visual.id === "xiaohei-metaphor"
+    ? "小黑人物隐喻，场景要围绕当前话题，不要复用内容资产库模板。"
+    : visual.id === "juju-organizing"
+      ? "卷卷整理研究所风格：白底纸面手绘、便利贴、手写箭头、桌面研究笔记；必须围绕当前话题。"
+      : visual.id === "guizang-editorial"
+        ? "归藏杂志风：高级留白、编辑感、少量大字、围绕当前话题做视觉叙事。"
+        : "小红书知识卡：一页一个重点，围绕当前话题做清晰信息图。";
+  const promptBase = `3:4 social content image. Topic: ${signal.subject}. Result/proof: ${signal.result}. Current title: ${title}. Style: ${styleBrief}. Avoid generic content asset library, title formula library, user question library, structure library unless the selected topic is explicitly about those libraries.`;
+  return [
+    {
+      type: "cover",
+      role: "封面",
+      title,
+      text: signal.coverText,
+      visualStyle: visual.id,
+      carouselJob: "第 1 张：用当前话题让人停下来",
+      visualBrief: `${styleBrief} 封面只讲“${signal.subject}”和“${signal.result}”，不要画无关的素材库/标题库。`,
+      readerTakeaway: signal.takeaway,
+      imagePrompt: `${promptBase} Cover page, strong focal point: ${signal.subject} + ${signal.result}.`
+    },
+    {
+      type: "problem",
+      role: "问题页",
+      title: signal.problemTitle,
+      text: signal.pain,
+      visualStyle: visual.id,
+      carouselJob: "第 2 张：把当前话题的疑问讲清楚",
+      visualBrief: `${styleBrief} 画出读者看到“${signal.result}”后的真实疑问：为什么${signal.subject}能做到。`,
+      readerTakeaway: `读者要明白这页在解释${signal.subject}的关键问题。`,
+      imagePrompt: `${promptBase} Problem page, show the question behind ${signal.subject}, no unrelated libraries.`
+    },
+    {
+      type: "case",
+      role: "案例页",
+      title: signal.caseTitle,
+      text: signal.casePoints.join("\n"),
+      visualStyle: visual.id,
+      carouselJob: "第 3 张：拆当前案例，不拆通用模板",
+      visualBrief: `${styleBrief} 用 3 张纸卡拆解当前案例：对象=${signal.subject}，结果=${signal.result}，关键=${signal.keyPoint}。`,
+      readerTakeaway: "这一页必须让读者看到案例背后的关键变量。",
+      imagePrompt: `${promptBase} Case deconstruction page with three paper cards: who, what worked, result.`
+    },
+    {
+      type: "method",
+      role: "方法页",
+      title: signal.methodTitle,
+      text: signal.methodSteps.join("\n"),
+      visualStyle: visual.id,
+      carouselJob: "第 4 张：给出当前话题的可执行路径",
+      visualBrief: `${styleBrief} 把${signal.subject}跑出${signal.result}的路径拆成 4 步，像手写操作清单。`,
+      readerTakeaway: "这一页给读者可以照着做的路径。",
+      imagePrompt: `${promptBase} Four-step practical method page for this exact topic.`
+    },
+    {
+      type: "action",
+      role: "行动页",
+      title: signal.actionTitle,
+      text: signal.action,
+      visualStyle: visual.id,
+      carouselJob: "第 5 张：收束到当前话题的下一步行动",
+      visualBrief: `${styleBrief} 只围绕${signal.subject}给出下一步行动，不要出现内部流程词。`,
+      readerTakeaway: "看完以后知道今天可以先做哪一步。",
+      imagePrompt: `${promptBase} Action checklist page, practical next step for ${signal.subject}.`
+    },
+  ];
+}
+
+function extractVisualTopicSignals({ copy = "", topic = {}, title = "", lines = [] } = {}) {
+  const source = cleanSourceText([title, copy, topic.title, topic.theme, topic.body, topic.content].filter(Boolean).join(" "));
+  const money = source.match(/(?:一天|每日|每天)?\s*(\d+(?:\.\d+)?\s*[万千百]?\+?)\s*(?:收益|收入|变现|利润|元|块)?/)?.[1] || "";
+  const subject = /公众号|流量主/.test(source)
+    ? "公众号流量主"
+    : cleanSourceText(topic.theme || topic.title || title).replace(/[？?].*$/, "").slice(0, 16) || "这个案例";
+  const result = money ? `一天 ${money} 收益` : (source.match(/(涨粉|阅读|播放|成交|获客|收益|收入)[^，。！？]{0,16}/)?.[0] || "跑出结果");
+  const pain = lines.find((line) => /为什么|不是|关键|忽略|收益|流量|定位|内容|案例/.test(line)) || `很多人只看到${result}，但没看懂${subject}背后的定位、内容和复盘。`;
+  const action = lines.find((line) => /先|第一步|建议|测试|行动|复盘|观察/.test(line)) || `先拆一个真实${subject}案例：看它服务谁、发什么、怎么把流量变成${result}。`;
+  const keyPoint = /定位/.test(source) ? "账号定位" : /内容/.test(source) ? "持续内容" : /收益|流量/.test(source) ? "收益路径" : "可复制动作";
+  return {
+    subject,
+    result,
+    keyPoint,
+    coverText: `${subject}为什么能跑出${result}`,
+    problemTitle: `为什么${subject}能跑出来`,
+    caseTitle: `${subject}案例拆解`,
+    methodTitle: `跑通${subject}的 4 个动作`,
+    actionTitle: "先照着拆一个真实案例",
+    pain,
+    action,
+    takeaway: `这篇讲的是${subject}的真实结果，不是泛泛讲内容资产库。`,
+    casePoints: [`对象：${subject}`, `结果：${result}`, `关键：${keyPoint}`],
+    methodSteps: ["找准具体人群", "持续发有用内容", "观察收益数据", "复盘可复制动作"],
+  };
 }
 
 function renderCleanXhsCardPreview() {
