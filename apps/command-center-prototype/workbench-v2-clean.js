@@ -74,6 +74,13 @@ const visualStyles = [
     assetLabel: "小黑手绘漫画 / 观点隐喻",
   },
   {
+    id: "juju-organizing",
+    title: "卷卷整理插画",
+    desc: "适合把复杂方法、复盘、教程整理成白底纸面手绘现场，适合小红书方法卡和公众号正文图。",
+    route: "juju-content-illustrations",
+    assetLabel: "卷卷整理研究所 / 内容插画",
+  },
+  {
     id: "xhs-knowledge-card",
     title: "小红书知识卡",
     desc: "适合清单、步骤、对比和收藏型内容。文字少、层级清楚、适合手机看。",
@@ -1251,7 +1258,7 @@ function renderConfirmStep() {
   </section>`;
 }
 
-function renderProductionStep() {
+function renderProductionStepLegacyVisualRoutes() {
   const locked = !state.copyConfirmed;
   if (state.publishTarget !== "xhs") return renderNonXhsProductionStep(locked);
   ensureXhsCardPlan();
@@ -1474,6 +1481,179 @@ function buildPlatformExtractedAssets(platformId, body = "") {
     structure: "平台成稿结构",
     visualStyle: "按平台复用",
   };
+}
+
+function renderProductionStepLegacyCleanRoutes() {
+  const locked = !state.copyConfirmed;
+  if (state.publishTarget !== "xhs") return renderNonXhsProductionStep(locked);
+  ensureXhsCardPlan();
+  const visual = currentVisualStyle();
+  const topic = selectedTopic();
+  const files = Array.isArray(state.xhsCardManifest?.publicFiles) ? state.xhsCardManifest.publicFiles : [];
+  const isLoading = state.xhsCardExportStatus === "loading";
+  return `<section class="work-card">
+    ${cardHead("小红书图文制作", "同一个母题可以选择不同视觉路线：小黑漫画、卷卷整理、归藏杂志卡、宝玉知识卡。先绑定当前文案，再选择风格生产。")}
+    <div class="status-strip">当前母题：${escapeHtml(topic?.theme || "未选择")} · 当前文案：${state.copyConfirmed ? "已确认" : "未确认"} · 当前视觉：${escapeHtml(visualRouteName(state.visualStyle))}</div>
+    ${renderVisualRoutePicker(locked)}
+    ${renderCleanXhsCardPreview()}
+    <div class="production-grid">
+      <article class="production-card ${locked ? "locked" : ""}">
+        <b>${escapeHtml(visualRouteName(state.visualStyle))}</b>
+        <span>${escapeHtml(visualProductionCopy(state.visualStyle))}</span>
+        <button class="primary" ${locked || isLoading ? "disabled" : ""} data-generate-xiaohei-cards>${isLoading && state.xhsCardOperation === "xiaohei" ? "43 正在生成图片..." : primaryVisualActionLabel(state.visualStyle)}</button>
+        <button class="secondary" ${locked || isLoading ? "disabled" : ""} data-export-xhs-cards>${isLoading && state.xhsCardOperation === "plan" ? "正在导出拆页方案..." : "导出当前风格拆页方案"}</button>
+      </article>
+      <article class="production-card ${locked ? "locked" : ""}">
+        <b>一鱼多吃复用</b>
+        <span>图文完成后保存为母题资产，再切换成公众号长文、朋友圈文案、抖音/视频号脚本。不是一次性成稿。</span>
+        <button class="primary" ${locked ? "disabled" : ""} data-step-target="12">保存为母题资产</button>
+      </article>
+    </div>
+    ${files.length ? `<div class="status-strip success">已绑定当前母题生成 ${files.length} 张图片。可以进入导出交付，或保存为母题资产。</div>` : ""}
+    <div class="actions">
+      <button class="ghost" data-step-target="9">返回确认文案</button>
+      <button class="primary" data-step-target="11" ${state.copyConfirmed ? "" : "disabled"}>下一步：导出交付</button>
+    </div>
+  </section>`;
+}
+
+function visualRouteName(styleId) {
+  if (styleId === "xiaohei-metaphor") return "小黑漫画隐喻";
+  if (styleId === "juju-organizing") return "卷卷整理插画";
+  if (styleId === "guizang-editorial") return "归藏杂志卡";
+  if (styleId === "xhs-knowledge-card") return "宝玉知识卡";
+  return currentVisualStyle().title || "视觉路线";
+}
+
+function renderVisualRoutePicker(locked) {
+  const routes = [
+    {
+      id: "xiaohei-metaphor",
+      name: "小黑漫画",
+      use: "人物隐喻、避坑、流程、情绪场景，适合小红书观点图文。",
+      base: "ian-xiaohei-illustrations",
+    },
+    {
+      id: "juju-organizing",
+      name: "卷卷整理",
+      use: "白底纸面手绘，把复杂内容整理成可进入的现场，适合方法卡和公众号配图。",
+      base: "juju-content-illustrations",
+    },
+    {
+      id: "guizang-editorial",
+      name: "归藏杂志",
+      use: "高级杂志/Deck 感，适合方法论、行业洞察、投资人展示。",
+      base: "guizang-social-card / Open Design",
+    },
+    {
+      id: "xhs-knowledge-card",
+      name: "宝玉知识卡",
+      use: "清单、步骤、对比、收藏型内容，一页一个重点。",
+      base: "baoyu-xhs-images / baoyu-infographic",
+    },
+  ];
+  return `<div class="visual-route-grid">
+    ${routes.map((item) => `<button type="button" class="visual-route-card ${item.id === state.visualStyle ? "active" : ""}" data-visual-style="${escapeHtml(item.id)}" ${locked ? "disabled" : ""}>
+      <b>${escapeHtml(item.name)}</b>
+      <span>${escapeHtml(item.use)}</span>
+      <em>${escapeHtml(item.base)}</em>
+    </button>`).join("")}
+  </div>`;
+}
+
+function visualProductionCopy(styleId) {
+  if (styleId === "xiaohei-metaphor") return "调用 43 小黑真出图，生成 5 张带场景隐喻的漫画图。适合当前演示闭环。";
+  if (styleId === "juju-organizing") return "按卷卷整理研究所风格，把当前文案变成白底纸面手绘方法图；适合方法论、小红书知识卡和公众号正文插图。";
+  if (styleId === "guizang-editorial") return "按归藏杂志风拆成高级图文卡，适合给投资人看方法论和系统感。当前先导出拆页方案，后续接真图服务。";
+  return "按宝玉小红书知识卡拆页，适合清单、步骤和收藏型内容。当前先导出拆页方案，后续接真图服务。";
+}
+
+function primaryVisualActionLabel(styleId) {
+  if (styleId === "xiaohei-metaphor") return "生成 5 张小黑漫画图";
+  if (styleId === "juju-organizing") return "生成 5 张卷卷整理图";
+  if (styleId === "guizang-editorial") return "生成 5 张归藏杂志图";
+  return "生成 5 张宝玉知识卡";
+}
+
+function zh(entity) {
+  const box = document.createElement("textarea");
+  box.innerHTML = entity;
+  return box.value;
+}
+
+function recommendVisualRouteClean() {
+  const topic = selectedTopic() || {};
+  const text = `${state.selectedTitle || ""}\n${confirmedCopyText() || state.draft || ""}\n${topic.theme || ""}\n${topic.pain || ""}`;
+  if (/流程|步骤|系统|资产库|方法|框架|拆解|复盘|教程|清单/.test(text)) {
+    return { id: "juju-organizing", reason: zh("&#36825;&#31687;&#20869;&#23481;&#22312;&#35762;&#26041;&#27861;&#21644;&#31995;&#32479;&#65292;&#38656;&#35201;&#25226;&#22797;&#26434;&#27969;&#31243;&#25972;&#29702;&#25104;&#19968;&#20010;&#33021;&#36827;&#20837;&#30340;&#29616;&#22330;&#65307;&#21367;&#21367;&#27604;&#21333;&#32431;&#28459;&#30011;&#26356;&#36866;&#21512;&#25215;&#36733;&#27493;&#39588;&#21644;&#36164;&#20135;&#20851;&#31995;&#12290;") };
+  }
+  if (/避坑|焦虑|卡住|误区|为什么|别|不要|问题|失败/.test(text)) {
+    return { id: "xiaohei-metaphor", reason: zh("&#36825;&#31687;&#20869;&#23481;&#26377;&#26126;&#26174;&#30171;&#28857;&#21644;&#24773;&#32490;&#24352;&#21147;&#65292;&#36866;&#21512;&#29992;&#23567;&#40657;&#20154;&#29289;&#22330;&#26223;&#20570;&#38544;&#21947;&#65292;&#35753;&#35835;&#32773;&#20808;&#34987;&#30011;&#38754;&#25235;&#20303;&#12290;") };
+  }
+  if (/行业|趋势|洞察|商业|投资人|方法论|战略|中台/.test(text)) {
+    return { id: "guizang-editorial", reason: zh("&#36825;&#31687;&#20869;&#23481;&#20559;&#26041;&#27861;&#35770;&#21644;&#34892;&#19994;&#21028;&#26029;&#65292;&#24402;&#34255;&#26434;&#24535;&#21345;&#26356;&#36866;&#21512;&#21576;&#29616;&#39640;&#32423;&#24863;&#21644;&#31995;&#32479;&#24863;&#12290;") };
+  }
+  return { id: "xhs-knowledge-card", reason: zh("&#36825;&#31687;&#20869;&#23481;&#26356;&#20687;&#21487;&#25910;&#34255;&#30693;&#35782;&#28857;&#65292;&#23453;&#29577;&#30693;&#35782;&#21345;&#36866;&#21512;&#19968;&#39029;&#19968;&#20010;&#37325;&#28857;&#65292;&#26041;&#20415;&#23567;&#32418;&#20070;&#29992;&#25143;&#25910;&#34255;&#12290;") };
+}
+
+function visualRouteNameClean(styleId) {
+  if (styleId === "xiaohei-metaphor") return zh("&#23567;&#40657;&#28459;&#30011;&#38544;&#21947;");
+  if (styleId === "juju-organizing") return zh("&#21367;&#21367;&#25972;&#29702;&#25554;&#30011;");
+  if (styleId === "guizang-editorial") return zh("&#24402;&#34255;&#26434;&#24535;&#21345;");
+  if (styleId === "xhs-knowledge-card") return zh("&#23453;&#29577;&#30693;&#35782;&#21345;");
+  return currentVisualStyle().title || "visual";
+}
+
+function visualProductionCopyClean(styleId) {
+  if (styleId === "xiaohei-metaphor") return zh("&#35843;&#29992; 43 &#23567;&#40657;&#30495;&#20986;&#22270;&#65292;&#29983;&#25104; 5 &#24352;&#24102;&#22330;&#26223;&#38544;&#21947;&#30340;&#28459;&#30011;&#22270;&#12290;&#36866;&#21512;&#24403;&#21069;&#28436;&#31034;&#38381;&#29615;&#12290;");
+  if (styleId === "juju-organizing") return zh("&#25353;&#21367;&#21367;&#25972;&#29702;&#30740;&#31350;&#25152;&#39118;&#26684;&#65292;&#25226;&#24403;&#21069;&#25991;&#26696;&#21464;&#25104;&#30333;&#24213;&#32440;&#38754;&#25163;&#32472;&#26041;&#27861;&#22270;&#65307;&#36866;&#21512;&#26041;&#27861;&#35770;&#12289;&#23567;&#32418;&#20070;&#30693;&#35782;&#21345;&#21644;&#20844;&#20247;&#21495;&#27491;&#25991;&#25554;&#22270;&#12290;");
+  if (styleId === "guizang-editorial") return zh("&#25353;&#24402;&#34255;&#26434;&#24535;&#39118;&#25286;&#25104;&#39640;&#32423;&#22270;&#25991;&#21345;&#65292;&#36866;&#21512;&#32473;&#25237;&#36164;&#20154;&#30475;&#26041;&#27861;&#35770;&#21644;&#31995;&#32479;&#24863;&#12290;&#24403;&#21069;&#20808;&#23548;&#20986;&#25286;&#39029;&#26041;&#26696;&#65292;&#21518;&#32493;&#25509;&#30495;&#22270;&#26381;&#21153;&#12290;");
+  return zh("&#25353;&#23453;&#29577;&#23567;&#32418;&#20070;&#30693;&#35782;&#21345;&#25286;&#39029;&#65292;&#36866;&#21512;&#28165;&#21333;&#12289;&#27493;&#39588;&#21644;&#25910;&#34255;&#22411;&#20869;&#23481;&#12290;&#24403;&#21069;&#20808;&#23548;&#20986;&#25286;&#39029;&#26041;&#26696;&#65292;&#21518;&#32493;&#25509;&#30495;&#22270;&#26381;&#21153;&#12290;");
+}
+
+function primaryVisualActionLabelClean(styleId) {
+  if (styleId === "xiaohei-metaphor") return zh("&#29983;&#25104; 5 &#24352;&#23567;&#40657;&#28459;&#30011;&#22270;");
+  if (styleId === "juju-organizing") return zh("&#29983;&#25104; 5 &#24352;&#21367;&#21367;&#25972;&#29702;&#22270;");
+  if (styleId === "guizang-editorial") return zh("&#29983;&#25104; 5 &#24352;&#24402;&#34255;&#26434;&#24535;&#22270;");
+  return zh("&#29983;&#25104; 5 &#24352;&#23453;&#29577;&#30693;&#35782;&#21345;");
+}
+
+function renderProductionStep() {
+  const locked = !state.copyConfirmed;
+  if (state.publishTarget !== "xhs") return renderNonXhsProductionStep(locked);
+  ensureXhsCardPlan();
+  const topic = selectedTopic();
+  const files = Array.isArray(state.xhsCardManifest?.publicFiles) ? state.xhsCardManifest.publicFiles : [];
+  const isLoading = state.xhsCardExportStatus === "loading";
+  const rec = recommendVisualRouteClean();
+  return `<section class="work-card">
+    ${cardHead(zh("&#23567;&#32418;&#20070;&#22270;&#25991;&#21046;&#20316;"), zh("&#21516;&#19968;&#20010;&#27597;&#39064;&#21487;&#20197;&#36873;&#25321;&#19981;&#21516;&#35270;&#35273;&#36335;&#32447;&#65306;&#23567;&#40657;&#28459;&#30011;&#12289;&#21367;&#21367;&#25972;&#29702;&#12289;&#24402;&#34255;&#26434;&#24535;&#21345;&#12289;&#23453;&#29577;&#30693;&#35782;&#21345;&#12290;&#31995;&#32479;&#20250;&#20808;&#32473;&#20986;&#25512;&#33616;&#36335;&#32447;&#65292;&#20320;&#20063;&#21487;&#20197;&#25163;&#21160;&#20999;&#25442;&#12290;"))}
+    <div class="status-strip">${zh("&#24403;&#21069;&#27597;&#39064;")}：${escapeHtml(topic?.theme || "-")} · ${zh("&#24403;&#21069;&#35270;&#35273;")}：${escapeHtml(visualRouteNameClean(state.visualStyle))}</div>
+    <div class="visual-recommendation"><b>${zh("&#24314;&#35758;&#37197;&#22270;&#36335;&#32447;")}：${escapeHtml(visualRouteNameClean(rec.id))}</b><span>${escapeHtml(rec.reason)}</span>${rec.id !== state.visualStyle ? `<button type="button" class="secondary" data-visual-style="${escapeHtml(rec.id)}">${zh("&#20999;&#25442;&#21040;&#25512;&#33616;&#36335;&#32447;")}</button>` : `<em>${zh("&#24050;&#20351;&#29992;&#25512;&#33616;&#36335;&#32447;")}</em>`}</div>
+    ${renderVisualRoutePickerClean(locked, rec.id)}
+    ${renderCleanXhsCardPreview()}
+    <div class="production-grid">
+      <article class="production-card ${locked ? "locked" : ""}">
+        <b>${escapeHtml(visualRouteNameClean(state.visualStyle))}</b>
+        <span>${escapeHtml(visualProductionCopyClean(state.visualStyle))}</span>
+        <button class="primary" ${locked || isLoading ? "disabled" : ""} data-generate-xiaohei-cards>${isLoading ? "43 generating..." : escapeHtml(primaryVisualActionLabelClean(state.visualStyle))}</button>
+        <button class="secondary" ${locked || isLoading ? "disabled" : ""} data-export-xhs-cards>${zh("&#23548;&#20986;&#24403;&#21069;&#39118;&#26684;&#25286;&#39029;&#26041;&#26696;")}</button>
+      </article>
+      <article class="production-card ${locked ? "locked" : ""}"><b>${zh("&#19968;&#40060;&#22810;&#21507;&#22797;&#29992;")}</b><span>${zh("&#22270;&#25991;&#23436;&#25104;&#21518;&#20445;&#23384;&#20026;&#27597;&#39064;&#36164;&#20135;&#65292;&#20877;&#20999;&#25442;&#25104;&#20844;&#20247;&#21495;&#38271;&#25991;&#12289;&#26379;&#21451;&#22280;&#25991;&#26696;&#12289;&#25238;&#38899;/&#35270;&#39057;&#21495;&#33050;&#26412;&#12290;")}</span><button class="primary" ${locked ? "disabled" : ""} data-step-target="12">${zh("&#20445;&#23384;&#20026;&#27597;&#39064;&#36164;&#20135;")}</button></article>
+    </div>
+    ${files.length ? `<div class="status-strip success">${zh("&#24050;&#29983;&#25104;")} ${files.length} ${zh("&#24352;&#22270;&#29255;&#65292;&#21487;&#20197;&#23548;&#20986;&#25110;&#20445;&#23384;&#20026;&#27597;&#39064;&#36164;&#20135;&#12290;")}</div>` : ""}
+    <div class="actions"><button class="ghost" data-step-target="9">${zh("&#36820;&#22238;&#30830;&#35748;&#25991;&#26696;")}</button><button class="primary" data-step-target="11" ${state.copyConfirmed ? "" : "disabled"}>${zh("&#19979;&#19968;&#27493;&#65306;&#23548;&#20986;&#20132;&#20184;")}</button></div>
+  </section>`;
+}
+
+function renderVisualRoutePickerClean(locked, recommendedId = "") {
+  const routes = [
+    { id: "xiaohei-metaphor", name: zh("&#23567;&#40657;&#28459;&#30011;"), use: zh("&#20154;&#29289;&#38544;&#21947;&#12289;&#36991;&#22353;&#12289;&#27969;&#31243;&#12289;&#24773;&#32490;&#22330;&#26223;&#65292;&#36866;&#21512;&#23567;&#32418;&#20070;&#35266;&#28857;&#22270;&#25991;&#12290;"), base: "ian-xiaohei-illustrations" },
+    { id: "juju-organizing", name: zh("&#21367;&#21367;&#25972;&#29702;"), use: zh("&#30333;&#24213;&#32440;&#38754;&#25163;&#32472;&#65292;&#25226;&#22797;&#26434;&#20869;&#23481;&#25972;&#29702;&#25104;&#21487;&#36827;&#20837;&#30340;&#29616;&#22330;&#12290;"), base: "juju-content-illustrations" },
+    { id: "guizang-editorial", name: zh("&#24402;&#34255;&#26434;&#24535;"), use: zh("&#39640;&#32423;&#26434;&#24535;&#21644; Deck &#24863;&#65292;&#36866;&#21512;&#26041;&#27861;&#35770;&#12289;&#34892;&#19994;&#27934;&#23519;&#12290;"), base: "guizang-social-card / Open Design" },
+    { id: "xhs-knowledge-card", name: zh("&#23453;&#29577;&#30693;&#35782;&#21345;"), use: zh("&#28165;&#21333;&#12289;&#27493;&#39588;&#12289;&#23545;&#27604;&#12289;&#25910;&#34255;&#22411;&#20869;&#23481;&#65292;&#19968;&#39029;&#19968;&#20010;&#37325;&#28857;&#12290;"), base: "baoyu-xhs-images / baoyu-infographic" },
+  ];
+  return `<div class="visual-route-grid">${routes.map((item) => `<button type="button" class="visual-route-card ${item.id === state.visualStyle ? "active" : ""}" data-visual-style="${escapeHtml(item.id)}" ${locked ? "disabled" : ""}><b>${escapeHtml(item.name)}</b><span>${escapeHtml(item.use)}</span><em>${item.id === recommendedId ? "recommended · " : ""}${escapeHtml(item.base)}</em></button>`).join("")}</div>`;
 }
 
 function bindWorkAreaActions() {
