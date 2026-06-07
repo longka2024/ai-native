@@ -111,6 +111,12 @@ const steps = [
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 
+function apiPath(path) {
+  const clean = String(path || "").startsWith("/") ? String(path || "") : `/${path}`;
+  if (window.location.pathname.startsWith("/ai-native-v2/")) return `/ai-native-v2${clean}`;
+  return clean;
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -612,7 +618,7 @@ async function exportCleanXhsCardPlan() {
   state.xhsCardManifest = null;
   renderToday();
   try {
-    const res = await fetch("/api/xhs-cards/export-plan", {
+    const res = await fetch(apiPath("/api/xhs-cards/export-plan"), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -673,7 +679,7 @@ async function generateXiaoheiCards() {
   };
   renderToday();
   try {
-    const res = await fetch("/api/xhs-cards/generate-xiaohei/start", {
+    const res = await fetch(apiPath("/api/xhs-cards/generate-xiaohei/start"), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -712,7 +718,7 @@ async function generateXiaoheiCards() {
 
 async function pollXiaoheiCards({ jobId, total }) {
   for (let round = 0; round < 90; round += 1) {
-    const res = await fetch(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=${encodeURIComponent(total)}`);
+    const res = await fetch(apiPath(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=${encodeURIComponent(total)}`));
     const result = await res.json().catch(() => ({}));
     if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
     if (result.manifest) state.xhsCardManifest = result.manifest;
@@ -750,7 +756,7 @@ async function restoreLatestXiaoheiCards() {
   state.xhsCardExportMessage = `正在从 43 恢复当前主题的小黑图：${jobId}`;
   renderToday();
   try {
-    const res = await fetch(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=5`);
+    const res = await fetch(apiPath(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=5`));
     const result = await res.json().catch(() => ({}));
     if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
     state.xhsCardManifest = result.manifest || null;
@@ -1636,7 +1642,7 @@ async function collectXAccounts() {
   scheduleProgressLog("采集完成后会先筛掉纯链接、短碎片、弱互动帖子。", 4200);
   scheduleProgressLog("如果账号较多，请等控制台出现采集完成和本轮批次。", 9000);
   try {
-    const res = await fetch("/api/collectors/xcrawl/x-user-tweets-batch", {
+    const res = await fetch(apiPath("/api/collectors/xcrawl/x-user-tweets-batch"), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ accounts, maxTweets, pages, labelType: "radar_seed" }),
@@ -1804,7 +1810,7 @@ async function loadState() {
     if (state.sourceChannel === "x-live" && state.useLatestXRunOnly && state.lastXRunIds.length) {
       params.set("runIds", state.lastXRunIds.join(","));
     }
-    const res = await fetch(`/api/content-assets/unified?${params.toString()}`);
+    const res = await fetch(apiPath(`/api/content-assets/unified?${params.toString()}`));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const result = await res.json();
     state.assetStatus = "已读取统一内容资产库";
@@ -1820,6 +1826,29 @@ async function loadState() {
     state.assetStatus = "本地预览样本";
     log(`读取统一内容资产库失败：${error.message}`);
     return sampleState();
+  }
+}
+
+async function loadFullAssetState() {
+  try {
+    const res = await fetch(apiPath("/api/state"));
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const db = await res.json();
+    return {
+      ...db,
+      contentSamples: Array.isArray(db.contentSamples) ? db.contentSamples : [],
+      rawMaterials: Array.isArray(db.rawMaterials) ? db.rawMaterials : [],
+      candidates: Array.isArray(db.candidates) ? db.candidates : [],
+      assets: Array.isArray(db.assets) ? db.assets : [],
+    };
+  } catch (error) {
+    console.warn("loadFullAssetState failed", error);
+    return {
+      contentSamples: [],
+      rawMaterials: [],
+      candidates: [],
+      assets: [],
+    };
   }
 }
 
@@ -2109,7 +2138,7 @@ async function ensureTitleAssetsForCurrentTopic() {
       platform: currentTarget().platform || "",
       limit: "40",
     });
-    const res = await fetch(`/api/title-assets?${params.toString()}`);
+    const res = await fetch(apiPath(`/api/title-assets?${params.toString()}`));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const result = await res.json();
     state.titleAssets = Array.isArray(result.titles) ? result.titles : [];
@@ -2289,7 +2318,7 @@ async function generateSopDraft() {
   renderToday();
   try {
     const payload = buildSopDraftPayload();
-    const res = await fetch("/api/content-draft/rewrite", {
+    const res = await fetch(apiPath("/api/content-draft/rewrite"), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
@@ -2918,7 +2947,7 @@ async function renderTitleAssets() {
       keywords: state.keywords || "",
       limit: "80",
     });
-    const res = await fetch(`/api/title-assets?${params.toString()}`);
+    const res = await fetch(apiPath(`/api/title-assets?${params.toString()}`));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const result = await res.json();
     const titles = Array.isArray(result.titles) ? result.titles : [];
@@ -3028,30 +3057,52 @@ function renderTitleAssetCard(item) {
 }
 
 async function renderAssets() {
-  const db = state.assets || await loadState();
-  const oldSource = state.sourceChannel;
-  state.sourceChannel = "all-assets";
-  const topics = buildTopicsFromDb(db).slice(0, 9);
-  state.sourceChannel = oldSource;
-  $("#assetBoard").innerHTML = `
+  const target = $("#assetBoard");
+  if (!target) return;
+  target.innerHTML = `<article class="empty-state"><b>正在读取母题资产库</b><span>正在从 122 内容资产库读取真实素材、成稿作品和可复用母题。</span></article>`;
+  let db;
+  let topics = [];
+  let sampleCount = 0;
+  try {
+    db = await loadFullAssetState();
+    const oldSource = state.sourceChannel;
+    state.sourceChannel = "all-assets";
+    topics = buildTopicsFromDb(db).slice(0, 9);
+    state.sourceChannel = oldSource;
+    sampleCount = Array.isArray(db.contentSamples) ? db.contentSamples.length : 0;
+  } catch (error) {
+    target.innerHTML = `<article class="empty-state"><b>母题资产库读取失败</b><span>${escapeHtml(error.message)}</span></article>`;
+    return;
+  }
+  const finalWorksHtml = state.finalWorks.length
+    ? `<div class="title-group-head"><b>已完成作品</b><span>${state.finalWorks.length} 个可复用成稿</span></div><div class="asset-grid">${state.finalWorks.map(renderFinalWorkAsset).join("")}</div>`
+    : `<article class="empty-state"><b>还没有保存过成稿作品</b><span>从今日工作台完成第 10 步出图后，在第 12 步保存，这里会出现可复盘、可继续转平台的作品卡。</span></article>`;
+  const topicCards = topics.map((item) => `<article class="asset-item"><b>${escapeHtml(item.theme)}</b><span>${escapeHtml(item.reason)}</span><p><strong>适合复用：</strong>小红书图文、公众号长文、朋友圈、短视频脚本</p>${item.url ? `<a class="source-link" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">打开来源</a>` : ""}</article>`).join("") || `<article class="empty-state"><b>暂无源素材</b><span>先读取历史资产、采集 X 账号，或导入素材。</span></article>`;
+  target.innerHTML = `
     <section class="asset-lane">
       <div class="asset-summary asset-command">
-        <b>内容资产库分两层</b>
-        <span>源素材资产负责找选题；成稿作品资产负责复盘、一鱼多吃、沉淀标题/结构/图文风格。不是简单收藏夹。</span>
+        <b>母题资产库不是收藏夹</b>
+        <span>它把采集来的真实素材变成可复利复写的母题，再沉淀小红书、公众号、朋友圈、短视频脚本、图文资产和发布复盘。</span>
       </div>
-      ${state.finalWorks.length ? `<div class="title-group-head"><b>已完成作品</b><span>${state.finalWorks.length} 个可复用成稿</span></div>
-      <div class="asset-grid">${state.finalWorks.map(renderFinalWorkAsset).join("")}</div>` : `<article class="empty-state"><b>还没有成稿作品</b><span>从今日工作台完成第 10 步出图后，在第 12 步保存，这里会出现可复盘作品。</span></article>`}
+      <div class="asset-kpi-grid">
+        <article><b>${sampleCount}</b><span>源素材样本</span></article>
+        <article><b>${topics.length}</b><span>可用母题候选</span></article>
+        <article><b>${state.finalWorks.length}</b><span>已完成平台版本</span></article>
+        <article><b>7天</b><span>发布后复盘节奏</span></article>
+      </div>
+      <div class="asset-grid">
+        <article class="asset-item"><b>采集基座</b><span>MediaCrawlerPro / XCrawl / RSS / 手动导入负责拿真实素材，不用假数据填页面。</span></article>
+        <article class="asset-item"><b>内容拆解基座</b><span>DBS、标题库、结构库把素材拆成用户痛点、标题公式、结构和复用角度。</span></article>
+        <article class="asset-item"><b>视觉生产基座</b><span>小黑、归藏、宝玉、Open Design 负责把确认文案做成小红书图文、公众号配图或演示稿。</span></article>
+        <article class="asset-item"><b>复盘训练基座</b><span>发布后补阅读、点赞、收藏、评论，判断母题是正例、反例，还是值得二次改写。</span></article>
+      </div>
+      ${finalWorksHtml}
     </section>
     <section class="asset-lane">
-      <div class="title-group-head"><b>源素材 / 母题候选</b><span>用于后续继续找选题和一鱼多吃。</span></div>
-      <div class="asset-grid">${topics.map((item) => `<article class="asset-item">
-    <b>${escapeHtml(item.theme)}</b>
-    <span>${escapeHtml(item.reason)}</span>
-    ${item.url ? `<a class="source-link" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">打开来源</a>` : ""}
-  </article>`).join("") || `<article class="empty-state"><b>暂无源素材</b><span>先读取或导入素材。</span></article>`}</div>
+      <div class="title-group-head"><b>源素材 / 母题候选</b><span>用于继续找选题和一鱼多吃。先选母题，再按平台重新写。</span></div>
+      <div class="asset-grid">${topicCards}</div>
     </section>`;
 }
-
 function renderFinalWorkAsset(item) {
   const images = Array.isArray(item.images) ? item.images : [];
   const metrics = item.publishMetrics || {};
