@@ -667,17 +667,29 @@ async function exportCleanXhsCardPlan() {
 }
 
 async function generateXiaoheiCards() {
-  if (!state.copyConfirmed) return;
+  if (!state.copyConfirmed) {
+    state.xhsCardExportStatus = "error";
+    state.xhsCardOperation = "visual";
+    state.xhsCardExportMessage = "请先在第 9 步确认文案。确认后，作图按钮才会真正调用 43 出图服务。";
+    renderToday();
+    return;
+  }
   const cards = ensureXhsCardPlan();
-  if (!cards.length) return;
+  if (!cards.length) {
+    state.xhsCardExportStatus = "error";
+    state.xhsCardOperation = "visual";
+    state.xhsCardExportMessage = "当前文案还没有拆成 5 张图的 brief，无法启动 43 出图。请先返回确认文案或重新生成文案。";
+    renderToday();
+    return;
+  }
   const visual = currentVisualStyle();
   if (state.xhsCardManifest && !manifestMatchesCurrentVisual()) state.xhsCardManifest = null;
   state.xhsCardJobBase = buildCurrentXiaoheiJobId();
   state.xhsCardExportStatus = "loading";
-  state.xhsCardOperation = "xiaohei";
+  state.xhsCardOperation = "visual";
   state.xhsCardProgress = { done: 0, total: cards.length };
   state.xhsCardAsyncJobId = state.xhsCardJobBase;
-  state.xhsCardExportMessage = "43 已启动后台出图任务，页面会自动轮询结果。";
+  state.xhsCardExportMessage = `43 正在启动${visualRouteNameClean(visual.id)}出图任务，页面会自动轮询结果。`;
   state.xhsCardManifest = {
     renderer: "43-gpt-image-2-xiaohei-async",
     count: 0,
@@ -720,10 +732,10 @@ async function generateXiaoheiCards() {
     await pollXiaoheiCards({ jobId: state.xhsCardAsyncJobId, total: cards.length });
   } catch (error) {
     state.xhsCardExportStatus = "error";
-    state.xhsCardOperation = "xiaohei";
+    state.xhsCardOperation = "visual";
     state.xhsCardProgress = null;
     const count = state.xhsCardManifest?.count || 0;
-    state.xhsCardExportMessage = `43 小黑出图中断：${error.message}。已生成 ${count} 张会保留显示，未生成的不冒充成品。`;
+    state.xhsCardExportMessage = `43 ${visualRouteNameClean(visual.id)}出图中断：${error.message}。已生成 ${count} 张会保留显示，未生成的不冒充成品。`;
     if (!count) state.xhsCardManifest = null;
   }
   renderToday();

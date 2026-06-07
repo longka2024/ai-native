@@ -1028,6 +1028,11 @@ createServer(async (req, res) => {
           title: payload.title || '',
           body: payload.body || '',
           jobId: payload.jobId || '',
+          style: payload.style || payload.visualStyle || '',
+          visualStyle: payload.visualStyle || payload.style || '',
+          visualStyleTitle: payload.visualStyleTitle || '',
+          platform: payload.platform || payload.targetPlatform || '',
+          targetPlatform: payload.targetPlatform || payload.platform || '',
           cards,
         }),
       });
