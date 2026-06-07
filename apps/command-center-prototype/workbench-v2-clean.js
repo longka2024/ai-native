@@ -10,6 +10,7 @@ const state = {
   topics: [],
   selectedTopicId: "",
   titleChoices: [],
+  titleChoiceKey: "",
   titleAssets: [],
   titleAssetMessage: "",
   titleAssetKey: "",
@@ -46,6 +47,8 @@ const state = {
   useLatestXRunOnly: false,
   isCollectingX: false,
 };
+
+const TITLE_LOGIC_VERSION = "topic-formula-readable-v3";
 
 const publishTargets = [
   { id: "xhs", title: "小红书图文", platform: "xiaohongshu", desc: "封面、标题、短正文、收藏点、标签" },
@@ -838,6 +841,7 @@ function clearAfter(step) {
   }
   if (step <= 5) {
     state.titleChoices = [];
+    state.titleChoiceKey = "";
     state.selectedTitle = "";
   }
   if (step <= 6) {
@@ -1092,7 +1096,7 @@ function renderTopicCard(topic) {
 }
 
 function renderTitleStep() {
-  if (!state.titleChoices.length && state.selectedTopicId) state.titleChoices = buildTitleChoices(selectedTopic());
+  ensureFreshTitleChoices();
   if (state.selectedTopicId) requestAnimationFrame(() => ensureTitleAssetsForCurrentTopic());
   const assetHint = state.titleAssetLoading
     ? "正在读取标题资产库：优先匹配当前方向的真实高分标题。"
@@ -1759,6 +1763,7 @@ function bindWorkAreaActions() {
       state.selectedTopicId = button.dataset.topicId;
       clearAfter(5);
       state.titleChoices = buildTitleChoices(selectedTopic());
+      state.titleChoiceKey = currentTitleChoiceKey(selectedTopic());
       setStep(6);
     });
   });
@@ -1865,6 +1870,7 @@ async function readMaterials() {
   state.topics = topics.slice(0, 10);
   state.selectedTopicId = "";
   state.titleChoices = [];
+  state.titleChoiceKey = "";
   state.assetStatus = `找到 ${state.topics.length} 个选题`;
   log(`找到 ${state.topics.length} 个候选选题。`);
   log("已提取：来源平台、选题方向、用户痛点、写作角度、风险提醒。");
@@ -1916,6 +1922,7 @@ async function collectXAccounts() {
     state.topics = topics.slice(0, 10);
     state.selectedTopicId = "";
     state.titleChoices = [];
+    state.titleChoiceKey = "";
     state.assetStatus = state.topics.length ? `本轮采集生成 ${state.topics.length} 个选题` : "本轮没有合格选题";
     state.isCollectingX = false;
     if (!state.topics.length) {
@@ -2046,6 +2053,7 @@ async function readDemoMaterials() {
   state.topics = buildTopicsFromDb(db).slice(0, 10);
   state.selectedTopicId = "";
   state.titleChoices = [];
+  state.titleChoiceKey = "";
   state.assetStatus = `预览 ${state.topics.length} 个选题`;
   renderToday();
   setStep(5);
@@ -2397,7 +2405,8 @@ async function ensureTitleAssetsForCurrentTopic() {
     state.titleAssetMessage = result.filterMiss
       ? "当前方向标题资产不足：本次先基于当前选题生成临时标题，标题库只做辅助参考。"
       : `当前方向已匹配 ${state.titleAssets.length} 条标题资产，候选标题会参考真实爆款公式，但仍优先绑定当前选题。`;
-    state.titleChoices = buildTitleChoices(topic, state.titleAssets);
+    state.titleChoiceKey = "";
+    ensureFreshTitleChoices(state.titleAssets);
     if (!state.titleChoices.some((item) => item.title === state.selectedTitle)) state.selectedTitle = "";
   } catch (error) {
     state.titleAssets = [];
@@ -2436,6 +2445,28 @@ function rewriteTitleFromAsset(seed, formula = "", example = "") {
   if (/经验|案例|复盘|我/.test(mark)) return `我做${core}后才明白的一件事`;
   if (/争议|互动|测试|问题/.test(mark)) return `${problem}，到底卡在哪一步？`;
   return `${core}不是照搬爆款，而是先建资产`;
+}
+
+function currentTitleChoiceKey(topic = selectedTopic()) {
+  if (!topic) return "";
+  return [
+    TITLE_LOGIC_VERSION,
+    state.publishTarget,
+    state.keywords,
+    topic.id,
+    topic.title || "",
+    topic.theme || "",
+  ].join("|");
+}
+
+function ensureFreshTitleChoices(titleAssets = state.titleAssets) {
+  const topic = selectedTopic();
+  if (!topic) return;
+  const key = currentTitleChoiceKey(topic);
+  if (state.titleChoiceKey === key && state.titleChoices.length) return;
+  state.titleChoiceKey = key;
+  state.titleChoices = buildTitleChoices(topic, titleAssets);
+  if (!state.titleChoices.some((item) => item.title === state.selectedTitle)) state.selectedTitle = "";
 }
 
 function topicTextForTitle(topic = {}) {
@@ -3704,6 +3735,7 @@ function reuseFinalWork(id, target) {
   state.titleAssetMessage = "";
   state.titleAssetKey = "";
   state.titleChoices = buildTitleChoices(reuseTopic, []);
+  state.titleChoiceKey = currentTitleChoiceKey(reuseTopic);
   state.selectedTitle = "";
   state.draft = "";
   state.improvedDraft = "";
