@@ -451,26 +451,25 @@ function buildCleanXhsCardPlanFromConfirmedCopy() {
 
 function renderCleanXhsCardPreview() {
   const cards = ensureXhsCardPlan();
-  if (!cards.length) return `<div class="empty-state"><b>请先确认文案</b><span>确认文案后，才会生成小红书图文卡片预览。</span></div>`;
+  if (!cards.length) return `<div class="empty-state"><b>${zh("&#35831;&#20808;&#30830;&#35748;&#25991;&#26696;")}</b><span>${zh("&#30830;&#35748;&#25991;&#26696;&#21518;&#65292;&#25165;&#20250;&#29983;&#25104;&#21487;&#25191;&#34892;&#30340;&#20986;&#22270; brief&#12290;")}</span></div>`;
   const hasRealImages = Array.isArray(state.xhsCardManifest?.publicFiles) && state.xhsCardManifest.publicFiles.length > 0;
   const visual = currentVisualStyle();
   return `<div class="xhs-card-preview-panel">
     <div class="visual-workspace-head">
       <div>
-        <b>图文生产工作区</b>
-        <span>当前绑定：${escapeHtml(state.selectedTitle || selectedTopic()?.theme || "未选择标题")} · ${escapeHtml(visual.title)}</span>
+        <b>${zh("&#24403;&#21069;&#20986;&#22270;&#20869;&#23481;")}</b>
+        <span>${zh("&#24050;&#32465;&#23450;")}: ${escapeHtml(state.selectedTitle || selectedTopic()?.theme || "no title")} / ${escapeHtml(visualRouteNameClean(state.visualStyle))}</span>
       </div>
-      <em>${escapeHtml(visual.route)}</em>
+      <em>${escapeHtml(visual.route || visual.id)}</em>
     </div>
-    ${renderVisualStylePicker()}
-    ${hasRealImages ? "" : `<div class="status-strip warn">这里先把文案拆成 5 页可执行出图 brief。最终能发布的结果，以 43 返回的真实图片或导出的 PNG 为准。</div>`}
+    ${hasRealImages ? "" : `<div class="status-strip warn">${zh("&#36825;&#37324;&#20808;&#25226;&#25991;&#26696;&#25286;&#25104; 5 &#39029;&#21487;&#25191;&#34892;&#20986;&#22270; brief&#12290;&#26368;&#32456;&#33021;&#21457;&#24067;&#30340;&#32467;&#26524;&#65292;&#20197; 43 &#36820;&#22238;&#30340;&#30495;&#23454;&#22270;&#29255;&#20026;&#20934;&#12290;")}</div>`}
     ${renderCurrentCopyForImage()}
     ${renderXhsGeneratedGallery()}
     <details class="xhs-carousel-plan" ${hasRealImages ? "" : "open"}>
-      <summary>查看 5 页出图说明</summary>
-      ${cards.map((card, index) => `<div><span>P${index + 1}</span><strong>${escapeHtml(card.role)}</strong><em>${escapeHtml(card.carouselJob || card.visualBrief || "按轮播顺序展示")}</em></div>`).join("")}
+      <summary>${zh("&#26597;&#30475; 5 &#39029;&#20986;&#22270; brief")}</summary>
+      ${cards.map((card, index) => `<div><span>P${index + 1}</span><strong>${escapeHtml(card.role)}</strong><em>${escapeHtml(card.carouselJob || card.visualBrief || "brief")}</em></div>`).join("")}
     </details>
-    ${state.xhsCardManifest ? `<div class="status-strip success">已生成：${escapeHtml(state.xhsCardManifest.count || cards.length)} 张。${escapeHtml(state.xhsCardManifest.jobId || state.xhsCardManifest.outputDir || "")}</div>` : ""}
+    ${state.xhsCardManifest ? `<div class="status-strip success">${zh("&#24050;&#29983;&#25104;")}: ${escapeHtml(state.xhsCardManifest.count || cards.length)} ${zh("&#24352;")} / ${escapeHtml(state.xhsCardManifest.jobId || state.xhsCardManifest.outputDir || "")}</div>` : ""}
     ${state.xhsCardExportMessage ? `<div class="status-strip ${state.xhsCardExportStatus === "error" ? "warn" : ""}">${escapeHtml(state.xhsCardExportMessage)}</div>` : ""}
   </div>`;
 }
@@ -697,8 +696,8 @@ async function generateXiaoheiCards() {
         style: visual.id,
         visualStyle: visual.id,
         visualStyleTitle: visual.title,
-        platform: "xhs",
-        targetPlatform: "xhs",
+        platform: visualPlatformForCurrentTarget(),
+        targetPlatform: visualPlatformForCurrentTarget(),
         cards: cards.map((card, index) => ({
           page: index + 1,
           role: card.role,
@@ -1621,18 +1620,39 @@ function primaryVisualActionLabelClean(styleId) {
   return zh("&#29983;&#25104; 5 &#24352;&#23453;&#29577;&#30693;&#35782;&#21345;");
 }
 
+function visualPlatformForCurrentTarget() {
+  if (state.publishTarget === "wechat-article") return "wechat-article";
+  if (state.publishTarget === "moments") return "moments";
+  if (state.publishTarget === "douyin" || state.publishTarget === "video-account") return "douyin-images";
+  return "xhs";
+}
+
 function renderProductionStep() {
   const locked = !state.copyConfirmed;
-  if (state.publishTarget !== "xhs") return renderNonXhsProductionStep(locked);
   ensureXhsCardPlan();
   const topic = selectedTopic();
   const files = Array.isArray(state.xhsCardManifest?.publicFiles) ? state.xhsCardManifest.publicFiles : [];
   const isLoading = state.xhsCardExportStatus === "loading";
   const rec = recommendVisualRouteClean();
+  const copy = confirmedCopyText();
+  const isWechat = state.publishTarget === "wechat-article";
+  const isVideo = state.publishTarget === "douyin" || state.publishTarget === "video-account";
+  const isMoments = state.publishTarget === "moments";
+  const platformNote = isWechat
+    ? zh("&#20844;&#20247;&#21495;&#38656;&#35201;&#22270;&#29255;&#25353;&#35821;&#20041;&#25554;&#20837;&#38271;&#25991;&#27573;&#33853;&#65292;&#19981;&#26159;&#20570;&#22270;&#38598;&#12290;")
+    : isVideo
+      ? zh("&#35270;&#39057;&#38656;&#35201;&#23553;&#38754;&#21442;&#32771;&#22270;&#12289;&#20998;&#38236;&#27668;&#27675;&#22270;&#21644;&#21475;&#25773;&#33410;&#22863;&#12290;")
+      : isMoments
+        ? zh("&#26379;&#21451;&#22280;&#20063;&#38656;&#35201;&#37197;&#22270;&#65292;&#20294;&#35201;&#26356;&#33258;&#28982;&#12289;&#26356;&#20687;&#20154;&#30340;&#26085;&#24120;&#34920;&#36798;&#65292;&#19981;&#35201;&#22826;&#20687;&#28023;&#25253;&#12290;")
+        : zh("&#23567;&#32418;&#20070;&#38656;&#35201; 5 &#24352;&#22270;&#25991;&#36718;&#25773;&#65292;&#27599;&#24352;&#19968;&#20010;&#35270;&#35273;&#37325;&#28857;&#12290;");
   return `<section class="work-card">
-    ${cardHead(zh("&#23567;&#32418;&#20070;&#22270;&#25991;&#21046;&#20316;"), zh("&#21516;&#19968;&#20010;&#27597;&#39064;&#21487;&#20197;&#36873;&#25321;&#19981;&#21516;&#35270;&#35273;&#36335;&#32447;&#65306;&#23567;&#40657;&#28459;&#30011;&#12289;&#21367;&#21367;&#25972;&#29702;&#12289;&#24402;&#34255;&#26434;&#24535;&#21345;&#12289;&#23453;&#29577;&#30693;&#35782;&#21345;&#12290;&#31995;&#32479;&#20250;&#20808;&#32473;&#20986;&#25512;&#33616;&#36335;&#32447;&#65292;&#20320;&#20063;&#21487;&#20197;&#25163;&#21160;&#20999;&#25442;&#12290;"))}
-    <div class="status-strip">${zh("&#24403;&#21069;&#27597;&#39064;")}：${escapeHtml(topic?.theme || "-")} · ${zh("&#24403;&#21069;&#35270;&#35273;")}：${escapeHtml(visualRouteNameClean(state.visualStyle))}</div>
-    <div class="visual-recommendation"><b>${zh("&#24314;&#35758;&#37197;&#22270;&#36335;&#32447;")}：${escapeHtml(visualRouteNameClean(rec.id))}</b><span>${escapeHtml(rec.reason)}</span>${rec.id !== state.visualStyle ? `<button type="button" class="secondary" data-visual-style="${escapeHtml(rec.id)}">${zh("&#20999;&#25442;&#21040;&#25512;&#33616;&#36335;&#32447;")}</button>` : `<em>${zh("&#24050;&#20351;&#29992;&#25512;&#33616;&#36335;&#32447;")}</em>`}</div>
+    ${cardHead(`${escapeHtml(currentTarget().title)} ${zh("&#21046;&#20316;&#20013;&#24515;")}`, zh("&#31532;10&#27493;&#26159;&#24179;&#21488;&#25991;&#26696; + &#20316;&#22270;&#20013;&#24515; + &#24050;&#29983;&#25104;&#22270;&#29255;&#12290;&#23567;&#32418;&#20070;&#12289;&#20844;&#20247;&#21495;&#12289;&#26379;&#21451;&#22280;&#12289;&#25238;&#38899;&#22270;&#25991;&#21495;&#37117;&#35201;&#33021;&#20174;&#36825;&#37324;&#20986;&#22270;&#12290;"))}
+    <div class="status-strip">${zh("&#24403;&#21069;&#27597;&#39064;")}: ${escapeHtml(topic?.theme || "-")} / ${zh("&#30446;&#26631;&#24179;&#21488;")}: ${escapeHtml(currentTarget().title)} / ${zh("&#24403;&#21069;&#35270;&#35273;")}: ${escapeHtml(visualRouteNameClean(state.visualStyle))}</div>
+    <div class="production-grid">
+      <article class="production-card ${locked ? "locked" : ""}"><b>${escapeHtml(currentTarget().title)} ${zh("&#25991;&#26696;")}</b><span>${escapeHtml(platformNote)}</span></article>
+      <article class="production-card ${locked ? "locked" : ""}"><b>${zh("&#20316;&#22270;&#20013;&#24515;")}</b><span>${zh("&#36825;&#37324;&#26159;&#23567;&#40657;&#12289;Juju&#12289;&#24402;&#34255;&#12289;&#23453;&#29577;&#30340;&#20837;&#21475;&#12290;&#28857;&#29983;&#25104;&#21518;&#65292;43 &#20250;&#25353;&#24403;&#21069;&#24179;&#21488;&#21644;&#24403;&#21069;&#25991;&#26696;&#30495;&#20986;&#22270;&#12290;")}</span></article>
+    </div>
+    <div class="visual-recommendation"><b>${zh("&#24314;&#35758;&#37197;&#22270;&#36335;&#32447;")}: ${escapeHtml(visualRouteNameClean(rec.id))}</b><span>${escapeHtml(rec.reason)}</span>${rec.id !== state.visualStyle ? `<button type="button" class="secondary" data-visual-style="${escapeHtml(rec.id)}">${zh("&#20999;&#25442;&#21040;&#25512;&#33616;&#36335;&#32447;")}</button>` : `<em>${zh("&#24050;&#20351;&#29992;&#25512;&#33616;&#36335;&#32447;")}</em>`}</div>
     ${renderVisualRoutePickerClean(locked, rec.id)}
     ${renderCleanXhsCardPreview()}
     <div class="production-grid">
@@ -1644,6 +1664,8 @@ function renderProductionStep() {
       </article>
       <article class="production-card ${locked ? "locked" : ""}"><b>${zh("&#19968;&#40060;&#22810;&#21507;&#22797;&#29992;")}</b><span>${zh("&#22270;&#25991;&#23436;&#25104;&#21518;&#20445;&#23384;&#20026;&#27597;&#39064;&#36164;&#20135;&#65292;&#20877;&#20999;&#25442;&#25104;&#20844;&#20247;&#21495;&#38271;&#25991;&#12289;&#26379;&#21451;&#22280;&#25991;&#26696;&#12289;&#25238;&#38899;/&#35270;&#39057;&#21495;&#33050;&#26412;&#12290;")}</span><button class="primary" ${locked ? "disabled" : ""} data-step-target="12">${zh("&#20445;&#23384;&#20026;&#27597;&#39064;&#36164;&#20135;")}</button></article>
     </div>
+    ${isWechat ? renderWechatArticleImageLayout(copy) : ""}
+    ${isVideo ? renderVideoProductionPreview(copy) : ""}
     ${files.length ? `<div class="status-strip success">${zh("&#24050;&#29983;&#25104;")} ${files.length} ${zh("&#24352;&#22270;&#29255;&#65292;&#21487;&#20197;&#23548;&#20986;&#25110;&#20445;&#23384;&#20026;&#27597;&#39064;&#36164;&#20135;&#12290;")}</div>` : ""}
     <div class="actions"><button class="ghost" data-step-target="9">${zh("&#36820;&#22238;&#30830;&#35748;&#25991;&#26696;")}</button><button class="primary" data-step-target="11" ${state.copyConfirmed ? "" : "disabled"}>${zh("&#19979;&#19968;&#27493;&#65306;&#23548;&#20986;&#20132;&#20184;")}</button></div>
   </section>`;
