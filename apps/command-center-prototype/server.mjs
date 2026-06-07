@@ -921,7 +921,13 @@ createServer(async (req, res) => {
             role: card.type || card.role || `第 ${index + 1} 页`,
             title: card.title || '',
             copy: card.text || card.copy || '',
+            insertAfter: card.insertAfter || '',
+            carouselJob: card.carouselJob || '',
+            visualBrief: card.visualBrief || '',
+            readerTakeaway: card.readerTakeaway || '',
+            imagePrompt: card.imagePrompt || '',
           })),
+          layoutPlan: Array.isArray(payload.layoutPlan) ? payload.layoutPlan : [],
           commentGuide: [
             '你最想先判断哪一种情况？',
             '如果分不清，可以先按这张清单对照。',
@@ -956,6 +962,173 @@ createServer(async (req, res) => {
         nextDb.updatedAt = new Date().toISOString();
       });
       return sendJson(res, { ok: true, assetId: asset.id, manifest });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/xhs-cards/generate-xiaohei') {
+      const payload = await readJson(req);
+      const cards = Array.isArray(payload.cards) ? payload.cards.slice(0, 5) : [];
+      if (!cards.length) return sendJson(res, { ok: false, error: 'missing_cards', message: '没有可生成的 5 张配图 brief。' }, 400);
+      const endpoint = process.env.LONGKA_43_XIAOHEI_ENDPOINT || 'http://43.135.149.55:3050/api/longka/xhs-xiaohei-cards';
+      const publicBase = (process.env.LONGKA_43_PUBLIC_BASE || 'http://43.135.149.55:3050').replace(/\/$/, '');
+      const upstream = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title: payload.title || '',
+          body: payload.body || '',
+          jobId: payload.jobId || '',
+          style: payload.style || payload.visualStyle || '',
+          visualStyle: payload.visualStyle || payload.style || '',
+          platform: payload.platform || payload.targetPlatform || 'xhs',
+          targetPlatform: payload.targetPlatform || payload.platform || 'xhs',
+          cards,
+        }),
+      });
+      const result = await upstream.json().catch(() => ({}));
+      if (!upstream.ok || !result.ok) {
+        return sendJson(res, {
+          ok: false,
+          error: result.error || 'xiaohei_generation_failed',
+          message: result.message || `43 小黑出图失败：HTTP ${upstream.status}`,
+          detail: result,
+        }, 502);
+      }
+      const files = (result.files || []).map((file) => ({
+        ...file,
+        url: String(file.url || file.publicPath || '').startsWith('http')
+          ? String(file.url || file.publicPath)
+          : `${publicBase}${file.url || file.publicPath || ''}`,
+      }));
+      return sendJson(res, {
+        ok: true,
+        manifest: {
+          exportedAt: new Date().toISOString(),
+          renderer: '43-gpt-image-2-xiaohei',
+          jobId: result.jobId,
+          count: files.length,
+          files,
+          publicFiles: files.map((file) => file.url),
+          outputDir: result.outputDir,
+          model: result.model,
+          style: result.style,
+        },
+      });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/xhs-cards/generate-xiaohei/start') {
+      const payload = await readJson(req);
+      const cards = Array.isArray(payload.cards) ? payload.cards.slice(0, 5) : [];
+      if (!cards.length) return sendJson(res, { ok: false, error: 'missing_cards', message: '没有可生成的 5 张配图 brief。' }, 400);
+      const endpoint = process.env.LONGKA_43_XIAOHEI_START_ENDPOINT || 'http://43.135.149.55:3050/api/longka/xhs-xiaohei-cards/start';
+      const publicBase = (process.env.LONGKA_43_PUBLIC_BASE || 'http://43.135.149.55:3050').replace(/\/$/, '');
+      const upstream = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title: payload.title || '',
+          body: payload.body || '',
+          jobId: payload.jobId || '',
+          cards,
+        }),
+      });
+      const result = await upstream.json().catch(() => ({}));
+      if (!upstream.ok || !result.ok) {
+        return sendJson(res, {
+          ok: false,
+          error: result.error || 'xiaohei_start_failed',
+          message: result.message || `43 小黑任务启动失败：HTTP ${upstream.status}`,
+          detail: result,
+        }, 502);
+      }
+      const files = normalizeRemoteImageFiles(result.files || [], publicBase);
+      return sendJson(res, {
+        ok: true,
+        jobId: result.jobId,
+        status: result.status || 'running',
+        manifest: {
+          renderer: result.renderer || `43-gpt-image-2-${result.style || payload.visualStyle || 'xiaohei-metaphor'}-async`,
+          jobId: result.jobId,
+          count: files.length,
+          files,
+          publicFiles: files.map((file) => file.url),
+          outputDir: result.outputDir,
+          style: result.style || payload.visualStyle || payload.style || 'xiaohei-metaphor',
+          platform: result.platform || payload.platform || payload.targetPlatform || 'xhs',
+        },
+      }, upstream.status === 202 ? 202 : 200);
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/xhs-cards/generate-xiaohei/status') {
+      const jobId = url.searchParams.get('jobId') || '';
+      const total = url.searchParams.get('total') || '5';
+      if (!jobId) return sendJson(res, { ok: false, error: 'missing_job_id', message: '缺少 jobId。' }, 400);
+      const endpoint = process.env.LONGKA_43_XIAOHEI_STATUS_ENDPOINT || 'http://43.135.149.55:3050/api/longka/xhs-xiaohei-cards/status';
+      const publicBase = (process.env.LONGKA_43_PUBLIC_BASE || 'http://43.135.149.55:3050').replace(/\/$/, '');
+      const upstream = await fetch(`${endpoint}?jobId=${encodeURIComponent(jobId)}&total=${encodeURIComponent(total)}`);
+      const result = await upstream.json().catch(() => ({}));
+      if (!upstream.ok || !result.ok) {
+        return sendJson(res, {
+          ok: false,
+          error: result.error || 'xiaohei_status_failed',
+          message: result.message || `43 小黑任务状态读取失败：HTTP ${upstream.status}`,
+          detail: result,
+        }, 502);
+      }
+      const files = normalizeRemoteImageFiles(result.files || [], publicBase);
+      return sendJson(res, {
+        ok: true,
+        jobId: result.jobId || jobId,
+        status: result.status || 'idle',
+        total: result.total || Number(total),
+        failed: result.failed || [],
+        manifest: {
+          renderer: result.renderer || `43-gpt-image-2-${result.style || 'xiaohei-metaphor'}-async`,
+          jobId: result.jobId || jobId,
+          count: files.length,
+          files,
+          publicFiles: files.map((file) => file.url),
+          outputDir: result.outputDir,
+          style: result.style || '',
+          platform: result.platform || '',
+        },
+      });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/xhs-cards/generate-xiaohei/latest') {
+      const requestedJobId = String(url.searchParams.get('jobId') || '').trim();
+      if (!requestedJobId) {
+        return sendJson(res, {
+          ok: false,
+          error: 'xiaohei_job_id_required',
+          message: '恢复小黑图必须传当前主题的 jobId，不能全局恢复上一批图片。',
+        }, 400);
+      }
+      const publicBase = (process.env.LONGKA_43_PUBLIC_BASE || 'http://43.135.149.55:3050').replace(/\/$/, '');
+      const endpoint = process.env.LONGKA_43_XIAOHEI_STATUS_ENDPOINT || 'http://43.135.149.55:3050/api/longka/xhs-xiaohei-cards/status';
+      const upstream = await fetch(`${endpoint}?jobId=${encodeURIComponent(requestedJobId)}&total=5`);
+      const result = await upstream.json().catch(() => ({}));
+      if (!upstream.ok || !result.ok) {
+        return sendJson(res, {
+          ok: false,
+          error: result.error || 'xiaohei_latest_failed',
+          message: result.message || `最近小黑图读取失败：HTTP ${upstream.status}`,
+        }, 502);
+      }
+      const files = normalizeRemoteImageFiles(result.files || [], publicBase);
+      return sendJson(res, {
+        ok: true,
+        jobId: result.jobId || requestedJobId,
+        status: result.status || 'done',
+        manifest: {
+          renderer: '43-gpt-image-2-xiaohei-async',
+          jobId: result.jobId || requestedJobId,
+          count: files.length,
+          files,
+          publicFiles: files.map((file) => file.url),
+          outputDir: result.outputDir,
+          style: 'xiaohei-handdrawn',
+        },
+      });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/assets/export-video-package') {
@@ -3997,6 +4170,22 @@ async function generateSopRewriteDraft(payload = {}) {
       businessLine: asText(payload.businessLine || payload.keyword),
       rule: '正文只能使用这些源头证据展开。没有出现在源头证据里的案例、数字、身份、结果，不准编。',
     },
+    currentDraftForRevision: payload.currentDraft ? {
+      title: asText(payload.currentDraft.title || payload.selectedTitle),
+      copy: asText(payload.currentDraft.copy).slice(0, 2600),
+      versionId: asText(payload.currentDraft.versionId),
+      round: payload.currentDraft.round || 0,
+      score: payload.currentDraft.score || null,
+      label: asText(payload.currentDraft.label),
+      hardRule: [
+        'This is a revision task. Rewrite from currentDraftForRevision.copy.',
+        'Do not append advice to the end only.',
+        'Keep the selected title exactly.',
+        'Return a complete new publishable body.',
+        'Change opening, paragraph order, examples, specificity, or CTA according to qualityFeedback.',
+      ],
+    } : null,
+    qualityFeedback: payload.qualityFeedback || null,
     requiredOutput: {
       titleChoices: '6 个标题。每个标题必须从源头帖不同角度改写，不能只有一个源头标题变体。',
       selectedTitle: '使用用户已选择标题；如果为空，使用第一个标题。',
@@ -4175,7 +4364,7 @@ async function generateSopRewriteDraft(payload = {}) {
   }
 
   const primaryModel = cfg.draftModel || cfg.model;
-  const bodyUser = seededTitleChoices ? {
+  let bodyUser = seededTitleChoices ? {
     ...user,
     fastTitleStage: {
       model: titleModel,
@@ -4189,6 +4378,24 @@ async function generateSopRewriteDraft(payload = {}) {
       titleChoices: '必须原样保留 fastTitleStage.titleChoices，不要重写标题列表。',
     },
   } : user;
+  if (payload.currentDraft?.copy) {
+    bodyUser = {
+      ...bodyUser,
+      revisionMode: {
+        type: 'rewrite_current_copy',
+        currentTitle: asText(payload.currentDraft.title || payload.selectedTitle),
+        currentCopy: asText(payload.currentDraft.copy).slice(0, 2600),
+        qualityFeedback: payload.qualityFeedback || null,
+        hardRules: [
+          'Rewrite the current copy into a complete new version.',
+          'Do not append suggestions or notes at the end.',
+          'Do not return a patch list.',
+          'Keep selectedTitle exactly.',
+          'The new xhsCopy.body must stand alone as publishable copy.',
+        ],
+      },
+    };
+  }
   const primary = await requestDraft(primaryModel, Number(process.env.COPY_REQUEST_TIMEOUT_MS || 18000), bodyUser);
   if (primary.ok && seededTitleChoices) {
     primary.draft.titleChoices = seededTitleChoices;
@@ -4474,6 +4681,15 @@ function sendJson(res, value, status = 200) {
   const body = JSON.stringify(value);
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'content-length': Buffer.byteLength(body), 'access-control-allow-origin': '*' });
   res.end(body);
+}
+
+function normalizeRemoteImageFiles(files = [], publicBase = '') {
+  return (Array.isArray(files) ? files : []).map((file) => ({
+    ...file,
+    url: String(file.url || file.publicPath || '').startsWith('http')
+      ? String(file.url || file.publicPath)
+      : `${publicBase}${file.url || file.publicPath || ''}`,
+  }));
 }
 
 function serveStatic(pathname, res) {

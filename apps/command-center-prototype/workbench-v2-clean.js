@@ -669,7 +669,7 @@ async function generateXiaoheiCards() {
   const cards = ensureXhsCardPlan();
   if (!cards.length) return;
   const visual = currentVisualStyle();
-  state.xhsCardJobBase = buildCurrentXiaoheiJobId();
+  state.xhsCardJobBase = `${buildCurrentXiaoheiJobId()}-${visual.id}`;
   state.xhsCardExportStatus = "loading";
   state.xhsCardOperation = "xiaohei";
   state.xhsCardProgress = { done: 0, total: cards.length };
@@ -694,8 +694,11 @@ async function generateXiaoheiCards() {
         body: confirmedCopyText(),
         topicId: selectedTopic()?.id || `xhs-xiaohei-${Date.now()}`,
         jobId: state.xhsCardAsyncJobId,
+        style: visual.id,
         visualStyle: visual.id,
         visualStyleTitle: visual.title,
+        platform: "xhs",
+        targetPlatform: "xhs",
         cards: cards.map((card, index) => ({
           page: index + 1,
           role: card.role,
