@@ -1804,17 +1804,16 @@ input {
 }
 .asset-image-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  grid-template-columns: 1fr;
 }
 .asset-image-actions .secondary {
   display: grid;
   place-items: center;
-  min-height: 34px;
+  min-height: 32px;
   padding: 0 8px;
   border-radius: 9px;
   color: var(--green);
-  background: #e8f1e8;
+  background: rgba(232, 241, 232, .72);
   font-size: 12px;
   font-weight: 900;
   text-decoration: none;
