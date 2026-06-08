@@ -104,6 +104,40 @@ function currentVisualStyle() {
   return visualStyles.find((item) => item.id === state.visualStyle) || visualStyles[0];
 }
 
+function visualStyleContract(styleId) {
+  const contracts = {
+    "xiaohei-metaphor": {
+      route: "ian-xiaohei-illustrations",
+      character: "小黑手绘人物，黑色线条小人作为主角，用场景隐喻解释观点",
+      styleBrief: "小黑漫画隐喻风格：黑白手绘人物、简单场景、强隐喻、少字、不要做成PPT或大字报。",
+      negativePrompt: "不要卷卷小狗角色，不要归藏杂志排版，不要纯文字海报，不要无关资料库图标。",
+      styleLock: "每张图都必须是小黑人物在当前话题场景里行动，文字只做辅助。"
+    },
+    "juju-organizing": {
+      route: "juju-content-illustrations",
+      character: "Juju/卷卷是 white bichon organizer：白色比熊犬，黑眼睛、黑鼻子、清楚的眼鼻三角、下垂耳朵、短腿、小狗比例，可有橙色小围巾或徽章。",
+      styleBrief: "Original JUJU visual language：white or near-white paper background, light black hand-drawn linework, low-saturation accent colors, visible paper-world props, generous whitespace. Chinese handwritten labels must be integrated into note cards, paper tabs, arrows, frames, tools or props.",
+      negativePrompt: "Juju must not look like a sheep, wool ball, generic plush toy, pet portrait, Xiaohei, black stick figure, human protagonist, slide template, dashboard, pasted subtitle, dense paragraph, watermark, or poster dominated by large text.",
+      styleLock: "Use the current stable direction: paper practice field + small working props + clear Juju action + low-saturation color shifts. One image = one cognitive action. Juju must physically perform the main action in every card."
+    },
+    "xhs-knowledge-card": {
+      route: "card-xiaohongshu",
+      character: "无固定角色，以清爽信息卡、图标、分区和重点标注表达",
+      styleBrief: "小红书知识卡风格：3:4手机阅读，一页一个重点，清晰标题、少量要点、图标和分区辅助，视觉重点明确。",
+      negativePrompt: "不要小黑人物，不要卷卷小狗，不要杂志deck，不要密密麻麻长段落，不要装饰性废元素。",
+      styleLock: "每张图必须围绕当前话题重写成可收藏知识卡，文字短、层级清楚、适合手机截图阅读。"
+    },
+    "guizang-editorial": {
+      route: "guizang-social-card-skill",
+      character: "无卡通主角，以编辑设计、留白、版式和少量视觉符号表达",
+      styleBrief: "归藏杂志编辑风格：高级留白、克制配色、杂志标题层级、少量大字和结构化视觉叙事，适合方法论和行业洞察。",
+      negativePrompt: "不要小黑人物，不要卷卷小狗，不要儿童卡通，不要普通大字报，不要满屏便签。",
+      styleLock: "每张图必须像一张高级社交杂志卡，围绕当前话题做版式叙事，不能复用小黑或卷卷结构。"
+    }
+  };
+  return contracts[styleId] || contracts["xiaohei-metaphor"];
+}
+
 const steps = [
   ["发布目标", "发到哪里"],
   ["业务信息", "行业和目标"],
@@ -490,7 +524,7 @@ function buildCleanXhsCardPlanFromConfirmedCopy() {
   ];
 }
 
-function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVisualStyle(), lines = [], title = "" } = {}) {
+function buildTopicBoundVisualCardsLegacy({ copy = "", topic = {}, visual = currentVisualStyle(), lines = [], title = "" } = {}) {
   const signal = extractVisualTopicSignals({ copy, topic, title, lines });
   const styleBrief = visual.id === "xiaohei-metaphor"
     ? "小黑人物隐喻，场景要围绕当前话题，不要复用内容资产库模板。"
@@ -556,6 +590,49 @@ function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVis
       readerTakeaway: "看完以后知道今天可以先做哪一步。",
       imagePrompt: `${promptBase} Action checklist page, practical next step for ${signal.subject}.`
     },
+  ];
+}
+
+function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVisualStyle(), lines = [], title = "" } = {}) {
+  const signal = extractVisualTopicSignals({ copy, topic, title, lines });
+  const contract = visualStyleContract(visual.id);
+  const juju = visual.id === "juju-organizing";
+  const promptBase = [
+    "3:4 social content image.",
+    `Topic: ${signal.subject}.`,
+    `Result/proof: ${signal.result}.`,
+    `Current title: ${title}.`,
+    `Visual route: ${contract.route}.`,
+    `Character/style: ${contract.character}.`,
+    `Style lock: ${contract.styleLock}.`,
+    `Style brief: ${contract.styleBrief}.`,
+    `Negative prompt: ${contract.negativePrompt}.`,
+    "Do not reuse unrelated content asset library, title formula library, user question library, or structure library visuals unless this selected topic is explicitly about those libraries."
+  ].join(" ");
+  const jujuBriefs = {
+    cover: "Juju action: Juju stands in the paper practice field and pins one main note about the current topic. Cognitive action: enter the topic quickly. Parallel world: method desk. Metaphor props: main note card, tape, one arrow, two small paper tabs.",
+    problem: "Juju action: Juju uses a magnifying glass to inspect a pain-point note. Cognitive action: see the hidden reader problem. Parallel world: problem detective desk. Metaphor props: magnifying glass, question note, warning tab.",
+    case: "Juju action: Juju sorts three case cards into who / what worked / result. Cognitive action: deconstruct the source case. Parallel world: small archive table. Metaphor props: three paper cards, clips, thin dividers.",
+    method: "Juju action: Juju draws a four-step route with a pencil. Cognitive action: convert the idea into an executable path. Parallel world: route map notebook. Metaphor props: dotted path, four small stations, pencil, arrows.",
+    action: "Juju action: Juju stamps a checklist as ready. Cognitive action: know the next practical step. Parallel world: tiny execution counter. Metaphor props: checklist, stamp, small envelope, done mark."
+  };
+  const card = (type, role, cardTitle, text, extra, promptExtra) => ({
+    type,
+    role,
+    title: cardTitle,
+    text,
+    visualStyle: visual.id,
+    carouselJob: role,
+    visualBrief: `${contract.styleBrief} ${juju ? jujuBriefs[type] || "" : ""} ${extra}`,
+    readerTakeaway: signal.takeaway,
+    imagePrompt: `${promptBase} Title: ${cardTitle}. Allowed text only: ${String(cardTitle || "").slice(0, 18)}; ${String(text || "").split("\n").slice(0, 3).join("; ").slice(0, 48)}. ${promptExtra} ${juju ? `${jujuBriefs[type] || ""} Juju must look like a white bichon dog, not a sheep or wool ball. Text must be attached to paper objects, never pasted as a giant subtitle.` : ""}`,
+  });
+  return [
+    card("cover", "封面：让人停下来", title || signal.coverText, signal.coverText, `只讲 ${signal.subject} 和 ${signal.result}，不要画无关素材库。`, `Cover page. Strong focal point: ${signal.subject} + ${signal.result}.`),
+    card("problem", "问题：讲清为什么值得看", signal.problemTitle, signal.pain, `画出读者看到 ${signal.result} 后的真实疑问。`, `Problem page. Show the question behind ${signal.subject}.`),
+    card("case", "案例：拆当前素材", signal.caseTitle, signal.casePoints.join("\n"), `用三张卡拆当前案例：对象=${signal.subject}，结果=${signal.result}，关键=${signal.keyPoint}。`, "Case deconstruction page with three paper cards: who, what worked, result."),
+    card("method", "方法：给可执行路径", signal.methodTitle, signal.methodSteps.join("\n"), `把 ${signal.subject} 跑出 ${signal.result} 的路径拆成 4 步。`, "Four-step practical method page for this exact topic."),
+    card("action", "行动：收束到下一步", signal.actionTitle, signal.action, `只围绕 ${signal.subject} 给下一步行动，不出现内部流程词。`, `Action checklist page, practical next step for ${signal.subject}.`),
   ];
 }
 
@@ -839,6 +916,7 @@ async function generateXiaoheiCards() {
     return;
   }
   const visual = currentVisualStyle();
+  const visualContract = visualStyleContract(visual.id);
   if (state.xhsCardManifest && !manifestMatchesCurrentVisual()) state.xhsCardManifest = null;
   state.xhsCardJobBase = buildCurrentXiaoheiJobId();
   state.xhsCardExportStatus = "loading";
@@ -847,12 +925,12 @@ async function generateXiaoheiCards() {
   state.xhsCardAsyncJobId = state.xhsCardJobBase;
   state.xhsCardExportMessage = `43 正在启动${visualRouteNameClean(visual.id)}出图任务，页面会自动轮询结果。`;
   state.xhsCardManifest = {
-    renderer: "43-gpt-image-2-xiaohei-async",
+    renderer: `43-gpt-image-2-${visual.id}-async`,
     count: 0,
     files: [],
     publicFiles: [],
     jobIds: [],
-    style: "xiaohei-handdrawn",
+    style: visual.id,
     visualStyleId: visual.id,
   };
   renderToday();
@@ -868,6 +946,11 @@ async function generateXiaoheiCards() {
         style: visual.id,
         visualStyle: visual.id,
         visualStyleTitle: visual.title,
+        visualRoute: visualContract.route,
+        visualCharacter: visualContract.character,
+        styleBrief: visualContract.styleBrief,
+        styleLock: visualContract.styleLock,
+        negativePrompt: visualContract.negativePrompt,
         platform: visualPlatformForCurrentTarget(),
         targetPlatform: visualPlatformForCurrentTarget(),
         cards: cards.map((card, index) => ({
@@ -878,6 +961,8 @@ async function generateXiaoheiCards() {
           visualBrief: card.visualBrief,
           readerTakeaway: card.readerTakeaway,
           carouselJob: card.carouselJob,
+          imagePrompt: card.imagePrompt,
+          visualStyle: card.visualStyle,
         })),
       }),
     });
