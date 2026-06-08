@@ -1788,10 +1788,36 @@ input {
 .asset-image-grid {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
+.asset-image-tile {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.asset-image-tile > a {
+  display: grid;
+  position: relative;
+}
 .asset-image-grid img {
   width: 100%;
   aspect-ratio: 3 / 4;
   object-fit: cover;
+}
+.asset-image-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.asset-image-actions .secondary {
+  display: grid;
+  place-items: center;
+  min-height: 34px;
+  padding: 0 8px;
+  border-radius: 9px;
+  color: var(--green);
+  background: #e8f1e8;
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
 }
 .asset-card {
   min-height: 156px;
