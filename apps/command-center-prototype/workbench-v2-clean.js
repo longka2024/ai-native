@@ -246,6 +246,28 @@ function activeCopyText() {
   return normalizeCopyText(state.improvedDraft || state.draft || "");
 }
 
+function validCopyVersions() {
+  return (state.copyVersions || []).filter((item) => normalizeCopyText(item?.copy || ""));
+}
+
+function repairCopyState() {
+  state.copyVersions = validCopyVersions();
+  if (state.currentCopyVersionId && !state.copyVersions.some((item) => item.id === state.currentCopyVersionId)) {
+    state.currentCopyVersionId = "";
+  }
+  if (state.confirmedCopyVersionId && !state.copyVersions.some((item) => item.id === state.confirmedCopyVersionId)) {
+    state.confirmedCopyVersionId = "";
+    state.copyConfirmed = false;
+  }
+  if (!activeCopyText() && state.copyVersions.length) {
+    const latest = state.copyVersions[state.copyVersions.length - 1];
+    state.draft = latest.copy;
+    state.improvedDraft = "";
+    state.currentCopyVersionId = latest.id;
+    state.draftReview = latest.review || runLongkaReview(latest.copy);
+  }
+}
+
 function rememberCopyVersion(copy, label = "初稿") {
   const text = normalizeCopyText(copy);
   if (!text) return null;
@@ -272,9 +294,10 @@ function rememberCopyVersion(copy, label = "初稿") {
 }
 
 function currentCopySnapshot(label = "当前版本") {
-  const copy = activeCopyText();
-  if (!copy) return null;
+  repairCopyState();
   const current = state.copyVersions.find((item) => item.id === state.currentCopyVersionId);
+  const copy = activeCopyText() || normalizeCopyText(current?.copy || "");
+  if (!copy) return null;
   return {
     id: current?.id || "",
     round: current?.round || state.copyVersions.length,
@@ -313,6 +336,7 @@ function restoreCopyVersion(id, approve = false) {
 }
 
 function renderCopyVersionList() {
+  repairCopyState();
   if (!state.copyVersions.length) return "";
   const best = state.copyVersions.reduce((winner, item) => (!winner || item.score > winner.score ? item : winner), null);
   return `<div class="copy-version-list">
@@ -1384,6 +1408,7 @@ function renderCheckStep() {
   const coach = buildContentCoachReport();
   return `<section class="work-card">
     ${cardHead("Longka 内容教练", "把写作能力变成网页指标：先判断哪里弱，再决定怎么改。")}
+    ${state.draftError ? `<div class="status-strip warn">${escapeHtml(state.draftError)}</div>` : ""}
     ${renderContentCoachPanel(coach)}
     <div class="draft-box">
       <div class="draft-text"><h3>${zh("&#24403;&#21069;&#25991;&#26696;")}</h3><pre>${escapeHtml(state.improvedDraft || state.draft || zh("&#26242;&#26080;&#25991;&#26696;"))}</pre></div>
@@ -2077,7 +2102,11 @@ function bindWorkAreaActions() {
   });
   byId("workArea")?.querySelector("[data-improve-again]")?.addEventListener("click", () => {
     const snapshot = currentCopySnapshot("优化前版本");
-    if (!snapshot?.copy) return;
+    if (!snapshot?.copy) {
+      state.draftError = zh("&#27809;&#26377;&#21487;&#20248;&#21270;&#30340;&#27491;&#25991;&#12290;&#35831;&#20808;&#36820;&#22238;&#31532; 7 &#27493;&#29983;&#25104;&#25991;&#26696;&#65292;&#25110;&#22312;&#29256;&#26412;&#35760;&#24405;&#37324;&#24674;&#22797;&#19968;&#20010;&#26377;&#20869;&#23481;&#30340;&#29256;&#26412;&#12290;");
+      renderToday();
+      return;
+    }
     const coach = buildContentCoachReport();
     const baseFeedback = state.draftReview || runLongkaReview(snapshot.copy) || {};
     const coachBrief = (coach.weakest || [])
