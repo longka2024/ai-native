@@ -515,6 +515,122 @@ p { margin: 0; color: var(--muted); line-height: 1.65; }
 .title-asset p { margin-top: 10px; font-size: 13px; }
 .check-row p { font-size: 14px; }
 
+.content-coach-panel {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(49, 93, 75, 0.18);
+  border-radius: 8px;
+  background: #f7fbf8;
+}
+
+.content-coach-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.content-coach-head b,
+.content-coach-head span {
+  display: block;
+}
+
+.content-coach-head b {
+  color: #19392b;
+  font-size: 18px;
+}
+
+.content-coach-head span {
+  margin-top: 5px;
+  color: #50645a;
+  line-height: 1.5;
+}
+
+.content-coach-head > strong {
+  min-width: 68px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #19392b;
+  color: #fff;
+  text-align: center;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.coach-dim-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.coach-dim-grid article {
+  display: grid;
+  gap: 6px;
+  min-height: 128px;
+  padding: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.coach-dim-grid article.warn {
+  border-color: rgba(185, 67, 53, 0.22);
+  background: #fff8f5;
+}
+
+.coach-dim-grid article b,
+.coach-dim-grid article strong,
+.coach-dim-grid article span,
+.coach-dim-grid article small {
+  display: block;
+}
+
+.coach-dim-grid article strong {
+  color: #19392b;
+  font-size: 24px;
+}
+
+.coach-dim-grid article span,
+.coach-dim-grid article small {
+  color: #64736c;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.coach-dim-grid article small {
+  color: #9b4a2f;
+}
+
+.coach-action-box {
+  padding: 12px 14px;
+  border: 1px solid rgba(185, 67, 53, 0.16);
+  border-radius: 8px;
+  background: #fffaf3;
+}
+
+.coach-action-box b {
+  display: block;
+  margin-bottom: 8px;
+  color: #19392b;
+}
+
+.coach-action-box ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.coach-action-box li {
+  margin: 5px 0;
+  color: #45564d;
+  line-height: 1.5;
+}
+
+.coach-action-box strong {
+  margin-right: 4px;
+  color: #9b4a2f;
+}
+
 .production-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .production-card { min-height: 220px; }
 .locked {

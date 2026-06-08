@@ -1381,20 +1381,22 @@ function renderArticleImageSlot(slot) {
 }
 function renderCheckStep() {
   const checks = scoreDraft();
+  const coach = buildContentCoachReport();
   return `<section class="work-card">
-    ${cardHead("Longka 文案体检", "正文生成后才评分。评分说依据，再给优化方向。")}
+    ${cardHead("Longka 内容教练", "把写作能力变成网页指标：先判断哪里弱，再决定怎么改。")}
+    ${renderContentCoachPanel(coach)}
     <div class="draft-box">
-      <div class="draft-text"><h3>优化后版本</h3><pre>${escapeHtml(state.improvedDraft || state.draft || "暂无文案")}</pre></div>
+      <div class="draft-text"><h3>${zh("&#24403;&#21069;&#25991;&#26696;")}</h3><pre>${escapeHtml(state.improvedDraft || state.draft || zh("&#26242;&#26080;&#25991;&#26696;"))}</pre></div>
       <div class="check-panel">
-        <h3>体检结果</h3>
+        <h3>${zh("&#22522;&#30784;&#38376;&#26816;")}</h3>
         ${checks.map((item) => `<div class="check-row ${item.warn ? "warn" : ""}"><b>${item.score}</b><p><strong>${escapeHtml(item.name)}</strong><br>${escapeHtml(item.reason)}</p></div>`).join("")}
       </div>
     </div>
     ${renderCopyVersionList()}
     <div class="actions">
-      <button class="ghost" data-step-target="7">返回正文</button>
-      <button class="secondary" data-improve-again>继续优化一次</button>
-      <button class="primary" data-step-target="9">下一步：网页确认文案</button>
+      <button class="ghost" data-step-target="7">${zh("&#36820;&#22238;&#27491;&#25991;")}</button>
+      <button class="secondary" data-improve-again>${zh("&#25353;&#25945;&#32451;&#24314;&#35758;&#20248;&#21270;&#19968;&#29256;")}</button>
+      <button class="primary" data-step-target="9">${zh("&#19979;&#19968;&#27493;&#65306;&#30830;&#35748;&#25991;&#26696;")}</button>
     </div>
   </section>`;
 }
@@ -2076,11 +2078,22 @@ function bindWorkAreaActions() {
   byId("workArea")?.querySelector("[data-improve-again]")?.addEventListener("click", () => {
     const snapshot = currentCopySnapshot("优化前版本");
     if (!snapshot?.copy) return;
+    const coach = buildContentCoachReport();
+    const baseFeedback = state.draftReview || runLongkaReview(snapshot.copy) || {};
+    const coachBrief = (coach.weakest || [])
+      .map((item) => `${item.name}: ${item.advice || item.reason}`)
+      .filter(Boolean);
     state.draftRevision += 1;
     state.pendingRevision = {
       currentDraft: snapshot,
-      qualityFeedback: state.draftReview || runLongkaReview(snapshot.copy),
-      instruction: "Rewrite the current copy into a complete new version. Do not append suggestions only.",
+      qualityFeedback: {
+        ...baseFeedback,
+        rewriteBrief: [
+          ...coachBrief,
+          ...(baseFeedback.rewriteBrief || []),
+        ].slice(0, 8),
+      },
+      instruction: `Rewrite the current copy into a complete new version. Do not append suggestions only. Priority fixes: ${coachBrief.join("; ")}`,
     };
     clearCopyConfirmation();
     state.draft = "";
@@ -3514,6 +3527,152 @@ function renderBindingEvidence() {
     <p><strong>风险边界：</strong>${escapeHtml(topic.risk)}</p>
     ${topic.url ? `<p><a class="source-link" href="${escapeHtml(topic.url)}" target="_blank" rel="noreferrer">打开原始素材核对</a></p>` : ""}
   `;
+}
+
+
+function buildContentCoachReport() {
+  const copy = activeCopyText();
+  const topic = selectedTopic() || {};
+  const title = state.selectedTitle || "";
+  const plain = stripPlatformNoise(copy);
+  const opening = plain.split(/\n+/).map((line) => line.trim()).filter(Boolean).slice(0, 2).join(" ");
+  const platform = state.publishTarget;
+  const dimensions = [
+    scoreTitleHook(title, topic),
+    scoreOpeningRetention(opening, title, topic),
+    scoreUserPain(copy, topic),
+    scoreSpecificity(copy),
+    scoreSaveValue(copy, platform),
+    scoreHumanTone(copy),
+    scorePlatformFit(copy, platform),
+    scoreConversionPath(copy),
+  ];
+  const total = Math.round(dimensions.reduce((sum, item) => sum + item.score, 0) / Math.max(1, dimensions.length));
+  const weakest = dimensions.slice().sort((a, b) => a.score - b.score).slice(0, 3);
+  return {
+    total,
+    level: total >= 86 ? zh("&#21487;&#20197;&#21457;&#65292;&#21482;&#38656;&#24494;&#35843;") : total >= 76 ? zh("&#22522;&#26412;&#33021;&#21457;&#65292;&#24314;&#35758;&#20877;&#20248;&#21270;&#19968;&#29256;") : total >= 66 ? zh("&#26377;&#26694;&#26550;&#65292;&#20294;&#29190;&#28857;&#19981;&#22815;") : zh("&#26242;&#26102;&#19981;&#24314;&#35758;&#21457;"),
+    dimensions,
+    weakest,
+    nextAction: buildCoachNextAction(total, weakest),
+  };
+}
+
+function scoreTitleHook(title = "", topic = {}) {
+  const hasPain = title && topic.pain && textOverlap(title, topic.pain) > 0;
+  const hookWords = ["why", "how", "mistake", "secret", "checklist", "AI", "3", "5", "7", "?", "？"];
+  const hasHook = hookWords.some((word) => String(title || "").includes(word));
+  const clear = title.length >= 8 && title.length <= 32;
+  const score = (clear ? 28 : 18) + (hasHook ? 36 : 22) + (hasPain ? 26 : 16);
+  return coachDim(zh("&#26631;&#39064;&#38057;&#23376;"), Math.min(92, score), clear && hasHook ? zh("&#26631;&#39064;&#26377;&#25235;&#20154;&#30340;&#21028;&#26029;&#25110;&#24748;&#24565;") : zh("&#26631;&#39064;&#36824;&#20687;&#35828;&#26126;&#25991;&#65292;&#19981;&#22815;&#25235;&#20154;"), clear && hasHook ? "" : zh("&#29992;&#12298;&#24773;&#22659; + &#20914;&#31361;/&#32467;&#26524; + &#21028;&#26029;&#12299;&#37325;&#20889;&#26631;&#39064;"));
+}
+
+function scoreOpeningRetention(opening = "", title = "") {
+  const answersTitle = title && textOverlap(opening, title) > 0;
+  const sceneWords = ["我", "你", "很多人", "刚开始", "卡住", "发现", "今天", "昨天", "测试"];
+  const hasScene = sceneWords.some((word) => String(opening || "").includes(word));
+  const notEmpty = opening.length >= 25;
+  const score = (notEmpty ? 28 : 14) + (answersTitle ? 30 : 18) + (hasScene ? 30 : 18);
+  return coachDim(zh("&#24320;&#22836;&#30041;&#23384;"), Math.min(92, score), hasScene ? zh("&#24320;&#22836;&#26377;&#22330;&#26223;&#25110;&#20154;&#30340;&#29366;&#24577;") : zh("&#24320;&#22836;&#36824;&#22312;&#35762;&#36947;&#29702;&#65292;&#32570;&#23569;&#20195;&#20837;&#24863;"), hasScene ? "" : zh("&#20808;&#20889;&#19968;&#20010;&#20855;&#20307;&#22330;&#26223;&#65292;&#20877;&#25243;&#20986;&#21028;&#26029;"));
+}
+
+function scoreUserPain(copy = "", topic = {}) {
+  const pain = topic.pain || topic.theme || "";
+  const bound = pain && textOverlap(copy, pain) > 1;
+  const painWords = ["问题", "卡", "难", "不会", "没有", "担心", "焦虑", "为什么", "AI"];
+  const hasQuestion = painWords.some((word) => String(copy || "").includes(word));
+  const score = (bound ? 42 : 24) + (hasQuestion ? 42 : 26);
+  return coachDim(zh("&#29992;&#25143;&#30171;&#28857;"), Math.min(92, score), bound ? zh("&#33021;&#22238;&#21040;&#24403;&#21069;&#27597;&#39064;&#30340;&#26680;&#24515;&#38382;&#39064;") : zh("&#21644;&#27597;&#39064;&#32465;&#23450;&#19981;&#22815;&#65292;&#23481;&#26131;&#36305;&#39064;"), bound ? "" : zh("&#25226;&#21069; 30% &#25913;&#25104;&#29992;&#25143;&#27491;&#22312;&#36935;&#21040;&#30340;&#38382;&#39064;"));
+}
+
+function scoreSpecificity(copy = "") {
+  const numbers = (copy.match(/\d+|一|二|三|四|五|六|七|八|九|十/g) || []).length;
+  const concreteWords = ["案例", "步骤", "清单", "表格", "账号", "数据", "截图", "模板", "方法", "流程"];
+  const concrete = concreteWords.some((word) => String(copy || "").includes(word));
+  const score = Math.min(92, 42 + Math.min(24, numbers * 4) + (concrete ? 26 : 12));
+  return coachDim(zh("&#20855;&#20307;&#24863;"), score, concrete ? zh("&#26377;&#27493;&#39588;&#12289;&#26696;&#20363;&#25110;&#21487;&#35265;&#30340;&#19996;&#35199;") : zh("&#34920;&#36798;&#20559;&#25277;&#35937;&#65292;&#35835;&#32773;&#19981;&#22909;&#31435;&#21051;&#29992;"), concrete ? "" : zh("&#21152;&#20837;&#25968;&#23383;&#12289;&#27493;&#39588;&#12289;&#26696;&#20363;&#25110;&#20855;&#20307;&#22330;&#26223;"));
+}
+
+function scoreSaveValue(copy = "", platform = "xhs") {
+  const reusableWords = ["清单", "模板", "步骤", "公式", "方法", "SOP", "避坑", "复盘", "收藏", "对照"];
+  const hasReusable = reusableWords.some((word) => String(copy || "").includes(word));
+  const enough = platform === "moments" ? copy.length >= 80 : copy.length >= 240;
+  const score = (hasReusable ? 54 : 30) + (enough ? 32 : 18);
+  return coachDim(zh("&#25910;&#34255;&#20215;&#20540;"), Math.min(92, score), hasReusable ? zh("&#26377;&#21487;&#22797;&#29992;&#30340;&#26041;&#27861;&#25110;&#28165;&#21333;") : zh("&#30475;&#23436;&#21487;&#33021;&#26377;&#24863;&#35273;&#65292;&#20294;&#19981;&#22815;&#20540;&#24471;&#25910;&#34255;"), hasReusable ? "" : zh("&#21152;&#19968;&#27573;&#12298;&#20320;&#21487;&#20197;&#30452;&#25509;&#25353;&#36825;&#20960;&#27493;&#20570;&#12299;"));
+}
+
+function scoreHumanTone(copy = "") {
+  const aiSmellWords = ["综上", "总之", "首先", "其次", "最后", "需要注意的是"];
+  const humanWords = ["我", "你", "其实", "说白了", "刚开始", "踩坑", "别急", "真的"];
+  const aiSmell = aiSmellWords.some((word) => String(copy || "").includes(word));
+  const hasHuman = humanWords.some((word) => String(copy || "").includes(word));
+  const score = 50 + (hasHuman ? 28 : 12) - (aiSmell ? 16 : 0);
+  return coachDim(zh("&#20154;&#21619;&#34920;&#36798;"), Math.max(48, Math.min(92, score)), hasHuman && !aiSmell ? zh("&#26377;&#33258;&#28982;&#35821;&#27668;&#65292;AI &#21619;&#19981;&#37325;") : zh("&#35821;&#27668;&#36824;&#20687;&#27169;&#26495;&#25991;"), hasHuman && !aiSmell ? "" : zh("&#25226;&#22823;&#36947;&#29702;&#25913;&#25104;&#19968;&#20010;&#20154;&#23545;&#21478;&#19968;&#20010;&#20154;&#35828;&#35805;"));
+}
+
+function scorePlatformFit(copy = "", platform = "xhs") {
+  let ok = true;
+  let advice = "";
+  if (platform === "moments") {
+    ok = !/(标题[:：]|正文[:：]|配图建议|#)/.test(copy) && copy.length <= 420;
+    advice = zh("&#26379;&#21451;&#22280;&#19981;&#35201;&#20687;&#25991;&#31456;&#65292;&#25913;&#25104;&#33258;&#28982;&#30340;&#21475;&#35821;&#20998;&#20139;");
+  } else if (platform === "wechat-article") {
+    ok = copy.length >= 700 || /^#|^##/m.test(copy);
+    advice = zh("&#20844;&#20247;&#21495;&#38656;&#35201;&#26356;&#23436;&#25972;&#30340;&#35770;&#35777;&#12289;&#23567;&#26631;&#39064;&#21644;&#26696;&#20363;");
+  } else if (platform === "douyin" || platform === "video-account") {
+    ok = /(开场|镜头|口播|字幕|钩子|0-3|3秒)/.test(copy);
+    advice = zh("&#30701;&#35270;&#39057;&#35201;&#26377; 3 &#31186;&#38057;&#23376;&#12289;&#21475;&#25773;&#33410;&#22863;&#21644;&#38236;&#22836;&#20998;&#35299;");
+  } else {
+    ok = /(标签[:：]|#|收藏|评论|私信)/.test(copy);
+    advice = zh("&#23567;&#32418;&#20070;&#35201;&#26377;&#25910;&#34255;&#28857;&#12289;&#20302;&#21387;&#34892;&#21160;&#20837;&#21475;&#21644;&#35805;&#39064;&#26631;&#31614;");
+  }
+  return coachDim(zh("&#24179;&#21488;&#36866;&#37197;"), ok ? 88 : 62, ok ? zh("&#20889;&#27861;&#22522;&#26412;&#31526;&#21512;&#24403;&#21069;&#24179;&#21488;") : zh("&#36824;&#20687;&#36890;&#29992;&#25991;&#26696;&#65292;&#24179;&#21488;&#20889;&#27861;&#19981;&#22815;"), ok ? "" : advice);
+}
+
+function scoreConversionPath(copy = "") {
+  const actionWords = ["收藏", "评论", "私信", "对照", "测试", "保存", "下一步", "留言"];
+  const hardWords = ["立刻购买", "马上成交", "保证", "包你", "稳赚"];
+  const hasSoftAction = actionWords.some((word) => String(copy || "").includes(word));
+  const tooHard = hardWords.some((word) => String(copy || "").includes(word));
+  const score = 56 + (hasSoftAction ? 28 : 8) - (tooHard ? 18 : 0);
+  return coachDim(zh("&#34892;&#21160;&#20837;&#21475;"), Math.max(45, Math.min(92, score)), hasSoftAction ? zh("&#32467;&#23614;&#26377;&#20302;&#21387;&#21160;&#20316;") : zh("&#32467;&#23614;&#27809;&#26377;&#35753;&#35835;&#32773;&#30693;&#36947;&#19979;&#19968;&#27493;&#20570;&#20160;&#20040;"), hasSoftAction ? "" : zh("&#21152;&#19968;&#20010;&#20302;&#21387;&#21160;&#20316;&#65306;&#25910;&#34255;&#12289;&#23545;&#29031;&#12289;&#35780;&#35770;&#25110;&#31169;&#20449;"));
+}
+
+function coachDim(name, score, reason, advice = "") {
+  return { name, score: Math.round(score), reason, advice, warn: score < 76 };
+}
+
+function textOverlap(a = "", b = "") {
+  const aText = String(a || "");
+  const bText = String(b || "");
+  const tokens = bText.match(/[A-Za-z0-9\u4e00-\u9fa5]{2,}/g) || [];
+  return tokens.filter((token) => aText.includes(token)).length;
+}
+
+function buildCoachNextAction(total, weakest = []) {
+  const first = weakest[0]?.name || zh("&#20869;&#23481;");
+  if (total >= 86) return zh("&#21487;&#20197;&#36827;&#20837;&#30830;&#35748;&#65292;&#21482;&#38656;&#25163;&#21160;&#26680;&#23545;&#32454;&#33410;");
+  if (first === zh("&#26631;&#39064;&#38057;&#23376;")) return zh("&#20808;&#25913;&#26631;&#39064;&#65292;&#26631;&#39064;&#19981;&#36807;&#20851;&#65292;&#21518;&#38754;&#20877;&#22909;&#20063;&#38590;&#29190;");
+  if (first === zh("&#24320;&#22836;&#30041;&#23384;")) return zh("&#20808;&#25913;&#24320;&#22836;&#65292;&#29992;&#22330;&#26223;&#25110;&#20914;&#31361;&#25235;&#20303;&#20154;");
+  if (first === zh("&#24179;&#21488;&#36866;&#37197;")) return `${zh("&#20808;&#25353;")} ${currentTarget().title} ${zh("&#30340;&#20889;&#27861;&#37325;&#25490;&#19968;&#29256;")}`;
+  if (first === zh("&#20154;&#21619;&#34920;&#36798;")) return zh("&#20808;&#21435; AI &#21619;&#65292;&#25913;&#25104;&#26356;&#20687;&#20154;&#35828;&#35805;&#30340;&#29256;&#26412;");
+  return `${zh("&#20808;&#20462;")}${first}${zh("&#65292;&#20877;&#36827;&#20837;&#19979;&#19968;&#27493;")}`;
+}
+
+function renderContentCoachPanel(coach) {
+  return `<div class="content-coach-panel">
+    <div class="content-coach-head">
+      <div><b>${zh("&#21457;&#24067;&#21069;&#20307;&#26816;")}</b><span>${escapeHtml(coach.level)} - ${escapeHtml(coach.nextAction)}</span></div>
+      <strong>${coach.total}</strong>
+    </div>
+    <div class="coach-dim-grid">
+      ${coach.dimensions.map((item) => `<article class="${item.warn ? "warn" : ""}"><b>${escapeHtml(item.name)}</b><strong>${item.score}</strong><span>${escapeHtml(item.reason)}</span>${item.advice ? `<small>${escapeHtml(item.advice)}</small>` : ""}</article>`).join("")}
+    </div>
+    <div class="coach-action-box">
+      <b>${zh("&#26412;&#27425;&#20248;&#20808;&#20462;&#36825;&#20960;&#28857;")}</b>
+      <ol>${coach.weakest.map((item) => `<li><strong>${escapeHtml(item.name)}?</strong>${escapeHtml(item.advice || item.reason)}</li>`).join("")}</ol>
+    </div>
+  </div>`;
 }
 
 function scoreDraft() {
