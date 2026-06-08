@@ -2096,12 +2096,9 @@ function bindWorkAreaActions() {
       instruction: `Rewrite the current copy into a complete new version. Do not append suggestions only. Priority fixes: ${coachBrief.join("; ")}`,
     };
     clearCopyConfirmation();
-    state.draft = "";
-    state.improvedDraft = "";
     state.draftStatus = "idle";
     state.draftError = "";
     state.draftMeta = null;
-    state.draftReview = null;
     generateSopDraft({ force: true });
   });
   byId("workArea")?.querySelectorAll("[data-copy-version]").forEach((button) => {
