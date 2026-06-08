@@ -3648,6 +3648,8 @@ function normalizeFinalWork(input = {}) {
     reusePlan: Array.isArray(input.reusePlan) ? input.reusePlan.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 20) : [],
     extractedAssets: input.extractedAssets && typeof input.extractedAssets === 'object' ? input.extractedAssets : {},
     publishMetrics: input.publishMetrics && typeof input.publishMetrics === 'object' ? input.publishMetrics : {},
+    prediction: input.prediction && typeof input.prediction === 'object' ? input.prediction : {},
+    calibration: input.calibration && typeof input.calibration === 'object' ? input.calibration : {},
   };
 }
 

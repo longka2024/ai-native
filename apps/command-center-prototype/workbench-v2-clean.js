@@ -1539,6 +1539,7 @@ function buildFinalWorkAsset() {
   const target = currentTarget();
   const body = cleanPublishBodyForCopy(confirmedCopyText());
   const visual = currentVisualStyle();
+  const prediction = buildLongkaPredictionSnapshot({ topic, target, body, images: files.length ? files : reusableImages });
   return {
     id: currentFinalWorkId(),
     type: "final-work",
@@ -1556,6 +1557,68 @@ function buildFinalWorkAsset() {
     createdAt: new Date().toISOString(),
     reusePlan: buildPlatformReusePlan(target.id),
     extractedAssets: buildPlatformExtractedAssets(target.id, body),
+    prediction,
+    calibration: buildLongkaCalibrationSnapshot(prediction),
+  };
+}
+
+function buildLongkaPredictionSnapshot({ topic = {}, target = {}, body = "", images = [] } = {}) {
+  const score = activeCopyCheckScore();
+  const copyLength = String(body || "").length;
+  const sourceBound = Boolean(topic?.url || topic?.sourceUrl || topic?.sourcePostId || topic?.id);
+  const hasImages = Array.isArray(images) && images.length > 0;
+  const saveValue = /清单|步骤|方法|模板|自查|判断|收藏|复用|系统|避坑|案例|经验/.test(body) ? 18 : 10;
+  const hookValue = /为什么|别|不要|不是|而是|先|真正|普通人|小白|老板|小妹|客户/.test(state.selectedTitle || body) ? 18 : 11;
+  const sourceValue = sourceBound ? 16 : 8;
+  const visualValue = hasImages ? 14 : (target?.id === "moments" ? 10 : 6);
+  const checkValue = Math.max(8, Math.min(18, Math.round((Number(score || 70) / 100) * 18)));
+  const lengthValue = copyLength >= 180 && copyLength <= 1400 ? 12 : 7;
+  const total = Math.max(0, Math.min(100, sourceValue + saveValue + hookValue + visualValue + checkValue + lengthValue));
+  const bucket = total >= 84 ? zh("&#39640;&#28508;&#21147;") : total >= 72 ? zh("&#21487;&#20248;&#20808;&#27979;&#35797;") : total >= 60 ? zh("&#38656;&#35201;&#23567;&#27979;") : zh("&#26242;&#19981;&#24314;&#35758;&#20027;&#25512;");
+  const risk = [];
+  if (!sourceBound) risk.push(zh("&#28304;&#32032;&#26448;&#36861;&#36394;&#19981;&#36275;"));
+  if (!hasImages && target?.id === "xhs") risk.push(zh("&#23567;&#32418;&#20070;&#32570;&#22270;&#29255;"));
+  if (copyLength < 120) risk.push(zh("&#27491;&#25991;&#20449;&#24687;&#37327;&#20559;&#23569;"));
+  if (!risk.length) risk.push(zh("&#21457;&#24067;&#21069;&#37325;&#28857;&#26816;&#26597;&#26631;&#39064;&#21644;&#39318;&#23631;"));
+  return {
+    version: "longka-calibration-v1",
+    predictedAt: new Date().toISOString(),
+    score: total,
+    bucket,
+    reason: `${zh("&#28304;&#32032;&#26448;")} ${sourceBound ? zh("&#24050;&#32465;&#23450;") : zh("&#20559;&#24369;")} / ${zh("&#25910;&#34255;&#20215;&#20540;")} ${saveValue >= 18 ? zh("&#36739;&#24378;") : zh("&#19968;&#33324;")} / ${zh("&#39318;&#23631;&#38057;&#23376;")} ${hookValue >= 18 ? zh("&#36739;&#24378;") : zh("&#38656;&#35201;&#20877;&#25171;&#30952;")}`,
+    factors: [
+      { name: zh("&#28304;&#32032;&#26448;&#32465;&#23450;"), score: sourceValue, note: sourceBound ? zh("&#26377;&#27597;&#39064;&#25110;&#26469;&#28304;&#36861;&#36394;") : zh("&#38656;&#34917;&#26469;&#28304;&#38142;&#25509;/trace") },
+      { name: zh("&#25910;&#34255;&#20215;&#20540;"), score: saveValue, note: saveValue >= 18 ? zh("&#26377;&#26041;&#27861;/&#28165;&#21333;/&#33258;&#26597;&#20449;&#21495;") : zh("&#38656;&#22686;&#21152;&#21487;&#22797;&#29992;&#26041;&#27861;") },
+      { name: zh("&#26631;&#39064;&#38057;&#23376;"), score: hookValue, note: hookValue >= 18 ? zh("&#26377;&#21028;&#26029;/&#21453;&#24046;/&#36991;&#22353;&#20449;&#21495;") : zh("&#26631;&#39064;&#38656;&#37325;&#20889;") },
+      { name: zh("&#35270;&#35273;&#23436;&#25104;&#24230;"), score: visualValue, note: hasImages ? `${images.length} ${zh("&#24352;&#22270;&#29255;")}` : zh("&#23578;&#26410;&#32465;&#23450;&#22270;&#29255;") },
+      { name: zh("&#25991;&#26696;&#20307;&#26816;"), score: checkValue, note: `${score || 70}/100` },
+      { name: zh("&#31687;&#24133;&#36866;&#37197;"), score: lengthValue, note: `${copyLength} ${zh("&#23383;")}` },
+    ],
+    hypothesis: total >= 72
+      ? zh("&#36825;&#26465;&#20808;&#21457;&#19968;&#20010;&#24179;&#21488;&#29256;&#26412;&#65292;24-72h &#20869;&#30475;&#25910;&#34255;&#21644;&#35780;&#35770;&#65292;&#20915;&#23450;&#26159;&#21542;&#19968;&#40060;&#22810;&#21507;&#12290;")
+      : zh("&#36825;&#26465;&#19981;&#35201;&#30452;&#25509;&#22823;&#25512;&#65292;&#20808;&#25442;&#26631;&#39064;&#25110;&#34917;&#32032;&#26448;&#21518;&#20877;&#21457;&#12290;"),
+    risks: risk,
+    blindLocked: true,
+  };
+}
+
+function activeCopyCheckScore() {
+  const confirmed = state.copyVersions.find((item) => item.id === state.confirmedCopyVersionId);
+  if (confirmed?.score) return confirmed.score;
+  const current = state.copyVersions.find((item) => item.id === state.currentCopyVersionId);
+  return current?.score || 72;
+}
+
+function buildLongkaCalibrationSnapshot(prediction = {}) {
+  return {
+    status: "pending",
+    predictedScore: prediction.score || 0,
+    predictedBucket: prediction.bucket || "",
+    predictionLockedAt: prediction.predictedAt || new Date().toISOString(),
+    reviewedAt: null,
+    actualBucket: "",
+    conclusion: "",
+    learning: "",
   };
 }
 
@@ -3780,7 +3843,7 @@ async function renderAssets() {
       </div>
       <div class="asset-grid">
         <article class="asset-item"><b>${zh("&#37319;&#38598;&#22522;&#24231;")}</b><span>MediaCrawlerPro / XCrawl / RSS / ${zh("&#25163;&#21160;&#23548;&#20837;&#36127;&#36131;&#25343;&#30495;&#23454;&#32032;&#26448;&#65292;&#19981;&#29992;&#20551;&#25968;&#25454;&#22635;&#39029;&#38754;&#12290;")}</span></article>
-        <article class="asset-item"><b>${zh("&#20869;&#23481;&#25286;&#35299;&#22522;&#24231;")}</b><span>DBS / ${zh("&#26631;&#39064;&#24211; / &#32467;&#26500;&#24211;&#25226;&#32032;&#26448;&#25286;&#25104;&#29992;&#25143;&#30171;&#28857;&#12289;&#26631;&#39064;&#20844;&#24335;&#12289;&#32467;&#26500;&#21644;&#22797;&#29992;&#35282;&#24230;&#12290;")}</span></article>
+        <article class="asset-item"><b>${zh("&#20869;&#23481;&#25286;&#35299;&#22522;&#24231;")}</b><span>${zh("Longka &#26631;&#39064;&#24211; / &#32467;&#26500;&#24211;&#25226;&#32032;&#26448;&#25286;&#25104;&#29992;&#25143;&#30171;&#28857;&#12289;&#26631;&#39064;&#20844;&#24335;&#12289;&#32467;&#26500;&#21644;&#22797;&#29992;&#35282;&#24230;&#12290;")}</span></article>
         <article class="asset-item"><b>${zh("&#35270;&#35273;&#29983;&#20135;&#22522;&#24231;")}</b><span>${zh("&#23567;&#40657;&#12289;&#24402;&#34255;&#12289;&#23453;&#29577;&#12289;Open Design &#36127;&#36131;&#25226;&#30830;&#35748;&#25991;&#26696;&#20570;&#25104;&#22270;&#25991;&#12289;&#38271;&#25991;&#37197;&#22270;&#25110;&#28436;&#31034;&#31295;&#12290;")}</span></article>
         <article class="asset-item"><b>${zh("&#22797;&#30424;&#35757;&#32451;&#22522;&#24231;")}</b><span>${zh("&#21457;&#24067;&#21518;&#34917;&#38405;&#35835;&#12289;&#28857;&#36190;&#12289;&#25910;&#34255;&#12289;&#35780;&#35770;&#65292;&#21028;&#26029;&#27597;&#39064;&#26159;&#27491;&#20363;&#12289;&#21453;&#20363;&#65292;&#36824;&#26159;&#20540;&#24471;&#20108;&#27425;&#25913;&#20889;&#12290;")}</span></article>
       </div>
@@ -3817,6 +3880,7 @@ function renderFinalWorkAsset(item) {
     ${images.length ? "" : `<div class="status-strip warn">${zh("&#36825;&#26465;&#20316;&#21697;&#27809;&#26377;&#20445;&#23384;&#22270;&#29255;&#12290;")}</div>`}
     <div class="xhs-generated-grid asset-image-grid">${images.slice(0, 5).map((url, index) => `<div class="asset-image-tile"><a href="${escapeHtml(url)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(url)}" alt="P${index + 1}" loading="lazy" /><span>P${index + 1}</span></a><div class="asset-image-actions"><button class="secondary" type="button" data-copy-image-url="${escapeHtml(url)}">${zh("&#22797;&#21046;&#38142;&#25509;")}</button></div></div>`).join("")}</div>
     <div class="asset-usage-panel"><b>${zh("&#19979;&#19968;&#27493;&#24590;&#20040;&#29992;")}</b><ol><li><strong>${zh("&#32487;&#32493;&#29983;&#20135;&#65306;")}</strong>${zh("&#25226;&#21516;&#19968;&#20010;&#27597;&#39064;&#25913;&#25104;&#21478;&#19968;&#20010;&#24179;&#21488;&#29256;&#26412;&#12290;")}</li><li><strong>${zh("&#21457;&#24067;&#22797;&#30424;&#65306;")}</strong>${zh("&#21457;&#20986;&#21435;&#21518;&#34917;&#25968;&#25454;&#65292;&#21028;&#26029;&#26159;&#21542;&#20540;&#24471;&#32487;&#32493;&#20570;&#12290;")}</li><li><strong>${zh("&#27785;&#28096;&#36164;&#20135;&#65306;")}</strong>${zh("&#25286;&#36827;&#26631;&#39064;&#24211;&#12289;&#32467;&#26500;&#24211;&#21644;&#22270;&#25991;&#39118;&#26684;&#24211;&#12290;")}</li></ol></div>
+    ${renderLongkaPredictionPanel(item)}
     <div class="metric-row"><span>${zh("&#25104;&#31295;&#20316;&#21697;")}</span><span>${zh("&#22797;&#29992;&#27597;&#39064;")}</span><span>${zh("&#24453;&#34917;&#21457;&#24067;&#25968;&#25454;")}</span></div>
     <div class="asset-review-panel"><b>${zh("&#21457;&#24067;&#22797;&#30424;&#25968;&#25454;")}</b><em>${zh("&#31532;&#19968;&#29256;&#30001;&#36816;&#33829;&#21457;&#24067;&#21518;&#25163;&#21160;&#22635;&#20889;&#12290;")}</em><div class="asset-review-grid"><span>${zh("&#38405;&#35835;/&#25773;&#25918;")} <strong>${views || pending}</strong></span><span>${zh("&#28857;&#36190;")} <strong>${likes || pending}</strong></span><span>${zh("&#25910;&#34255;")} <strong>${saves || pending}</strong></span><span>${zh("&#35780;&#35770;")} <strong>${comments || pending}</strong></span><span>${zh("&#36716;&#21457;")} <strong>${shares || pending}</strong></span><span>${zh("&#25910;&#34255;&#29575;")} <strong>${saveRate}</strong></span><span>${zh("&#20114;&#21160;&#29575;")} <strong>${engageRate}</strong></span></div>${isEditing ? renderPublishMetricsForm(item) : `<p>${escapeHtml(buildReviewConclusion(item))}</p>`}</div>
     <div class="asset-reuse-panel"><b>${zh("&#36873;&#25321;&#19979;&#19968;&#20010;&#24179;&#21488;&#29256;&#26412;")}</b><span>${zh("&#20445;&#30041;&#21516;&#19968;&#20010;&#27597;&#39064;&#65292;&#20294;&#25353;&#30446;&#26631;&#24179;&#21488;&#37325;&#20889;&#12290;")}</span><div class="asset-action-row">${availableTargets.map((target) => `<button class="secondary" type="button" data-reuse-work="${escapeHtml(item.id)}" data-reuse-target="${escapeHtml(target.id)}">${zh("&#25913;&#25104;")}${escapeHtml(target.title)}</button>`).join("")}</div></div>
@@ -3832,30 +3896,85 @@ function inferPlatformIdFromTitle(title = "") {
   return "";
 }
 
+function renderLongkaPredictionPanel(item) {
+  const prediction = item.prediction || buildLongkaPredictionSnapshot({ topic: item, target: { id: item.platformId }, body: item.body, images: item.images });
+  const calibration = item.calibration || buildLongkaCalibrationSnapshot(prediction);
+  const factors = Array.isArray(prediction.factors) ? prediction.factors : [];
+  const status = calibration.status === "reviewed" ? zh("&#24050;&#22797;&#30424;") : zh("&#24453;&#22797;&#30424;");
+  return `<div class="asset-prediction-panel">
+    <div class="asset-prediction-head">
+      <div><b>${zh("&#21457;&#24067;&#21069;&#21028;&#26029;")}</b><span>${zh("&#20445;&#23384;&#20316;&#21697;&#26102;&#20889;&#20837;&#65292;&#21457;&#24067;&#21518;&#19981;&#22238;&#25913;&#65292;&#21482;&#36861;&#21152;&#22797;&#30424;&#12290;")}</span></div>
+      <strong>${escapeHtml(prediction.score || 0)}</strong>
+    </div>
+    <div class="asset-review-grid">
+      <span>${zh("&#39044;&#27979;&#26723;&#20301;")} <strong>${escapeHtml(prediction.bucket || zh("&#26410;&#35760;&#24405;"))}</strong></span>
+      <span>${zh("&#26657;&#20934;&#29366;&#24577;")} <strong>${escapeHtml(status)}</strong></span>
+      <span>${zh("&#38145;&#23450;&#26102;&#38388;")} <strong>${escapeHtml(formatShortDate(prediction.predictedAt))}</strong></span>
+    </div>
+    <p>${escapeHtml(prediction.reason || zh("&#36825;&#26465;&#20316;&#21697;&#32570;&#23569;&#21457;&#24067;&#21069;&#21028;&#26029;&#12290;"))}</p>
+    ${factors.length ? `<div class="prediction-factor-list">${factors.map((factor) => `<span><b>${escapeHtml(factor.name)}</b><em>${escapeHtml(factor.score)}</em><small>${escapeHtml(factor.note || "")}</small></span>`).join("")}</div>` : ""}
+    <div class="asset-calibration-result"><b>${zh("&#22797;&#30424;&#26657;&#20934;")}</b><span>${escapeHtml(calibration.conclusion || buildCalibrationConclusion(item))}</span></div>
+  </div>`;
+}
+
+function formatShortDate(value) {
+  if (!value) return zh("&#26410;&#35760;&#24405;");
+  try {
+    return new Date(value).toLocaleDateString();
+  } catch {
+    return String(value).slice(0, 10);
+  }
+}
+
 function renderPublishMetricsForm(item) {
   const metrics = item.publishMetrics || {};
+  const calibration = item.calibration || {};
   return `<div class="publish-metrics-form" data-metrics-form="${escapeHtml(item.id)}">
-    <label>阅读/播放<input type="number" min="0" data-metric-field="views" value="${escapeHtml(metrics.views || "")}"></label>
-    <label>点赞<input type="number" min="0" data-metric-field="likes" value="${escapeHtml(metrics.likes || "")}"></label>
-    <label>收藏<input type="number" min="0" data-metric-field="saves" value="${escapeHtml(metrics.saves || "")}"></label>
-    <label>评论<input type="number" min="0" data-metric-field="comments" value="${escapeHtml(metrics.comments || "")}"></label>
-    <label>转发<input type="number" min="0" data-metric-field="shares" value="${escapeHtml(metrics.shares || "")}"></label>
-    <label>复盘结论<input type="text" data-metric-field="note" value="${escapeHtml(metrics.note || "")}" placeholder="比如：收藏高，适合继续做清单型"></label>
-    <button class="primary" type="button" data-save-metrics="${escapeHtml(item.id)}">保存复盘数据</button>
+    <label>${zh("&#38405;&#35835;/&#25773;&#25918;")}<input type="number" min="0" data-metric-field="views" value="${escapeHtml(metrics.views || "")}"></label>
+    <label>${zh("&#28857;&#36190;")}<input type="number" min="0" data-metric-field="likes" value="${escapeHtml(metrics.likes || "")}"></label>
+    <label>${zh("&#25910;&#34255;")}<input type="number" min="0" data-metric-field="saves" value="${escapeHtml(metrics.saves || "")}"></label>
+    <label>${zh("&#35780;&#35770;")}<input type="number" min="0" data-metric-field="comments" value="${escapeHtml(metrics.comments || "")}"></label>
+    <label>${zh("&#36716;&#21457;")}<input type="number" min="0" data-metric-field="shares" value="${escapeHtml(metrics.shares || "")}"></label>
+    <label>${zh("&#23454;&#38469;&#34920;&#29616;&#26723;&#20301;")}<select data-metric-field="actualBucket">
+      ${["", zh("&#36229;&#39044;&#26399;"), zh("&#31526;&#21512;&#39044;&#26399;"), zh("&#19968;&#33324;"), zh("&#20302;&#20110;&#39044;&#26399;")].map((value) => `<option value="${escapeHtml(value)}" ${value === calibration.actualBucket ? "selected" : ""}>${value || zh("&#24453;&#21028;&#26029;")}</option>`).join("")}
+    </select></label>
+    <label class="wide">${zh("&#22797;&#30424;&#35760;&#24405;")}<input type="text" data-metric-field="note" value="${escapeHtml(metrics.note || "")}" placeholder="${zh("&#20363;&#65306;&#25910;&#34255;&#39640;&#65292;&#35780;&#35770;&#20302;&#65292;&#19979;&#27425;&#22686;&#21152;&#20114;&#21160;&#25552;&#38382;")}"></label>
+    <label class="wide">${zh("&#26032;&#23398;&#21040;&#30340;&#19968;&#26465;&#35268;&#24459;")}<input type="text" data-metric-field="learning" value="${escapeHtml(calibration.learning || "")}" placeholder="${zh("&#20363;&#65306;&#36825;&#31867;&#27597;&#39064;&#26356;&#36866;&#21512;&#28165;&#21333;&#22411;&#39318;&#23631;")}"></label>
+    <button class="primary" type="button" data-save-metrics="${escapeHtml(item.id)}">${zh("&#20445;&#23384;&#22797;&#30424;&#24182;&#21516;&#27493;")}</button>
   </div>`;
 }
 
 function buildReviewConclusion(item) {
   const metrics = item.publishMetrics || {};
   const views = Number(metrics.views || 0);
-  if (!views) return "还没补数据。发布后从平台后台把阅读、点赞、收藏、评论填进来，系统才能判断这个母题是正例、反例，还是值得二次改写。";
+  if (!views) return zh("&#36824;&#27809;&#26377;&#21457;&#24067;&#25968;&#25454;&#12290;&#21457;&#24067;&#21518;&#34917;&#20837;&#38405;&#35835;&#12289;&#28857;&#36190;&#12289;&#25910;&#34255;&#12289;&#35780;&#35770;&#65292;&#31995;&#32479;&#20250;&#21028;&#26029;&#36825;&#20010;&#27597;&#39064;&#26159;&#21542;&#20540;&#24471;&#32487;&#32493;&#19968;&#40060;&#22810;&#21507;&#12290;");
   const saves = Number(metrics.saves || 0);
   const comments = Number(metrics.comments || 0);
   const saveRate = saves / Math.max(views, 1);
   if (metrics.note) return metrics.note;
-  if (saveRate >= 0.03) return "收藏率不错：这类母题适合继续拆成清单、教程或长文。";
-  if (comments >= 10) return "评论信号不错：优先回收评论里的用户问题，补进客户问题库。";
-  return "数据一般：保留为反例，后续对比标题、开头和图片首屏问题。";
+  if (saveRate >= 0.03) return zh("&#25910;&#34255;&#29575;&#19981;&#38169;&#65306;&#36825;&#31867;&#27597;&#39064;&#36866;&#21512;&#32487;&#32493;&#25286;&#25104;&#28165;&#21333;&#12289;&#25945;&#31243;&#25110;&#38271;&#25991;&#12290;");
+  if (comments >= 10) return zh("&#35780;&#35770;&#20449;&#21495;&#19981;&#38169;&#65306;&#20248;&#20808;&#22238;&#25910;&#35780;&#35770;&#37324;&#30340;&#29992;&#25143;&#38382;&#39064;&#65292;&#34917;&#36827;&#23458;&#25143;&#38382;&#39064;&#24211;&#12290;");
+  return zh("&#25968;&#25454;&#19968;&#33324;&#65306;&#20808;&#20445;&#30041;&#20026;&#23545;&#29031;&#26679;&#26412;&#65292;&#21518;&#32493;&#23545;&#27604;&#26631;&#39064;&#12289;&#24320;&#22836;&#21644;&#22270;&#29255;&#39318;&#23631;&#38382;&#39064;&#12290;");
+}
+
+function buildCalibrationConclusion(item) {
+  const metrics = item.publishMetrics || {};
+  const views = Number(metrics.views || 0);
+  if (!views) return zh("&#24453;&#21457;&#24067;&#21518;&#22238;&#22635;&#25968;&#25454;&#12290;");
+  const likes = Number(metrics.likes || 0);
+  const saves = Number(metrics.saves || 0);
+  const comments = Number(metrics.comments || 0);
+  const shares = Number(metrics.shares || 0);
+  const saveRate = saves / Math.max(views, 1);
+  const engageRate = (likes + saves + comments + shares) / Math.max(views, 1);
+  const predictionScore = Number(item.prediction?.score || item.calibration?.predictedScore || 0);
+  const actualStrong = saveRate >= 0.03 || engageRate >= 0.08 || comments >= 10;
+  const actualWeak = saveRate < 0.01 && engageRate < 0.025 && comments < 3;
+  if (predictionScore >= 75 && actualWeak) return zh("&#21457;&#24067;&#21069;&#21028;&#26029;&#20559;&#20048;&#35266;&#65306;&#19979;&#27425;&#37325;&#28857;&#22797;&#26597;&#26631;&#39064;&#38057;&#23376;&#12289;&#39318;&#23631;&#22270;&#21644;&#35805;&#39064;&#20855;&#20307;&#24230;&#12290;");
+  if (predictionScore < 70 && actualStrong) return zh("&#23454;&#38469;&#34920;&#29616;&#22909;&#20110;&#39044;&#21028;&#65306;&#36825;&#31867;&#39064;&#26448;&#35201;&#34917;&#36827;&#27491;&#20363;&#24211;&#65292;&#21518;&#32493;&#21487;&#20197;&#25193;&#23637;&#25104;&#38271;&#25991;&#25110;&#35270;&#39057;&#33050;&#26412;&#12290;");
+  if (actualStrong) return zh("&#21028;&#26029;&#22522;&#26412;&#21629;&#20013;&#65306;&#36825;&#20010;&#27597;&#39064;&#26377;&#22797;&#21033;&#20215;&#20540;&#65292;&#21487;&#32487;&#32493;&#20570;&#19968;&#40060;&#22810;&#21507;&#12290;");
+  if (actualWeak) return zh("&#23454;&#38469;&#34920;&#29616;&#20559;&#24369;&#65306;&#20808;&#19981;&#25193;&#23637;&#65292;&#25226;&#23427;&#24403;&#20316;&#23545;&#29031;&#26679;&#26412;&#65292;&#22797;&#30424;&#20026;&#20160;&#20040;&#27809;&#26377;&#25171;&#20013;&#12290;");
+  return zh("&#34920;&#29616;&#23646;&#20110;&#20013;&#38388;&#26723;&#65306;&#21487;&#20197;&#23567;&#33539;&#22260;&#25913;&#26631;&#39064;&#25110;&#25442;&#22270;&#20877;&#27979;&#19968;&#29256;&#12290;");
 }
 
 function toggleMetricsEditor(id) {
@@ -3863,21 +3982,49 @@ function toggleMetricsEditor(id) {
   renderAssetPage("assets");
 }
 
-function savePublishMetrics(id) {
+async function savePublishMetrics(id) {
   const form = byId("assetBoard")?.querySelector(`[data-metrics-form="${CSS.escape(id)}"]`);
   if (!form) return;
   const metrics = {};
+  const calibrationInput = {};
   form.querySelectorAll("[data-metric-field]").forEach((input) => {
     const key = input.dataset.metricField;
-    metrics[key] = input.type === "number" ? Number(input.value || 0) : input.value.trim();
+    const value = input.type === "number" ? Number(input.value || 0) : input.value.trim();
+    if (key === "actualBucket" || key === "learning") calibrationInput[key] = value;
+    else metrics[key] = value;
   });
-  state.finalWorks = state.finalWorks.map((item) => item.id === id ? {
-    ...item,
+  const current = state.finalWorks.find((item) => item.id === id);
+  if (!current) return;
+  const reviewedAt = new Date().toISOString();
+  const updated = {
+    ...current,
     publishMetrics: metrics,
-    reviewedAt: new Date().toISOString(),
-  } : item);
+    reviewedAt,
+  };
+  updated.calibration = {
+    ...buildLongkaCalibrationSnapshot(updated.prediction || {}),
+    ...(current.calibration || {}),
+    ...calibrationInput,
+    status: "reviewed",
+    reviewedAt,
+    conclusion: buildCalibrationConclusion(updated),
+  };
+  state.finalWorks = state.finalWorks.map((item) => item.id === id ? updated : item);
   state.editingMetricsWorkId = "";
   persistWorkbenchSnapshot();
+  try {
+    const res = await fetch(apiPath("/api/final-works"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ work: updated }),
+    });
+    const result = await res.json();
+    if (!res.ok || !result.ok) throw new Error(result.message || result.error || "sync_failed");
+    state.finalWorks = state.finalWorks.map((item) => item.id === id ? (result.work || updated) : item);
+    persistWorkbenchSnapshot();
+  } catch (error) {
+    state.archiveMessage = `${zh("&#22797;&#30424;&#24050;&#20445;&#23384;&#21040;&#24403;&#21069;&#27983;&#35272;&#22120;&#65292;&#20294;&#21516;&#27493;&#21040; 122 &#22833;&#36133;&#65306;")}${error.message}`;
+  }
   renderAssetPage("assets");
 }
 
