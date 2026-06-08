@@ -297,6 +297,58 @@ export async function finishCollectionRun(runId, patch = {}) {
   );
 }
 
+export async function importLocalPlatformBatch(input = {}) {
+  await requireCollectorDb();
+  const platform = normalizeText(input.platform || input.sourcePlatform || '').toLowerCase();
+  const allowed = new Set(['xiaohongshu', 'xhs', 'wechat', 'wechat_article', 'toutiao', 'douyin', 'kuaishou', 'bilibili', 'zhihu', 'rss', 'webpage']);
+  if (!allowed.has(platform)) {
+    return { ok: false, error: 'unsupported_platform', message: `Unsupported local platform import: ${platform || 'empty'}` };
+  }
+  const samples = Array.isArray(input.samples) ? input.samples : [];
+  if (!samples.length) {
+    return { ok: false, error: 'empty_samples', message: 'samples must contain at least one collected item.' };
+  }
+  const normalizedPlatform = platform === 'xhs' ? 'xiaohongshu' : platform;
+  const query = normalizeText(input.query || input.keyword || input.account || input.batchName || '');
+  const run = await createCollectionRun({
+    id: normalizeText(input.runId || input.run_id || ''),
+    collectorType: normalizeText(input.collectorType || 'local_platform_helper'),
+    platform: normalizedPlatform,
+    sourceType: normalizeText(input.sourceType || input.source_type || 'local_browser_batch'),
+    query,
+    status: 'running',
+    labelType: normalizeText(input.labelType || input.label_type || 'radar_seed'),
+    sourceConfig: {
+      batchName: normalizeText(input.batchName || input.batch_name || ''),
+      operator: normalizeText(input.operator || ''),
+      deviceName: normalizeText(input.deviceName || input.device_name || ''),
+      sourceMode: normalizeText(input.sourceMode || input.source_mode || ''),
+      uploadMode: 'local-helper-to-122',
+      clientVersion: normalizeText(input.clientVersion || input.client_version || ''),
+      rawCount: samples.length,
+    },
+    startedAt: input.startedAt || input.started_at || new Date().toISOString(),
+  });
+  const ingested = await ingestContentSamples(samples, {
+    runId: run.id,
+    collectorType: run.collectorType,
+    platform: normalizedPlatform,
+    sourceType: run.sourceType,
+    keyword: query,
+    labelType: run.labelType,
+    language: input.language || 'zh',
+  });
+  await finishCollectionRun(run.id, { status: 'completed', finishedAt: input.finishedAt || input.finished_at || new Date().toISOString() });
+  return {
+    ok: true,
+    platform: normalizedPlatform,
+    run,
+    totalSampleCount: ingested.length,
+    samples: ingested.slice(0, 20),
+    message: `Local ${normalizedPlatform} batch imported into PostgreSQL.`,
+  };
+}
+
 export async function ingestContentSamples(samples = [], context = {}) {
   await requireCollectorDb();
   const normalized = samples.map((sample) => normalizeContentSample(sample, context));

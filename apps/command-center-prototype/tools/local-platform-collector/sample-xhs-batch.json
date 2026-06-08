@@ -1,0 +1,29 @@
+{
+  "platform": "xiaohongshu",
+  "batchName": "demo xhs local batch",
+  "operator": "xiaomei",
+  "deviceName": "xiaomei-laptop",
+  "sourceMode": "manual-demo",
+  "query": "AI自媒体 内容资产库",
+  "samples": [
+    {
+      "sourceId": "demo-xhs-note-001",
+      "sourceUrl": "https://www.xiaohongshu.com/explore/demo-xhs-note-001",
+      "authorName": "demo-author",
+      "authorId": "demo-author-id",
+      "title": "AI内容创作不能只靠灵感，要先建素材库",
+      "body": "这是一条本地采集助手上传格式示例。真实使用时，这里必须是小妹电脑采集到的小红书真实正文，不允许用假数据冒充真实采集。",
+      "metrics": {
+        "likes": 120,
+        "collects": 45,
+        "comments": 18,
+        "shares": 6
+      },
+      "comments": [
+        "素材库怎么建？",
+        "适合一个人做自媒体吗？"
+      ],
+      "publishedAt": "2026-06-09T10:00:00+08:00"
+    }
+  ]
+}

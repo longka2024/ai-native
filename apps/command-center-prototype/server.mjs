@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { collectorHealth, confirmContentAsset, initCollectorHub, loadLatestXBatch, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch } from './collector-hub.mjs';
+import { collectorHealth, confirmContentAsset, importLocalPlatformBatch, initCollectorHub, loadLatestXBatch, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch } from './collector-hub.mjs';
 
 const root = resolve(fileURLToPath(new URL('.', import.meta.url)));
 const dataDir = join(root, 'data');
@@ -275,6 +275,12 @@ createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/content-assets/confirm') {
       const payload = await readJson(req);
       const result = await confirmContentAsset(payload);
+      return sendJson(res, result, result.ok ? 200 : 400);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/collectors/local-platform/import-batch') {
+      const payload = await readJson(req);
+      const result = await importLocalPlatformBatch(payload);
       return sendJson(res, result, result.ok ? 200 : 400);
     }
 

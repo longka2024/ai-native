@@ -2173,6 +2173,10 @@ function saveBusinessInputs() {
 
 async function readMaterials() {
   state.logs = [];
+  if (state.sourceChannel === "x-history" || state.sourceChannel === "x-live") {
+    state.useLatestXRunOnly = false;
+    state.lastXRunIds = [];
+  }
   state.assetStatus = "正在读取";
   log("读取任务信息");
   log(`发布目标：${currentTarget().title}`);
@@ -2242,7 +2246,7 @@ async function collectXAccounts() {
       ...(Array.isArray(result.candidates) ? result.candidates : []),
       ...(Array.isArray(result.assetBuckets?.goodPosts) ? result.assetBuckets.goodPosts : []),
     ]);
-    const topics = buildTopicsFromLiveXSamples(batchSamples);
+    const topics = await buildTopicsWithXHistoryBackfill(buildTopicsFromLiveXSamples(batchSamples));
     state.assets = result;
     state.topics = topics.slice(0, 10);
     state.selectedTopicId = "";
@@ -2290,6 +2294,35 @@ function balanceXBatchSamples(samples = []) {
     .filter((sample) => !used.has(sample.sourceUrl || sample.url || sample.id || sample.title))
     .sort((a, b) => (Number(b.contentValueScore || 0) + Number(b.radarScore || 0) / 1000) - (Number(a.contentValueScore || 0) + Number(a.radarScore || 0) / 1000));
   return [...balanced, ...rest].slice(0, 12);
+}
+
+async function buildTopicsWithXHistoryBackfill(liveTopics = []) {
+  const targetCount = 8;
+  if (liveTopics.length >= 6) return liveTopics.slice(0, 10);
+  const previousUseLatest = state.useLatestXRunOnly;
+  try {
+    state.useLatestXRunOnly = false;
+    const db = await loadState();
+    const historyTopics = buildTopicsFromDb(db);
+    const seen = new Set(liveTopics.map((topic) => topic.url || topic.id || topic.title).filter(Boolean));
+    const merged = [...liveTopics];
+    for (const topic of historyTopics) {
+      const key = topic.url || topic.id || topic.title;
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(topic);
+      if (merged.length >= targetCount) break;
+    }
+    if (merged.length > liveTopics.length) {
+      log(`本轮 X 优质候选 ${liveTopics.length} 个，已从历史 X 资产补到 ${merged.length} 个。`);
+    }
+    return merged.slice(0, 10);
+  } catch (error) {
+    log(`历史 X 资产补位失败：${error.message}`);
+    return liveTopics.slice(0, 10);
+  } finally {
+    state.useLatestXRunOnly = previousUseLatest;
+  }
 }
 
 function buildTopicsFromLiveXSamples(samples = []) {
@@ -2563,10 +2596,10 @@ function shouldKeepXSample(item, keywords) {
   if (/^rt\s*@/i.test(text) || /^转发/.test(text)) return false;
   if (/^https?:\/\/\S+$/i.test(text)) return false;
   if (explicitGood) return true;
-  if (item.sample.rejectReason) return false;
+  if (item.sample.rejectReason && item.sample.rejectReason !== "weak_content_signal") return false;
   if (!keywords.length) return (item.sample.contentValueScore || 0) >= 55;
-  if (item.score > 0 && (item.sample.contentValueScore || 0) >= 45) return true;
-  return item.score > 0 && ((item.eligibility.heat || 0) >= 12 || text.length >= 120);
+  if (item.score > 0 && (item.sample.contentValueScore || 0) >= 55) return true;
+  return item.score > 0 && (item.eligibility.heat || 0) >= 50 && text.length >= 80;
 }
 
 function sortXHistorySample(a, b) {
@@ -2579,8 +2612,10 @@ function sortXHistorySample(a, b) {
 }
 
 function balanceXHistoryScored(items = []) {
+  const good = items.filter((item) => item.sample.keepForCreation === true || item.sample.assetTier === "mother_topic_candidate");
+  const backup = items.filter((item) => !(item.sample.keepForCreation === true || item.sample.assetTier === "mother_topic_candidate"));
   const groups = new Map();
-  for (const item of items) {
+  for (const item of good) {
     const account = item.sample.keyword || item.sample.authorName || item.sample.author || item.sample.source || "unknown";
     if (!groups.has(account)) groups.set(account, []);
     groups.get(account).push(item);
@@ -2588,8 +2623,9 @@ function balanceXHistoryScored(items = []) {
   const picked = [];
   for (const group of groups.values()) picked.push(...group.slice(0, 2));
   const used = new Set(picked.map((item) => item.sample.url || item.sample.id || item.sample.title));
-  const rest = items.filter((item) => !used.has(item.sample.url || item.sample.id || item.sample.title));
-  return [...picked, ...rest];
+  const restGood = good.filter((item) => !used.has(item.sample.url || item.sample.id || item.sample.title));
+  const restBackup = backup.filter((item) => !used.has(item.sample.url || item.sample.id || item.sample.title));
+  return [...picked, ...restGood, ...restBackup];
 }
 
 function judgeMotherTopicEligibility(sample = {}) {
