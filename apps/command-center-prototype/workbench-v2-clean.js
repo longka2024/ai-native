@@ -2425,8 +2425,20 @@ async function loadState() {
     });
     const wanted = platformWanted();
     if (wanted !== "all") params.set("platform", wanted);
+    if (state.sourceChannel === "x-history") {
+      params.set("latestRunCount", "5");
+      params.set("unusedOnly", "1");
+      params.set("creationOnly", "1");
+    }
+    if (state.sourceChannel === "xhs" || (state.sourceChannel === "same-platform" && wanted === "xiaohongshu")) {
+      params.set("latestRunCount", "3");
+      params.set("unusedOnly", "1");
+      params.set("creationOnly", "1");
+    }
     if (state.sourceChannel === "x-live" && state.useLatestXRunOnly && state.lastXRunIds.length) {
       params.set("runIds", state.lastXRunIds.join(","));
+      params.set("unusedOnly", "1");
+      params.set("creationOnly", "1");
     }
     const res = await fetch(apiPath(`/api/content-assets/unified?${params.toString()}`));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

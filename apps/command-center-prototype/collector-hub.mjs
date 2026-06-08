@@ -81,7 +81,13 @@ export async function loadUnifiedContentAssets(input = {}) {
   const poolLimit = clampNumber(input.poolLimit || Math.max(limit * 5, 200), limit, 1000);
   const platform = normalizeText(input.platform || '');
   const keywords = parseSearchWords(input.keywords || input.keyword || '');
-  const runIds = parseSearchWords(input.runIds || input.run_ids || '');
+  let runIds = parseSearchWords(input.runIds || input.run_ids || '');
+  const latestRunCount = clampNumber(input.latestRunCount || input.latest_run_count || 0, 0, 20);
+  const unusedOnly = normalizeBoolean(input.unusedOnly || input.unused_only);
+  const creationOnly = normalizeBoolean(input.creationOnly || input.creation_only);
+  if (!runIds.length && latestRunCount > 0 && platform) {
+    runIds = await loadLatestCollectionRunIds({ platform, limit: latestRunCount });
+  }
   const result = await pgPool.query(`
     select
       id, run_id, collector_type, platform, source_type, source_url, source_id,
@@ -95,7 +101,7 @@ export async function loadUnifiedContentAssets(input = {}) {
   `, [platform, poolLimit, runIds.length ? runIds : null]);
   const samples = result.rows.map(dbRowToContentSample);
   const preparedSamples = platform === 'x' ? evaluateXContentSamples(samples).rows : samples;
-  const assets = preparedSamples
+  let assets = preparedSamples
     .map((sample) => contentSampleToUnifiedAsset(sample, keywords))
     .filter((asset) => !keywords.length || asset.matchScore > 0)
     .sort((a, b) => {
@@ -108,13 +114,27 @@ export async function loadUnifiedContentAssets(input = {}) {
       }
       return b.matchScore - a.matchScore || b.heatScore - a.heatScore;
     })
-    .slice(0, limit);
+  assets = await attachAssetConfirmationStatus(assets);
+  if (unusedOnly) {
+    assets = assets.filter((asset) => !asset.confirmationStatus || asset.confirmationStatus === 'discarded');
+  }
+  if (creationOnly) {
+    assets = assets.filter((asset) => {
+      if (asset.platform === 'x') return asset.keepForCreation === true || asset.assetTier === 'mother_topic_candidate';
+      if (asset.platform === 'xiaohongshu') return asset.readyForCreation === true;
+      return true;
+    });
+  }
+  assets = assets.slice(0, limit);
   return {
     ok: true,
     sourceType: 'unified_content_assets',
     platform: platform || 'all',
     keywords,
     runIds,
+    latestRunCount,
+    unusedOnly,
+    creationOnly,
     totalSourceSamples: samples.length,
     matchedCount: assets.length,
     assets,
@@ -191,6 +211,94 @@ export async function loadLatestXBatch(input = {}) {
     sourceType: 'latest_x_batch',
     runs: runs.rows,
   };
+}
+
+export async function loadRecentCollectionBatches(input = {}) {
+  await requireCollectorDb();
+  const platform = normalizeText(input.platform || '');
+  const limit = clampNumber(input.limit || 20, 1, 100);
+  const result = await pgPool.query(`
+    select
+      r.id,
+      r.collector_type,
+      r.platform,
+      r.source_type,
+      r.query,
+      r.status,
+      r.label_type,
+      r.started_at,
+      r.finished_at,
+      r.created_at,
+      count(s.id)::int as sample_count,
+      count(c.id)::int as confirmed_count
+    from longka_collection_runs r
+    left join longka_content_samples s on s.run_id = r.id
+    left join longka_asset_confirmations c on c.sample_id = s.id and c.status = 'confirmed'
+    where ($1 = '' or r.platform = $1)
+      and r.status = 'completed'
+    group by r.id
+    order by coalesce(r.finished_at, r.created_at) desc
+    limit $2
+  `, [platform, limit]);
+  return {
+    ok: true,
+    platform: platform || 'all',
+    batches: result.rows.map((row) => ({
+      id: row.id,
+      runId: row.id,
+      collectorType: row.collector_type,
+      platform: row.platform,
+      sourceType: row.source_type,
+      query: row.query,
+      status: row.status,
+      labelType: row.label_type,
+      startedAt: row.started_at,
+      finishedAt: row.finished_at,
+      createdAt: row.created_at,
+      sampleCount: row.sample_count,
+      confirmedCount: row.confirmed_count,
+      unusedCount: Math.max(0, Number(row.sample_count || 0) - Number(row.confirmed_count || 0)),
+    })),
+  };
+}
+
+async function loadLatestCollectionRunIds({ platform = '', limit = 1 } = {}) {
+  const result = await pgPool.query(`
+    select id
+    from longka_collection_runs
+    where ($1 = '' or platform = $1)
+      and status = 'completed'
+    order by coalesce(finished_at, created_at) desc
+    limit $2
+  `, [platform, limit]);
+  return result.rows.map((row) => row.id);
+}
+
+async function attachAssetConfirmationStatus(assets = []) {
+  const ids = assets.map((asset) => asset.sourceSampleId || asset.id).filter(Boolean);
+  if (!ids.length) return assets;
+  const result = await pgPool.query(`
+    select distinct on (sample_id)
+      sample_id,
+      destination,
+      status,
+      created_at,
+      updated_at
+    from longka_asset_confirmations
+    where sample_id = any($1::text[])
+    order by sample_id, updated_at desc
+  `, [ids]);
+  const bySample = new Map(result.rows.map((row) => [row.sample_id, row]));
+  return assets.map((asset) => {
+    const row = bySample.get(asset.sourceSampleId || asset.id);
+    return {
+      ...asset,
+      used: row?.status === 'confirmed',
+      confirmationDestination: row?.destination || '',
+      confirmationStatus: row?.status || '',
+      confirmedAt: row?.updated_at || row?.created_at || null,
+    };
+  });
 }
 
 export async function confirmContentAsset(input = {}) {
@@ -1639,6 +1747,12 @@ function stableId(value) {
 
 function normalizeText(value) {
   return String(value ?? '').trim();
+}
+
+function normalizeBoolean(value) {
+  if (typeof value === 'boolean') return value;
+  const text = normalizeText(value).toLowerCase();
+  return ['1', 'true', 'yes', 'y', 'on'].includes(text);
 }
 
 function clampNumber(value, min, max) {

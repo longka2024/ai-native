@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { collectorHealth, confirmContentAsset, deleteCollectionRun, importLocalPlatformBatch, initCollectorHub, loadLatestXBatch, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch } from './collector-hub.mjs';
+import { collectorHealth, confirmContentAsset, deleteCollectionRun, importLocalPlatformBatch, initCollectorHub, loadLatestXBatch, loadRecentCollectionBatches, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch } from './collector-hub.mjs';
 
 const root = resolve(fileURLToPath(new URL('.', import.meta.url)));
 const dataDir = join(root, 'data');
@@ -212,6 +212,9 @@ createServer(async (req, res) => {
         platform: url.searchParams.get('platform') || '',
         keywords: url.searchParams.get('keywords') || '',
         runIds: url.searchParams.get('runIds') || '',
+        latestRunCount: url.searchParams.get('latestRunCount') || url.searchParams.get('latest_run_count') || 0,
+        unusedOnly: url.searchParams.get('unusedOnly') || url.searchParams.get('unused_only') || '',
+        creationOnly: url.searchParams.get('creationOnly') || url.searchParams.get('creation_only') || '',
         limit: url.searchParams.get('limit') || 200,
       });
       return sendJson(res, result);
@@ -268,6 +271,14 @@ createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/content-assets/x-latest-batch') {
       const result = await loadLatestXBatch({
         limitRuns: url.searchParams.get('limitRuns') || 3,
+      });
+      return sendJson(res, result, result.ok ? 200 : 400);
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/content-assets/batches') {
+      const result = await loadRecentCollectionBatches({
+        platform: url.searchParams.get('platform') || '',
+        limit: url.searchParams.get('limit') || 20,
       });
       return sendJson(res, result, result.ok ? 200 : 400);
     }
