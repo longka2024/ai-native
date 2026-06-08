@@ -4321,8 +4321,21 @@ async function generateSopRewriteDraft(payload = {}) {
       payload.sourceTopic?.content,
       ...(collectPayloadComments(payload) || []),
     ].map(asText).join(' ');
-    const fictionalPattern = /我收到|我见过|我让她|上周|前几天|一个客户|一个姐妹|小眼睛|涨到|掉到|翻\s*\d+\s*倍|月入|宝妈|医生说|专家说/;
-    if (fictionalPattern.test(body) && !fictionalPattern.test(sourceText)) {
+    const fictionalPhrases = [
+      '我有个朋友', '我有一个朋友', '我有个客户', '我有一个客户', '我收到私信', '我见过客户',
+      '我让她改', '我让他改', '我帮客户', '我一开始', '姐妹', '评论区有姐妹',
+      '我见过太多人', '我自己的账号', '我自己的内容', '我自己的经验',
+      '医生说', '专家说', '宝妈', '上周', '前几天',
+    ];
+    const fictionalRegexes = [/我爬了\s*\d+/, /我发布了?\s*\d+/, /我.{0,8}从\s*0\s*做到/, /我.{0,8}做到\s*\d+/, /涨到\s*\d+/, /曝光\s*\d+/];
+    const unsupportedExperiencePhrases = ['我试了', '我总结出', '亲测有效', '立刻提升', '瞬间', '效果立竿见影'];
+    const hasFictionalClaim = fictionalPhrases.some((phrase) => body.includes(phrase))
+      || unsupportedExperiencePhrases.some((phrase) => body.includes(phrase))
+      || fictionalRegexes.some((pattern) => pattern.test(body));
+    const sourceHasFictionalClaim = fictionalPhrases.some((phrase) => sourceText.includes(phrase))
+      || unsupportedExperiencePhrases.some((phrase) => sourceText.includes(phrase))
+      || fictionalRegexes.some((pattern) => pattern.test(sourceText));
+    if (hasFictionalClaim && !sourceHasFictionalClaim) {
       return {
         ok: false,
         error: 'ai_fictional_case',
@@ -4486,7 +4499,6 @@ async function generateSopRewriteDraft(payload = {}) {
   if (!retryableErrors.has(primary.error)) return primary;
 
   const retryModel = process.env.COPY_RETRY_MODEL || 'gpt-5.2-chat-latest';
-  if (retryModel === primaryModel && !['ai_parse_or_request_failed', 'ai_empty_body', 'ai_fictional_case', 'ai_source_drift', 'ai_title_mismatch'].includes(primary.error)) return primary;
   const retryUser = {
     ...user,
     fastTitleStage: seededTitleChoices ? {
@@ -4498,10 +4510,12 @@ async function generateSopRewriteDraft(payload = {}) {
     } : undefined,
     retryReason: `上一次模型返回不可验收：${primary.message}`,
     strictRewriteMode: [
-      '禁止故事化。不要写“我收到私信/我见过客户/我让她改/涨了多少”。',
-      '只围绕 sourceEvidence 写：内容资产库、每天不知道发什么、AI 味、长期素材沉淀。',
-      '正文可以写成“很多人会卡在...”这种观察，但不能编具体人物、时间、数据和结果。',
-      '标题必须保持 selectedTitle。正文第一段必须直接回应 selectedTitle。',
+      'Retry repair rule: do not write in first person as if you are the source author. Do not say I crawled, I posted, I gained followers, I helped a client, or I received private messages.',
+      'Rewrite the source as third-party observation and method: the source says X, this reminds AI content creators of Y, and the reader can do Z.',
+      'Numbers from the source may only be described as source-mentioned numbers. Never turn them into the author own achievement.',
+      'The first paragraph must answer selectedTitle and connect the source to AI content creation, content asset systems, or self-media workflow.',
+      'If there is no real case in the source, write judgment, steps, checklist, and pitfalls. Do not invent people, customers, doctors, experts, private messages, or business results.',
+      'Keep selectedTitle exactly. Return one valid JSON object with a complete publishable xhsCopy.body.',
     ],
     requiredOutput: {
       ...user.requiredOutput,

@@ -2103,8 +2103,14 @@ function bindWorkAreaActions() {
   byId("workArea")?.querySelector("[data-improve-again]")?.addEventListener("click", () => {
     const snapshot = currentCopySnapshot("优化前版本");
     if (!snapshot?.copy) {
-      state.draftError = zh("&#27809;&#26377;&#21487;&#20248;&#21270;&#30340;&#27491;&#25991;&#12290;&#35831;&#20808;&#36820;&#22238;&#31532; 7 &#27493;&#29983;&#25104;&#25991;&#26696;&#65292;&#25110;&#22312;&#29256;&#26412;&#35760;&#24405;&#37324;&#24674;&#22797;&#19968;&#20010;&#26377;&#20869;&#23481;&#30340;&#29256;&#26412;&#12290;");
-      renderToday();
+      state.draftError = zh("&#24403;&#21069;&#27809;&#26377;&#21487;&#20248;&#21270;&#30340;&#27491;&#25991;&#65292;&#24050;&#33258;&#21160;&#22238;&#21040;&#31532; 7 &#27493;&#37325;&#26032;&#29983;&#25104;&#12290;");
+      state.step = 7;
+      state.draft = "";
+      state.improvedDraft = "";
+      state.draftStatus = "idle";
+      state.draftMeta = null;
+      state.draftReview = null;
+      generateSopDraft({ force: true });
       return;
     }
     const coach = buildContentCoachReport();
