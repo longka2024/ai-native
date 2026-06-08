@@ -108,10 +108,10 @@ function visualStyleContract(styleId) {
   const contracts = {
     "xiaohei-metaphor": {
       route: "ian-xiaohei-illustrations",
-      character: "小黑手绘人物，黑色线条小人作为主角，用场景隐喻解释观点",
-      styleBrief: "小黑漫画隐喻风格：黑白手绘人物、简单场景、强隐喻、少字、不要做成PPT或大字报。",
-      negativePrompt: "不要卷卷小狗角色，不要归藏杂志排版，不要纯文字海报，不要无关资料库图标。",
-      styleLock: "每张图都必须是小黑人物在当前话题场景里行动，文字只做辅助。"
+      character: "小黑：黑色实心、白点眼、细腿、空表情、认真做一件荒诞但成立的事。小黑必须参与核心动作，不能站在旁边当装饰。",
+      styleBrief: "Ian 小黑怪诞正文配图：纯白背景、极简黑色手绘线稿、轻微抖动笔触、大量留白、少量红/橙/蓝中文手写批注。用于把观点、流程、结构、状态或隐喻变成清爽但有创意的解释图。",
+      negativePrompt: "不要卷卷小狗，不要归藏杂志排版，不要宝玉信息卡，不要商业插画，不要PPT信息图，不要正式流程图，不要课程课件，不要可爱儿童插画，不要科技UI，不要复杂背景/渐变/阴影/纹理，不要左上角写结构类型标题。",
+      styleLock: "3:4 Xiaohongshu adaptation of Xiaohei article illustration. One image explains one core metaphor/action. Main subject occupies 40%-60% canvas, at least 35% blank white space, at most 5-8 short handwritten Chinese labels. Invent a fresh weird-but-valid metaphor for the selected topic."
     },
     "juju-organizing": {
       route: "juju-content-illustrations",
@@ -122,20 +122,54 @@ function visualStyleContract(styleId) {
     },
     "xhs-knowledge-card": {
       route: "card-xiaohongshu",
-      character: "无固定角色，以清爽信息卡、图标、分区和重点标注表达",
-      styleBrief: "小红书知识卡风格：3:4手机阅读，一页一个重点，清晰标题、少量要点、图标和分区辅助，视觉重点明确。",
-      negativePrompt: "不要小黑人物，不要卷卷小狗，不要杂志deck，不要密密麻麻长段落，不要装饰性废元素。",
-      styleLock: "每张图必须围绕当前话题重写成可收藏知识卡，文字短、层级清楚、适合手机截图阅读。"
+      character: "无固定角色。以手绘信息图、关键词高亮、图标、分区、对比、流程或清单表达；角色只能作为辅助，不抢信息层级。",
+      styleBrief: "宝玉小红书知识卡：3:4 竖版 infographic。Style x Layout 分离：可用 notion/minimal/warm/bold/study-notes 等风格，搭配 list/comparison/flow/mindmap/quadrant 等布局。全部文字必须是手绘感或卡片排版感，突出关键词和核心概念，适合收藏。",
+      negativePrompt: "不要小黑隐喻图，不要卷卷小狗主角，不要归藏杂志deck，不要照片写实，不要密集文章段落，不要无意义贴纸，不要复杂装饰，不要无法手机阅读的小字。",
+      styleLock: "Each page is a Xiaohongshu infographic: concise information, clear hierarchy, ample whitespace, highlighted keywords, one card one purpose. Auto-select style/layout from content: knowledge/productivity/AI -> notion or minimal + dense/list/flow; warning/critical -> bold + list/comparison; story/emotion -> warm + balanced."
     },
     "guizang-editorial": {
       route: "guizang-social-card-skill",
-      character: "无卡通主角，以编辑设计、留白、版式和少量视觉符号表达",
-      styleBrief: "归藏杂志编辑风格：高级留白、克制配色、杂志标题层级、少量大字和结构化视觉叙事，适合方法论和行业洞察。",
-      negativePrompt: "不要小黑人物，不要卷卷小狗，不要儿童卡通，不要普通大字报，不要满屏便签。",
-      styleLock: "每张图必须像一张高级社交杂志卡，围绕当前话题做版式叙事，不能复用小黑或卷卷结构。"
+      character: "无卡通主角。用编辑版式、证据图片/截图、标题层级、引文、边注、数据行或网格模块表达。",
+      styleBrief: "归藏 social card：二选一视觉姿态。Editorial Magazine x E-ink = 宋体/衬线标题、纸张/墨色、留白、杂志栏目、pull quote、marginalia、真实证据图。Swiss International = Inter/Helvetica 感、严格左对齐网格、hairline rules、单一高饱和 accent、KPI/matrix/h-bar/numbered statements。",
+      negativePrompt: "不要小黑人物，不要卷卷小狗，不要宝玉手绘信息卡，不要儿童卡通，不要普通大字报，不要随机圆形/blob/装饰贴纸，不要渐变装饰，不要嵌套卡片，不要文字溢出，不要小到手机看不清。",
+      styleLock: "Expression comes first. Content shape decides layout. Every page needs a clear focal point, strong hierarchy, and visual relation to the selected topic. Do not mix Editorial and Swiss in one set. For AI tools/system/method content prefer Swiss; for reflective/story/industry insight prefer Editorial. Use real evidence image/screenshot when available."
     }
   };
   return contracts[styleId] || contracts["xiaohei-metaphor"];
+}
+
+function visualCardActionBriefs(styleId) {
+  const briefs = {
+    "juju-organizing": {
+      cover: "Juju action: Juju stands in the paper practice field and pins one main note about the current topic. Cognitive action: enter the topic quickly. Parallel world: method desk. Metaphor props: main note card, tape, one arrow, two small paper tabs.",
+      problem: "Juju action: Juju uses a magnifying glass to inspect a pain-point note. Cognitive action: see the hidden reader problem. Parallel world: problem detective desk. Metaphor props: magnifying glass, question note, warning tab.",
+      case: "Juju action: Juju sorts three case cards into who / what worked / result. Cognitive action: deconstruct the source case. Parallel world: small archive table. Metaphor props: three paper cards, clips, thin dividers.",
+      method: "Juju action: Juju draws a four-step route with a pencil. Cognitive action: convert the idea into an executable path. Parallel world: route map notebook. Metaphor props: dotted path, four small stations, pencil, arrows.",
+      action: "Juju action: Juju stamps a checklist as ready. Cognitive action: know the next practical step. Parallel world: tiny execution counter. Metaphor props: checklist, stamp, small envelope, done mark."
+    },
+    "xiaohei-metaphor": {
+      cover: "Xiaohei action: 小黑用一个荒诞动作抓住主题，比如扛起、拉动、拆开或卡住一个代表当前话题的物件。Metaphor must be strange but clear.",
+      problem: "Xiaohei action: 小黑认真面对一个出问题的装置、断点或坑洞，表达读者痛点。Use red only for the problem mark.",
+      case: "Xiaohei action: 小黑把案例拆成几个极简物件，不做表格，不做PPT。Use white space and 3-5 short handwritten labels.",
+      method: "Xiaohei action: 小黑推动一条极简路径或机关，表现方法步骤。Orange can mark the main path.",
+      action: "Xiaohei action: 小黑完成一个小动作，把下一步落到一个可执行物件上。Keep it deadpan, clean, not cute."
+    },
+    "xhs-knowledge-card": {
+      cover: "Layout: sparse hook card with one strong title, one highlighted keyword, and a simple visual anchor. Use hand-drawn infographic style.",
+      problem: "Layout: comparison or warning card. Show before/after, wrong/right, or hidden problem with concise labels.",
+      case: "Layout: dense/list or quadrant card. Extract 3-5 reusable points from the selected source, not generic libraries.",
+      method: "Layout: flow/list card. Turn the method into 3-5 steps with highlighted verbs and clean sections.",
+      action: "Layout: checklist/ending card. Give one practical next step and a clean CTA-like ending without internal process notes."
+    },
+    "guizang-editorial": {
+      cover: "Layout stance: Swiss or Editorial cover. Big but restrained title, strong hierarchy, one evidence/atmosphere block, no cartoon character.",
+      problem: "Layout stance: tension page. Use two-column contrast, marginalia, or hairline-separated evidence rows to show the problem.",
+      case: "Layout stance: feature/evidence page. Use a large proof block, ledger row, matrix, or pull quote tied to this source.",
+      method: "Layout stance: structured method page. Use numbered statements, KPI tower, h-bar, ledger, or magazine column; no rounded SaaS cards.",
+      action: "Layout stance: closing takeaway page. Use a refined quote/checklist/issue strip; footer must not collide with content."
+    }
+  };
+  return briefs[styleId] || briefs["xiaohei-metaphor"];
 }
 
 const steps = [
@@ -597,6 +631,7 @@ function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVis
   const signal = extractVisualTopicSignals({ copy, topic, title, lines });
   const contract = visualStyleContract(visual.id);
   const juju = visual.id === "juju-organizing";
+  const actionBriefs = visualCardActionBriefs(visual.id);
   const promptBase = [
     "3:4 social content image.",
     `Topic: ${signal.subject}.`,
@@ -609,13 +644,6 @@ function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVis
     `Negative prompt: ${contract.negativePrompt}.`,
     "Do not reuse unrelated content asset library, title formula library, user question library, or structure library visuals unless this selected topic is explicitly about those libraries."
   ].join(" ");
-  const jujuBriefs = {
-    cover: "Juju action: Juju stands in the paper practice field and pins one main note about the current topic. Cognitive action: enter the topic quickly. Parallel world: method desk. Metaphor props: main note card, tape, one arrow, two small paper tabs.",
-    problem: "Juju action: Juju uses a magnifying glass to inspect a pain-point note. Cognitive action: see the hidden reader problem. Parallel world: problem detective desk. Metaphor props: magnifying glass, question note, warning tab.",
-    case: "Juju action: Juju sorts three case cards into who / what worked / result. Cognitive action: deconstruct the source case. Parallel world: small archive table. Metaphor props: three paper cards, clips, thin dividers.",
-    method: "Juju action: Juju draws a four-step route with a pencil. Cognitive action: convert the idea into an executable path. Parallel world: route map notebook. Metaphor props: dotted path, four small stations, pencil, arrows.",
-    action: "Juju action: Juju stamps a checklist as ready. Cognitive action: know the next practical step. Parallel world: tiny execution counter. Metaphor props: checklist, stamp, small envelope, done mark."
-  };
   const card = (type, role, cardTitle, text, extra, promptExtra) => ({
     type,
     role,
@@ -623,9 +651,9 @@ function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVis
     text,
     visualStyle: visual.id,
     carouselJob: role,
-    visualBrief: `${contract.styleBrief} ${juju ? jujuBriefs[type] || "" : ""} ${extra}`,
+    visualBrief: `${contract.styleBrief} ${actionBriefs[type] || ""} ${extra}`,
     readerTakeaway: signal.takeaway,
-    imagePrompt: `${promptBase} Title: ${cardTitle}. Allowed text only: ${String(cardTitle || "").slice(0, 18)}; ${String(text || "").split("\n").slice(0, 3).join("; ").slice(0, 48)}. ${promptExtra} ${juju ? `${jujuBriefs[type] || ""} Juju must look like a white bichon dog, not a sheep or wool ball. Text must be attached to paper objects, never pasted as a giant subtitle.` : ""}`,
+    imagePrompt: `${promptBase} Title: ${cardTitle}. Allowed text only: ${String(cardTitle || "").slice(0, 18)}; ${String(text || "").split("\n").slice(0, 3).join("; ").slice(0, 48)}. ${promptExtra} ${actionBriefs[type] || ""} ${juju ? "Juju must look like a white bichon dog, not a sheep or wool ball. Text must be attached to paper objects, never pasted as a giant subtitle." : ""}`,
   });
   return [
     card("cover", "封面：让人停下来", title || signal.coverText, signal.coverText, `只讲 ${signal.subject} 和 ${signal.result}，不要画无关素材库。`, `Cover page. Strong focal point: ${signal.subject} + ${signal.result}.`),
