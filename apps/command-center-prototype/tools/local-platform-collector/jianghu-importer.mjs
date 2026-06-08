@@ -51,10 +51,82 @@ function itemType(item = {}) {
   return 'post';
 }
 
+function classifyJianghuItem(item = {}) {
+  const type = itemType(item);
+  const descLength = asText(item.Desc).length;
+  const likes = asNumber(item.RealLikeCount);
+  const comments = asNumber(item.CommentCount);
+  const collects = asNumber(item.CollectCount);
+  const shares = asNumber(item.ShareCount);
+  const imageCount = Array.isArray(item.ListGraphicImgDownUrl) ? item.ListGraphicImgDownUrl.filter(Boolean).length : 0;
+  const engagementScore = Math.round(likes + collects * 1.4 + comments * 3 + shares * 2);
+  const reasons = [];
+
+  if (type === 'video') {
+    reasons.push('视频素材：江湖导出通常缺少完整口播正文，适合后续补转写后再深拆。');
+    return {
+      qualityTier: engagementScore >= 5000 ? 'video_needs_transcript_hot' : 'video_needs_transcript',
+      qualityLabel: engagementScore >= 5000 ? '热视频，待补正文' : '视频，待补正文',
+      readyForCreation: false,
+      needsTranscript: true,
+      bodyCompleteness: 'missing_transcript',
+      engagementScore,
+      reasons,
+    };
+  }
+
+  if (type === 'image_post' && descLength >= 300) {
+    reasons.push('图文正文完整，适合拆解结构并直接进入二创。');
+  } else if (type === 'image_post' && descLength >= 120) {
+    reasons.push('图文正文可用，适合作为选题和结构参考。');
+  } else if (type === 'image_post') {
+    reasons.push('图文正文偏短，只适合做标题/选题参考。');
+  } else {
+    reasons.push('素材类型不明确，需人工复核。');
+  }
+
+  if (imageCount > 0) reasons.push(`包含 ${imageCount} 张图文图片。`);
+  if (collects >= likes * 0.5 && collects >= 100) reasons.push('收藏比例高，说明有保存价值。');
+  if (shares >= 100) reasons.push('分享数较高，说明话题有传播性。');
+
+  let qualityTier = 'low_signal';
+  let qualityLabel = '低信号，先不推荐';
+  let readyForCreation = false;
+  let bodyCompleteness = 'short';
+
+  if (type === 'image_post' && descLength >= 300 && engagementScore >= 1000) {
+    qualityTier = 'image_post_complete_body';
+    qualityLabel = '优先创作：图文正文完整';
+    readyForCreation = true;
+    bodyCompleteness = 'complete';
+  } else if (type === 'image_post' && descLength >= 120 && engagementScore >= 500) {
+    qualityTier = 'image_post_usable_body';
+    qualityLabel = '可创作：图文正文可用';
+    readyForCreation = true;
+    bodyCompleteness = 'usable';
+  } else if (type === 'image_post' && engagementScore >= 2000) {
+    qualityTier = 'image_post_short_body_hot';
+    qualityLabel = '热门短正文，适合做选题';
+    bodyCompleteness = 'short';
+  }
+
+  return {
+    qualityTier,
+    qualityLabel,
+    readyForCreation,
+    needsTranscript: false,
+    bodyCompleteness,
+    engagementScore,
+    reasons,
+  };
+}
+
 function jianghuItemToSample(item = {}, context = {}) {
   const title = asText(item.Title);
   const desc = asText(item.Desc);
   const topics = asText(item.TopicContent);
+  const mediaType = itemType(item);
+  const quality = classifyJianghuItem(item);
   const body = compactText([
     desc && desc !== title ? desc : '',
     topics ? `话题：${topics}` : '',
@@ -91,13 +163,14 @@ function jianghuItemToSample(item = {}, context = {}) {
     rawJson: {
       ...item,
       longkaMedia: {
-        type: itemType(item),
+        type: mediaType,
         imageUrls,
         imageSizes: Array.isArray(item.ListGraphicImgSize) ? item.ListGraphicImgSize : [],
         videoUrls,
         coverUrl: asText(item.CoverUrl),
         topicContent: topics,
       },
+      longkaQuality: quality,
     },
   };
 }
@@ -127,6 +200,11 @@ function inferQuery(items = []) {
 
 function previewBatch(batch) {
   const samples = batch.samples || [];
+  const qualityCounts = samples.reduce((acc, sample) => {
+    const key = sample.rawJson?.longkaQuality?.qualityTier || 'unknown';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
   const top = samples.slice(0, 5).map((sample) => ({
     sourceId: sample.sourceId,
     authorName: sample.authorName,
@@ -135,6 +213,9 @@ function previewBatch(batch) {
     comments: sample.metrics.comments,
     collects: sample.metrics.collects,
     shares: sample.metrics.shares,
+    mediaType: sample.rawJson?.longkaMedia?.type,
+    qualityLabel: sample.rawJson?.longkaQuality?.qualityLabel,
+    readyForCreation: sample.rawJson?.longkaQuality?.readyForCreation,
     sourceUrl: sample.sourceUrl,
   }));
   return {
@@ -144,6 +225,7 @@ function previewBatch(batch) {
     batchName: batch.batchName,
     query: batch.query,
     total: samples.length,
+    qualityCounts,
     top,
   };
 }

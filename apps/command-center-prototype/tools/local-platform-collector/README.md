@@ -15,6 +15,33 @@ operator computer
 -> Today Workbench collection batch
 ```
 
+## Jianghu Toolbox Import
+
+Jianghu Toolbox is the current practical Xiaohongshu collection route. It collects on the operator's local PC, then exports TXT/JSON. Longka does not replace it; Longka imports the export into the 122 PostgreSQL content asset library.
+
+Dry-run a Jianghu export first:
+
+```powershell
+node jianghu-importer.mjs --file "C:\Users\longfei\Desktop\作品列表勾选数据20260609041605.txt" --dry-run
+```
+
+Upload after the preview looks right:
+
+```powershell
+node jianghu-importer.mjs --file "C:\Users\longfei\Desktop\作品列表勾选数据20260609041605.txt" --upload --base http://122.51.218.154/ai-native-v2 --operator longfei --device-name longfei-desktop --query "AI自媒体"
+```
+
+The importer adds Longka quality metadata under `rawJson.longkaQuality`:
+
+- `image_post_complete_body`: image post with enough body text, priority for creation.
+- `image_post_usable_body`: image post with usable body text, can enter creation.
+- `image_post_short_body_hot`: hot but short image post, good for topic/title reference.
+- `video_needs_transcript_hot`: hot video, store it but wait for transcript.
+- `video_needs_transcript`: video source, wait for transcript.
+- `low_signal`: weak or unclear source, keep for training/reference only after review.
+
+For Xiaohongshu creation, prioritize image posts with `readyForCreation: true`. Video exports usually do not include the full spoken content, so do not force them into rewrite until transcript/body is added.
+
 ## Supported Platform IDs
 
 - `xiaohongshu`

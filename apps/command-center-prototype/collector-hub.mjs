@@ -1541,6 +1541,9 @@ function redactedXcrawlInput(endpoint, input = {}) {
 
 function contentSampleToUnifiedAsset(sample = {}, keywords = []) {
   const metrics = sample.metrics || {};
+  const rawJson = sample.rawJson && typeof sample.rawJson === 'object' ? sample.rawJson : {};
+  const media = rawJson.longkaMedia && typeof rawJson.longkaMedia === 'object' ? rawJson.longkaMedia : {};
+  const longkaQuality = rawJson.longkaQuality && typeof rawJson.longkaQuality === 'object' ? rawJson.longkaQuality : {};
   const heatScore = contentHeatScore(metrics);
   const text = `${sample.title} ${sample.body} ${sample.markdown} ${sample.keyword} ${sample.authorName}`.toLowerCase();
   const compactText = text.replace(/\s+/g, '');
@@ -1589,12 +1592,20 @@ function contentSampleToUnifiedAsset(sample = {}, keywords = []) {
     rejectReason: sample.rejectReason,
     contentValueScore: sample.contentValueScore,
     radarScore: sample.radarScore,
-    qualityReasons: sample.qualityReasons || [],
+    mediaType: media.type || '',
+    media,
+    qualityTier: longkaQuality.qualityTier || '',
+    qualityLabel: longkaQuality.qualityLabel || '',
+    readyForCreation: Boolean(longkaQuality.readyForCreation),
+    needsTranscript: Boolean(longkaQuality.needsTranscript),
+    bodyCompleteness: longkaQuality.bodyCompleteness || '',
+    qualityReasons: sample.qualityReasons || longkaQuality.reasons || [],
     qualitySignals: {
       hasSourceUrl: Boolean(sample.sourceUrl),
       hasBody: Boolean(sample.body && sample.body.length >= 20),
       hasMetrics: Object.keys(metrics).length > 0,
       hasComments: Array.isArray(sample.comments) && sample.comments.length > 0,
+      engagementScore: longkaQuality.engagementScore || heatScore,
     },
   };
 }
