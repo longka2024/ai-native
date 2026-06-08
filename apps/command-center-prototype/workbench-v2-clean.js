@@ -606,6 +606,28 @@ function renderCurrentCopyForImage() {
 function renderXhsGeneratedGallery() {
   const files = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
   const isXiaohei = String(state.xhsCardManifest?.renderer || "").includes("43-gpt-image-2-xiaohei");
+  if (files.length) {
+    const done = Number(state.xhsCardProgress?.done || files.length || 0);
+    const total = Number(state.xhsCardProgress?.total || 5);
+    const isLoading = state.xhsCardExportStatus === "loading";
+    const styleName = visualRouteNameClean(state.visualStyle);
+    return `<div class="xhs-generated-gallery">
+      <div class="xhs-generated-head">
+        <b>${escapeHtml(styleName)} ${zh("&#30495;&#23454;&#20986;&#22270;&#32467;&#26524;")}</b>
+        <span>${isLoading ? `43 ${zh("&#21518;&#21488;&#36824;&#22312;&#29983;&#25104;")}: ${done}/${total}${zh("&#24352;&#12290;&#24050;&#29983;&#25104;&#30340;&#22270;&#29255;&#20808;&#26174;&#31034;&#65292;&#21487;&#28857;&#24320;&#26816;&#26597;&#21407;&#22270;&#12290;")}` : zh("&#22270;&#29255;&#26469;&#33258; 43 &#20986;&#22270;&#26381;&#21153;&#65292;&#21487;&#28857;&#20987;&#25171;&#24320;&#21407;&#22270;&#26816;&#26597;&#12290;")}</span>
+      </div>
+      <div class="xhs-generated-grid ${isLoading ? "partial" : ""}">
+        ${files.map((file, index) => {
+          const raw = String(file);
+          const src = /^https?:\/\//.test(raw) ? raw : `./${raw.replace(/^\/+/, "")}`;
+          return `<a href="${escapeHtml(src)}" target="_blank" rel="noreferrer">
+            <img src="${escapeHtml(src)}" alt="${escapeHtml(styleName)} P${index + 1}" loading="lazy" />
+            <span>P${index + 1}</span>
+          </a>`;
+        }).join("")}
+      </div>
+    </div>`;
+  }
   if (state.xhsCardExportStatus === "loading" && state.xhsCardOperation === "xiaohei") {
     const done = Number(state.xhsCardProgress?.done || files.length || 0);
     const total = Number(state.xhsCardProgress?.total || 5);
@@ -1525,7 +1547,7 @@ function buildFinalWorkAsset() {
   };
 }
 
-function archiveFinalWork() {
+async function archiveFinalWork() {
   const asset = buildFinalWorkAsset();
   if (!asset.body) {
     state.archiveMessage = "还没有确认正文，不能保存为母题资产。";
@@ -1539,11 +1561,24 @@ function archiveFinalWork() {
   }
   const withoutCurrent = state.finalWorks.filter((item) => item.id !== asset.id);
   state.finalWorks = [asset, ...withoutCurrent].slice(0, 30);
+  state.archiveMessage = `已保存到本机缓存，正在同步到 122 统一作品库：${asset.platform}`;
   persistWorkbenchSnapshot();
-  state.archiveMessage = `已保存：${asset.platform} 版本已进入母题资产库，可继续切换到其他平台复用。`;
+  try {
+    const res = await fetch(apiPath("/api/final-works"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ work: asset }),
+    });
+    const result = await res.json();
+    if (!res.ok || !result.ok) throw new Error(result.message || result.error || "保存到 122 失败");
+    state.finalWorks = [result.work || asset, ...withoutCurrent].slice(0, 30);
+    state.archiveMessage = `已保存：${asset.platform} 版本已进入 122 统一作品库，小妹和团队打开内容资产库都能看到。`;
+    persistWorkbenchSnapshot();
+  } catch (error) {
+    state.archiveMessage = `本机已缓存，但同步 122 统一作品库失败：${error.message}`;
+  }
   renderToday();
 }
-
 function buildPlatformReusePlan(platformId) {
   const common = [
     "小红书：改成 5 张图文轮播，首屏必须有强钩子和明确收藏价值。",
@@ -2219,6 +2254,7 @@ async function loadFullAssetState() {
       rawMaterials: Array.isArray(db.rawMaterials) ? db.rawMaterials : [],
       candidates: Array.isArray(db.candidates) ? db.candidates : [],
       assets: Array.isArray(db.assets) ? db.assets : [],
+      finalWorks: Array.isArray(db.finalWorks) ? db.finalWorks : [],
     };
   } catch (error) {
     console.warn("loadFullAssetState failed", error);
@@ -2227,6 +2263,7 @@ async function loadFullAssetState() {
       rawMaterials: [],
       candidates: [],
       assets: [],
+      finalWorks: [],
     };
   }
 }
@@ -3663,6 +3700,14 @@ async function renderAssets() {
   let sampleCount = 0;
   try {
     db = await loadFullAssetState();
+    const remoteWorks = Array.isArray(db.finalWorks) ? db.finalWorks : [];
+    const localWorks = Array.isArray(state.finalWorks) ? state.finalWorks : [];
+    const mergedWorks = new Map();
+    [...remoteWorks, ...localWorks].forEach((item) => {
+      if (item?.id) mergedWorks.set(item.id, item);
+    });
+    state.finalWorks = [...mergedWorks.values()].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || ""))).slice(0, 300);
+    persistWorkbenchSnapshot();
     const oldSource = state.sourceChannel;
     state.sourceChannel = "all-assets";
     topics = buildTopicsFromDb(db).slice(0, 9);
@@ -3703,6 +3748,8 @@ async function renderAssets() {
 }
 function renderFinalWorkAsset(item) {
   const images = Array.isArray(item.images) ? item.images : [];
+  const body = String(item.body || "");
+  const bodyPreview = body.length > 900 ? `${body.slice(0, 900)}\n\n...` : body;
   const metrics = item.publishMetrics || {};
   const views = Number(metrics.views || 0);
   const likes = Number(metrics.likes || 0);
@@ -3719,6 +3766,26 @@ function renderFinalWorkAsset(item) {
     <span>${escapeHtml(item.platform)} 版本 · ${escapeHtml(images.length || 0)} 张可用图 · ${new Date(item.createdAt).toLocaleString()}</span>
     <p><strong>复用母题：</strong>${escapeHtml(item.topic || "未记录")}</p>
     <p><strong>拆解资产：</strong>${escapeHtml(item.extractedAssets?.structure || "")}</p>
+    <div class="asset-delivery-panel">
+      <div class="asset-delivery-head">
+        <b>平台发布成稿</b>
+        <span>${body.length} 字正文 / ${images.length} 张图片</span>
+      </div>
+      <pre>${escapeHtml(bodyPreview || "这条作品没有保存到正文，请回今日工作台重新保存。")}</pre>
+      <div class="asset-action-row">
+        <button class="primary" type="button" data-copy-final-body="${escapeHtml(item.id)}">复制完整文案</button>
+        <button class="secondary" type="button" data-copy-final-images="${escapeHtml(item.id)}" ${images.length ? "" : "disabled"}>复制图片链接</button>
+      </div>
+    </div>
+    ${images.length ? `<div class="asset-delivery-panel">
+      <div class="asset-delivery-head">
+        <b>图片交付链接</b>
+        <span>点击缩略图打开原图，复制链接后可发给运营或下载发布。</span>
+      </div>
+      <div class="asset-image-links">
+        ${images.map((url, index) => `<p><strong>P${index + 1}</strong> <a class="source-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(url)}</a></p>`).join("")}
+      </div>
+    </div>` : `<div class="status-strip warn">这条作品没有保存图片。小红书图文必须先在第 10 步生成图片，再保存成稿。</div>`}
     <div class="asset-usage-panel">
       <b>下一步怎么用</b>
       <ol>
@@ -3821,6 +3888,44 @@ function savePublishMetrics(id) {
   state.editingMetricsWorkId = "";
   persistWorkbenchSnapshot();
   renderAssetPage("assets");
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return true;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const ok = document.execCommand("copy");
+  textarea.remove();
+  return ok;
+}
+
+async function copyFinalWorkBody(id) {
+  const work = state.finalWorks.find((item) => item.id === id);
+  if (!work?.body) {
+    alert("这条作品没有保存正文。");
+    return;
+  }
+  await copyTextToClipboard(`${work.title || ""}\n\n${work.body}`.trim());
+  alert("已复制完整文案。");
+}
+
+async function copyFinalWorkImages(id) {
+  const work = state.finalWorks.find((item) => item.id === id);
+  const images = Array.isArray(work?.images) ? work.images : [];
+  if (!images.length) {
+    alert("这条作品没有保存图片链接。");
+    return;
+  }
+  await copyTextToClipboard(images.map((url, index) => `P${index + 1}: ${url}`).join("\n"));
+  alert(`已复制 ${images.length} 张图片链接。`);
 }
 
 function reuseFinalWork(id, target) {
@@ -3935,6 +4040,16 @@ document.addEventListener("click", (event) => {
   const saveMetrics = event.target.closest("[data-save-metrics]");
   if (saveMetrics) {
     savePublishMetrics(saveMetrics.dataset.saveMetrics);
+    return;
+  }
+  const copyBody = event.target.closest("[data-copy-final-body]");
+  if (copyBody) {
+    copyFinalWorkBody(copyBody.dataset.copyFinalBody);
+    return;
+  }
+  const copyImages = event.target.closest("[data-copy-final-images]");
+  if (copyImages) {
+    copyFinalWorkImages(copyImages.dataset.copyFinalImages);
     return;
   }
   const reuse = event.target.closest("[data-reuse-work]");

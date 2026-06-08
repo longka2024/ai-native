@@ -217,6 +217,37 @@ createServer(async (req, res) => {
       return sendJson(res, result);
     }
 
+    if (req.method === 'GET' && url.pathname === '/api/final-works') {
+      const db = await readDb();
+      return sendJson(res, { ok: true, finalWorks: Array.isArray(db.finalWorks) ? db.finalWorks : [] });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/final-works') {
+      const payload = await readJson(req);
+      const work = normalizeFinalWork(payload.work || payload);
+      await mutateDb((db) => {
+        const existing = Array.isArray(db.finalWorks) ? db.finalWorks : [];
+        db.finalWorks = [work, ...existing.filter((item) => item.id !== work.id)].slice(0, 300);
+        addActivity(db, '保存平台成稿', `${work.platform || '平台'}：${work.title || '未命名作品'}`);
+        db.updatedAt = new Date().toISOString();
+      });
+      return sendJson(res, { ok: true, work });
+    }
+
+    if (req.method === 'DELETE' && url.pathname.startsWith('/api/final-works/')) {
+      const id = decodeURIComponent(url.pathname.replace('/api/final-works/', '')).trim();
+      if (!id) return sendJson(res, { ok: false, error: 'missing_final_work_id' }, 400);
+      let removed = false;
+      await mutateDb((db) => {
+        const existing = Array.isArray(db.finalWorks) ? db.finalWorks : [];
+        db.finalWorks = existing.filter((item) => item.id !== id);
+        removed = db.finalWorks.length !== existing.length;
+        if (removed) addActivity(db, '删除平台成稿', id);
+        db.updatedAt = new Date().toISOString();
+      });
+      return sendJson(res, { ok: true, removed });
+    }
+
     if (req.method === 'GET' && url.pathname === '/api/title-assets') {
       const db = await readDb();
       const result = buildTitleAssetLibrary(db, {
@@ -3586,6 +3617,40 @@ function saveCustomerProfile(payload = {}) {
   return getCustomerProfile();
 }
 
+function normalizeFinalWork(input = {}) {
+  const now = new Date().toISOString();
+  const id = String(input.id || randomUUID()).slice(0, 180);
+  const images = Array.isArray(input.images)
+    ? input.images.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 20)
+    : [];
+  const body = String(input.body || '').trim();
+  if (!body) {
+    const error = new Error('final_work_missing_body');
+    error.statusCode = 400;
+    throw error;
+  }
+  return {
+    id,
+    type: 'final-work',
+    platform: String(input.platform || '').trim() || '未标记平台',
+    platformId: String(input.platformId || '').trim(),
+    title: String(input.title || '').trim() || '未命名成稿',
+    topic: String(input.topic || '').trim(),
+    sourceUrl: String(input.sourceUrl || '').trim(),
+    sourcePlatform: String(input.sourcePlatform || '').trim(),
+    body,
+    images,
+    visualStyleId: String(input.visualStyleId || '').trim(),
+    visualStyle: String(input.visualStyle || '').trim(),
+    jobId: String(input.jobId || '').trim(),
+    createdAt: input.createdAt || now,
+    updatedAt: now,
+    reusePlan: Array.isArray(input.reusePlan) ? input.reusePlan.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 20) : [],
+    extractedAssets: input.extractedAssets && typeof input.extractedAssets === 'object' ? input.extractedAssets : {},
+    publishMetrics: input.publishMetrics && typeof input.publishMetrics === 'object' ? input.publishMetrics : {},
+  };
+}
+
 function normalizeWorkbench(workbench = {}) {
   const existing = new Map((Array.isArray(workbench.employees) ? workbench.employees : []).map((item) => [item.id, item]));
   return {
@@ -3667,6 +3732,7 @@ function normalizeImportedDb(payload = {}) {
     topics: Array.isArray(payload.topics) ? payload.topics : [],
     tasks: Array.isArray(payload.tasks) ? payload.tasks : [],
     assets: Array.isArray(payload.assets) ? payload.assets : [],
+    finalWorks: Array.isArray(payload.finalWorks) ? payload.finalWorks : [],
     publishRecords: Array.isArray(payload.publishRecords) ? payload.publishRecords : [],
     radarSeedPlan: normalizeRadarSeedPlan(payload.radarSeedPlan || defaultRadarSeedPlan()),
     lastPipelineRunAt: payload.lastPipelineRunAt || null,
@@ -3704,12 +3770,13 @@ async function ensureDb() {
         candidates: [],
         topics: [],
         tasks: [],
-    assets: [],
-    publishRecords: [],
-    radarSeedPlan: defaultRadarSeedPlan(),
-    lastPipelineRunAt: null,
-    updatedAt: new Date().toISOString(),
-  };
+        assets: [],
+        finalWorks: [],
+        publishRecords: [],
+        radarSeedPlan: defaultRadarSeedPlan(),
+        lastPipelineRunAt: null,
+        updatedAt: new Date().toISOString(),
+      };
       await pgPool.query(
         'INSERT INTO ai_native_command_center_state (id, data, updated_at) VALUES ($1, $2::jsonb, now())',
         ['default', JSON.stringify(initial)],
@@ -3738,6 +3805,7 @@ async function ensureDb() {
     topics: [],
     tasks: [],
     assets: [],
+    finalWorks: [],
     publishRecords: [],
     radarSeedPlan: defaultRadarSeedPlan(),
     lastPipelineRunAt: null,
@@ -3762,6 +3830,7 @@ async function readDb() {
     topics: Array.isArray(db.topics) ? db.topics : [],
     tasks: Array.isArray(db.tasks) ? db.tasks : [],
     assets: Array.isArray(db.assets) ? db.assets : [],
+    finalWorks: Array.isArray(db.finalWorks) ? db.finalWorks : [],
     publishRecords: Array.isArray(db.publishRecords) ? db.publishRecords : [],
     radarSeedPlan: normalizeRadarSeedPlan(db.radarSeedPlan || defaultRadarSeedPlan()),
     lastPipelineRunAt: db.lastPipelineRunAt || null,
