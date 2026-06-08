@@ -999,20 +999,113 @@ p { margin: 0; color: var(--muted); line-height: 1.65; }
   color: #19392b;
 }
 
+.asset-ops-board {
+  margin: 16px 0;
+  padding: 14px;
+  border-radius: 8px;
+  background: #f7faf8;
+  border: 1px solid rgba(25, 57, 43, 0.12);
+}
+
+.asset-ops-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.asset-ops-grid article {
+  padding: 10px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.asset-ops-grid b,
+.asset-ops-grid span,
+.asset-ops-grid small {
+  display: block;
+}
+
+.asset-ops-grid b {
+  font-size: 24px;
+  color: #19392b;
+}
+
+.asset-ops-grid small {
+  margin-top: 4px;
+  color: #66736d;
+}
+
+.asset-status-pill {
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.asset-status-pill.good {
+  background: #e9f8ef;
+  color: #17663a;
+}
+
+.asset-status-pill.bad {
+  background: #fff0ed;
+  color: #9b2d19;
+}
+
+.asset-status-pill.warn {
+  background: #fff6d8;
+  color: #7a5300;
+}
+
+.asset-status-pill.info,
+.asset-status-pill.todo {
+  background: #eef4ff;
+  color: #294d87;
+}
+
+.asset-publish-panel {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8f9fb;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+.asset-publish-panel b,
+.asset-publish-panel em {
+  display: block;
+}
+
+.asset-publish-panel em {
+  margin-top: 4px;
+  color: #66736d;
+  font-style: normal;
+}
+
 .publish-metrics-form {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 10px;
 }
 
-.publish-metrics-form label {
+.publish-record-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.publish-metrics-form label,
+.publish-record-form label {
   display: grid;
   gap: 5px;
   color: #43534c;
   font-weight: 700;
 }
 
-.publish-metrics-form input {
+.publish-metrics-form input,
+.publish-record-form input {
   min-height: 36px;
   border: 1px solid rgba(15, 23, 42, 0.14);
   border-radius: 7px;
@@ -1027,7 +1120,8 @@ p { margin: 0; color: var(--muted); line-height: 1.65; }
   background: #fff;
 }
 
-.publish-metrics-form .wide {
+.publish-metrics-form .wide,
+.publish-record-form .wide {
   grid-column: span 2;
 }
 

@@ -40,6 +40,7 @@ const state = {
   finalWorks: [],
   archiveMessage: "",
   editingMetricsWorkId: "",
+  editingPublishWorkId: "",
   logs: [],
   assets: null,
   assetStatus: "未读取",
@@ -1620,6 +1621,56 @@ function buildLongkaCalibrationSnapshot(prediction = {}) {
     conclusion: "",
     learning: "",
   };
+}
+
+function buildPublishRecordSnapshot(input = {}) {
+  return {
+    status: input.status || "draft",
+    platform: input.platform || "",
+    url: input.url || "",
+    publishedAt: input.publishedAt || "",
+    operator: input.operator || "",
+    note: input.note || "",
+    registeredAt: input.registeredAt || "",
+  };
+}
+
+function finalWorkStatus(item) {
+  const publishRecord = item.publishRecord || {};
+  const calibration = item.calibration || {};
+  const metrics = item.publishMetrics || {};
+  if (calibration.status === "reviewed") {
+    if (item.sampleLabel === "positive") return { key: "positive", label: zh("&#24050;&#25104;&#27491;&#20363;"), tone: "good" };
+    if (item.sampleLabel === "negative") return { key: "negative", label: zh("&#24050;&#25104;&#21453;&#20363;"), tone: "bad" };
+    return { key: "reviewed", label: zh("&#24050;&#22797;&#30424;"), tone: "good" };
+  }
+  if (publishRecord.status === "published") {
+    return isRetroDue(item)
+      ? { key: "retro-due", label: zh("&#21040;&#26399;&#24453;&#22797;&#30424;"), tone: "warn" }
+      : { key: "published", label: zh("&#24050;&#21457;&#24067;&#24453;&#25968;&#25454;"), tone: "info" };
+  }
+  if (Number(metrics.views || 0) > 0) return { key: "metrics-only", label: zh("&#24050;&#34917;&#25968;&#25454;"), tone: "info" };
+  return { key: "ready", label: zh("&#24453;&#30331;&#35760;&#21457;&#24067;"), tone: "todo" };
+}
+
+function isRetroDue(item) {
+  const publishRecord = item.publishRecord || {};
+  if (!publishRecord.publishedAt) return false;
+  const publishedAt = new Date(publishRecord.publishedAt).getTime();
+  if (!Number.isFinite(publishedAt)) return false;
+  return Date.now() - publishedAt >= 3 * 24 * 60 * 60 * 1000;
+}
+
+function buildAssetOpsSummary(finalWorks = []) {
+  return finalWorks.reduce((acc, item) => {
+    const status = finalWorkStatus(item).key;
+    if (status === "ready") acc.ready += 1;
+    if (status === "published" || status === "retro-due") acc.pendingRetro += 1;
+    if (status === "retro-due") acc.due += 1;
+    if (item.sampleLabel === "positive") acc.positive += 1;
+    if (item.sampleLabel === "negative") acc.negative += 1;
+    return acc;
+  }, { ready: 0, pendingRetro: 0, due: 0, positive: 0, negative: 0 });
 }
 
 async function archiveFinalWork() {
@@ -3828,6 +3879,7 @@ async function renderAssets() {
   const finalWorksHtml = state.finalWorks.length
     ? `<div class="title-group-head"><b>${zh("&#24050;&#23436;&#25104;&#20316;&#21697;")}</b><span>${state.finalWorks.length} ${zh("&#20010;&#21487;&#22797;&#29992;&#25104;&#31295;")}</span></div><div class="asset-grid">${state.finalWorks.map(renderFinalWorkAsset).join("")}</div>`
     : `<article class="empty-state"><b>${zh("&#36824;&#27809;&#26377;&#20445;&#23384;&#36807;&#25104;&#31295;&#20316;&#21697;")}</b><span>${zh("&#20174;&#20170;&#26085;&#24037;&#20316;&#21488;&#23436;&#25104;&#20986;&#22270;&#21518;&#65292;&#22312;&#31532;12&#27493;&#20445;&#23384;&#65292;&#36825;&#37324;&#20250;&#20986;&#29616;&#21487;&#22797;&#30424;&#12289;&#21487;&#36716;&#24179;&#21488;&#30340;&#20316;&#21697;&#21345;&#12290;")}</span></article>`;
+  const opsSummary = buildAssetOpsSummary(state.finalWorks);
   const topicCards = topics.map((item) => `<article class="asset-item"><b>${escapeHtml(item.theme)}</b><span>${escapeHtml(item.reason)}</span><p><strong>${zh("&#36866;&#21512;&#22797;&#29992;&#65306;")}</strong>${zh("&#23567;&#32418;&#20070;&#22270;&#25991;&#12289;&#20844;&#20247;&#21495;&#38271;&#25991;&#12289;&#26379;&#21451;&#22280;&#12289;&#30701;&#35270;&#39057;&#33050;&#26412;")}</p>${item.url ? `<a class="source-link" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">${zh("&#25171;&#24320;&#26469;&#28304;")}</a>` : ""}</article>`).join("") || `<article class="empty-state"><b>${zh("&#26242;&#26080;&#28304;&#32032;&#26448;")}</b><span>${zh("&#20808;&#35835;&#21462;&#21382;&#21490;&#36164;&#20135;&#12289;&#37319;&#38598; X &#36134;&#21495;&#65292;&#25110;&#23548;&#20837;&#32032;&#26448;&#12290;")}</span></article>`;
   target.innerHTML = `
     <section class="asset-lane">
@@ -3840,6 +3892,16 @@ async function renderAssets() {
         <article><b>${topics.length}</b><span>${zh("&#21487;&#29992;&#27597;&#39064;&#20505;&#36873;")}</span></article>
         <article><b>${state.finalWorks.length}</b><span>${zh("&#24050;&#23436;&#25104;&#24179;&#21488;&#29256;&#26412;")}</span></article>
         <article><b>7d</b><span>${zh("&#21457;&#24067;&#21518;&#22797;&#30424;&#33410;&#28857;")}</span></article>
+      </div>
+      <div class="asset-ops-board">
+        <div class="title-group-head"><b>${zh("&#20170;&#26085;&#20316;&#21697;&#29366;&#24577;")}</b><span>${zh("&#23567;&#22969;&#19981;&#38656;&#35201;&#35760;&#25351;&#20196;&#65292;&#25353;&#29366;&#24577;&#28857;&#19979;&#19968;&#27493;&#12290;")}</span></div>
+        <div class="asset-ops-grid">
+          <article><b>${opsSummary.ready}</b><span>${zh("&#24453;&#30331;&#35760;&#21457;&#24067;")}</span><small>${zh("&#21457;&#20986;&#21435;&#21518;&#22635;&#24179;&#21488;&#21644;&#38142;&#25509;")}</small></article>
+          <article><b>${opsSummary.pendingRetro}</b><span>${zh("&#24453;&#22797;&#30424;&#26657;&#20934;")}</span><small>${zh("T+3 &#34917;&#25968;&#25454;&#65292;&#26657;&#20934;&#21028;&#26029;")}</small></article>
+          <article><b>${opsSummary.due}</b><span>${zh("&#21040;&#26399;&#24453;&#22797;&#30424;")}</span><small>${zh("&#20248;&#20808;&#34917;&#25968;&#25454;")}</small></article>
+          <article><b>${opsSummary.positive}</b><span>${zh("&#27491;&#20363;&#26679;&#26412;")}</span><small>${zh("&#20540;&#24471;&#19968;&#40060;&#22810;&#21507;")}</small></article>
+          <article><b>${opsSummary.negative}</b><span>${zh("&#21453;&#20363;&#26679;&#26412;")}</span><small>${zh("&#29992;&#26469;&#23545;&#29031;&#21644;&#38450;&#27490;&#37325;&#29359;")}</small></article>
+        </div>
       </div>
       <div class="asset-grid">
         <article class="asset-item"><b>${zh("&#37319;&#38598;&#22522;&#24231;")}</b><span>MediaCrawlerPro / XCrawl / RSS / ${zh("&#25163;&#21160;&#23548;&#20837;&#36127;&#36131;&#25343;&#30495;&#23454;&#32032;&#26448;&#65292;&#19981;&#29992;&#20551;&#25968;&#25454;&#22635;&#39029;&#38754;&#12290;")}</span></article>
@@ -3869,11 +3931,14 @@ function renderFinalWorkAsset(item) {
   const saveRate = views ? `${((saves / views) * 100).toFixed(1)}%` : pending;
   const engageRate = views ? `${(((likes + saves + comments + shares) / views) * 100).toFixed(1)}%` : pending;
   const isEditing = state.editingMetricsWorkId === item.id;
+  const isEditingPublish = state.editingPublishWorkId === item.id;
+  const status = finalWorkStatus(item);
+  const publishRecord = item.publishRecord || {};
   const platformId = item.platformId || inferPlatformIdFromTitle(item.platform);
   const availableTargets = publishTargets.filter((target) => target.id !== "topic-only" && target.id !== platformId);
   const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleString() : zh("&#26410;&#35760;&#24405;&#26102;&#38388;");
   return `<article class="asset-item final-work-asset">
-    <header class="final-work-head"><div><b>${escapeHtml(item.title)}</b><span>${escapeHtml(item.platform)} ${zh("&#29256;&#26412;")} / ${body.length} ${zh("&#23383;&#27491;&#25991;")} / ${images.length} ${zh("&#24352;&#22270;&#29255;")} / ${escapeHtml(createdAt)}</span></div><em>${zh("&#24050;&#23436;&#25104;&#20316;&#21697;")}</em></header>
+    <header class="final-work-head"><div><b>${escapeHtml(item.title)}</b><span>${escapeHtml(item.platform)} ${zh("&#29256;&#26412;")} / ${body.length} ${zh("&#23383;&#27491;&#25991;")} / ${images.length} ${zh("&#24352;&#22270;&#29255;")} / ${escapeHtml(createdAt)}</span></div><em class="asset-status-pill ${escapeHtml(status.tone)}">${escapeHtml(status.label)}</em></header>
     <p><strong>${zh("&#22797;&#29992;&#27597;&#39064;&#65306;")}</strong>${escapeHtml(item.topic || zh("&#26410;&#35760;&#24405;"))}</p>
     <p><strong>${zh("&#25286;&#35299;&#36164;&#20135;&#65306;")}</strong>${escapeHtml(item.extractedAssets?.structure || zh("&#24453;&#25286;&#35299;"))}</p>
     <details class="asset-delivery-panel"><summary><b>${zh("&#24179;&#21488;&#21457;&#24067;&#25104;&#31295;")}</b><span>${zh("&#23637;&#24320;&#26597;&#30475;&#27491;&#25991;&#65292;&#25353;&#38062;&#21487;&#30452;&#25509;&#22797;&#21046;&#12290;")}</span></summary><pre>${escapeHtml(bodyPreview || zh("&#36825;&#26465;&#20316;&#21697;&#27809;&#26377;&#20445;&#23384;&#21040;&#27491;&#25991;&#12290;"))}</pre><div class="asset-action-row"><button class="primary" type="button" data-copy-final-body="${escapeHtml(item.id)}">${zh("&#22797;&#21046;&#23436;&#25972;&#25991;&#26696;")}</button><button class="secondary" type="button" data-copy-final-images="${escapeHtml(item.id)}" ${images.length ? "" : "disabled"}>${zh("&#22797;&#21046;&#22270;&#29255;&#38142;&#25509;")}</button></div></details>
@@ -3881,10 +3946,11 @@ function renderFinalWorkAsset(item) {
     <div class="xhs-generated-grid asset-image-grid">${images.slice(0, 5).map((url, index) => `<div class="asset-image-tile"><a href="${escapeHtml(url)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(url)}" alt="P${index + 1}" loading="lazy" /><span>P${index + 1}</span></a><div class="asset-image-actions"><button class="secondary" type="button" data-copy-image-url="${escapeHtml(url)}">${zh("&#22797;&#21046;&#38142;&#25509;")}</button></div></div>`).join("")}</div>
     <div class="asset-usage-panel"><b>${zh("&#19979;&#19968;&#27493;&#24590;&#20040;&#29992;")}</b><ol><li><strong>${zh("&#32487;&#32493;&#29983;&#20135;&#65306;")}</strong>${zh("&#25226;&#21516;&#19968;&#20010;&#27597;&#39064;&#25913;&#25104;&#21478;&#19968;&#20010;&#24179;&#21488;&#29256;&#26412;&#12290;")}</li><li><strong>${zh("&#21457;&#24067;&#22797;&#30424;&#65306;")}</strong>${zh("&#21457;&#20986;&#21435;&#21518;&#34917;&#25968;&#25454;&#65292;&#21028;&#26029;&#26159;&#21542;&#20540;&#24471;&#32487;&#32493;&#20570;&#12290;")}</li><li><strong>${zh("&#27785;&#28096;&#36164;&#20135;&#65306;")}</strong>${zh("&#25286;&#36827;&#26631;&#39064;&#24211;&#12289;&#32467;&#26500;&#24211;&#21644;&#22270;&#25991;&#39118;&#26684;&#24211;&#12290;")}</li></ol></div>
     ${renderLongkaPredictionPanel(item)}
+    <div class="asset-publish-panel"><b>${zh("&#21457;&#24067;&#30331;&#35760;")}</b><em>${publishRecord.status === "published" ? `${zh("&#24050;&#21457;&#24067;&#65306;")}${escapeHtml(publishRecord.platform || item.platform)} ${escapeHtml(formatShortDate(publishRecord.publishedAt))}` : zh("&#20316;&#21697;&#21457;&#20986;&#21435;&#21518;&#65292;&#22312;&#36825;&#37324;&#22635;&#24179;&#21488;&#12289;&#38142;&#25509;&#21644;&#26102;&#38388;&#12290;")}</em>${isEditingPublish ? renderPublishRecordForm(item) : ""}</div>
     <div class="metric-row"><span>${zh("&#25104;&#31295;&#20316;&#21697;")}</span><span>${zh("&#22797;&#29992;&#27597;&#39064;")}</span><span>${zh("&#24453;&#34917;&#21457;&#24067;&#25968;&#25454;")}</span></div>
     <div class="asset-review-panel"><b>${zh("&#21457;&#24067;&#22797;&#30424;&#25968;&#25454;")}</b><em>${zh("&#31532;&#19968;&#29256;&#30001;&#36816;&#33829;&#21457;&#24067;&#21518;&#25163;&#21160;&#22635;&#20889;&#12290;")}</em><div class="asset-review-grid"><span>${zh("&#38405;&#35835;/&#25773;&#25918;")} <strong>${views || pending}</strong></span><span>${zh("&#28857;&#36190;")} <strong>${likes || pending}</strong></span><span>${zh("&#25910;&#34255;")} <strong>${saves || pending}</strong></span><span>${zh("&#35780;&#35770;")} <strong>${comments || pending}</strong></span><span>${zh("&#36716;&#21457;")} <strong>${shares || pending}</strong></span><span>${zh("&#25910;&#34255;&#29575;")} <strong>${saveRate}</strong></span><span>${zh("&#20114;&#21160;&#29575;")} <strong>${engageRate}</strong></span></div>${isEditing ? renderPublishMetricsForm(item) : `<p>${escapeHtml(buildReviewConclusion(item))}</p>`}</div>
     <div class="asset-reuse-panel"><b>${zh("&#36873;&#25321;&#19979;&#19968;&#20010;&#24179;&#21488;&#29256;&#26412;")}</b><span>${zh("&#20445;&#30041;&#21516;&#19968;&#20010;&#27597;&#39064;&#65292;&#20294;&#25353;&#30446;&#26631;&#24179;&#21488;&#37325;&#20889;&#12290;")}</span><div class="asset-action-row">${availableTargets.map((target) => `<button class="secondary" type="button" data-reuse-work="${escapeHtml(item.id)}" data-reuse-target="${escapeHtml(target.id)}">${zh("&#25913;&#25104;")}${escapeHtml(target.title)}</button>`).join("")}</div></div>
-    <div class="asset-action-row"><button class="secondary" type="button" data-edit-metrics="${escapeHtml(item.id)}">${isEditing ? zh("&#25910;&#36215;&#25968;&#25454;&#34920;") : zh("&#34917;&#21457;&#24067;&#25968;&#25454;")}</button><button class="secondary" type="button" data-deconstruct-work="${escapeHtml(item.id)}">${zh("&#25286;&#25104;&#26631;&#39064;/&#32467;&#26500;&#36164;&#20135;")}</button></div>
+    <div class="asset-action-row"><button class="secondary" type="button" data-edit-publish="${escapeHtml(item.id)}">${isEditingPublish ? zh("&#25910;&#36215;&#21457;&#24067;&#34920;") : zh("&#30331;&#35760;&#24050;&#21457;&#24067;")}</button><button class="secondary" type="button" data-edit-metrics="${escapeHtml(item.id)}">${isEditing ? zh("&#25910;&#36215;&#25968;&#25454;&#34920;") : zh("&#34917;&#21457;&#24067;&#25968;&#25454;")}</button><button class="secondary" type="button" data-label-sample="${escapeHtml(item.id)}" data-sample-label="positive">${zh("&#26631;&#25104;&#27491;&#20363;")}</button><button class="secondary" type="button" data-label-sample="${escapeHtml(item.id)}" data-sample-label="negative">${zh("&#26631;&#25104;&#21453;&#20363;")}</button><button class="secondary" type="button" data-deconstruct-work="${escapeHtml(item.id)}">${zh("&#25286;&#25104;&#26631;&#39064;/&#32467;&#26500;&#36164;&#20135;")}</button></div>
   </article>`;
 }
 function inferPlatformIdFromTitle(title = "") {
@@ -3917,6 +3983,18 @@ function renderLongkaPredictionPanel(item) {
   </div>`;
 }
 
+function renderPublishRecordForm(item) {
+  const record = item.publishRecord || {};
+  return `<div class="publish-record-form" data-publish-form="${escapeHtml(item.id)}">
+    <label>${zh("&#21457;&#24067;&#24179;&#21488;")}<input type="text" data-publish-field="platform" value="${escapeHtml(record.platform || item.platform || "")}" placeholder="${zh("&#20363;&#65306;&#23567;&#32418;&#20070;")}"></label>
+    <label>${zh("&#21457;&#24067;&#38142;&#25509;")}<input type="url" data-publish-field="url" value="${escapeHtml(record.url || "")}" placeholder="https://"></label>
+    <label>${zh("&#21457;&#24067;&#26102;&#38388;")}<input type="datetime-local" data-publish-field="publishedAt" value="${escapeHtml(toDatetimeLocalValue(record.publishedAt))}"></label>
+    <label>${zh("&#25805;&#20316;&#20154;")}<input type="text" data-publish-field="operator" value="${escapeHtml(record.operator || "")}" placeholder="${zh("&#20363;&#65306;&#23567;&#22969;")}"></label>
+    <label class="wide">${zh("&#21457;&#24067;&#35760;&#24405;")}<input type="text" data-publish-field="note" value="${escapeHtml(record.note || "")}" placeholder="${zh("&#20363;&#65306;&#23553;&#38754;&#29992;&#31532; 1 &#24352;&#65292;&#26631;&#39064;&#26410;&#25913;")}"></label>
+    <button class="primary" type="button" data-save-publish="${escapeHtml(item.id)}">${zh("&#20445;&#23384;&#21457;&#24067;&#30331;&#35760;&#24182;&#21516;&#27493;")}</button>
+  </div>`;
+}
+
 function formatShortDate(value) {
   if (!value) return zh("&#26410;&#35760;&#24405;");
   try {
@@ -3924,6 +4002,14 @@ function formatShortDate(value) {
   } catch {
     return String(value).slice(0, 10);
   }
+}
+
+function toDatetimeLocalValue(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
 }
 
 function renderPublishMetricsForm(item) {
@@ -3982,6 +4068,56 @@ function toggleMetricsEditor(id) {
   renderAssetPage("assets");
 }
 
+function togglePublishEditor(id) {
+  state.editingPublishWorkId = state.editingPublishWorkId === id ? "" : id;
+  renderAssetPage("assets");
+}
+
+async function syncFinalWorkUpdate(updated) {
+  state.finalWorks = state.finalWorks.map((item) => item.id === updated.id ? updated : item);
+  persistWorkbenchSnapshot();
+  const res = await fetch(apiPath("/api/final-works"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ work: updated }),
+  });
+  const result = await res.json();
+  if (!res.ok || !result.ok) throw new Error(result.message || result.error || "sync_failed");
+  state.finalWorks = state.finalWorks.map((item) => item.id === updated.id ? (result.work || updated) : item);
+  persistWorkbenchSnapshot();
+  return result.work || updated;
+}
+
+async function savePublishRecord(id) {
+  const form = byId("assetBoard")?.querySelector(`[data-publish-form="${CSS.escape(id)}"]`);
+  if (!form) return;
+  const current = state.finalWorks.find((item) => item.id === id);
+  if (!current) return;
+  const record = {};
+  form.querySelectorAll("[data-publish-field]").forEach((input) => {
+    record[input.dataset.publishField] = input.value.trim();
+  });
+  const publishedAt = record.publishedAt ? new Date(record.publishedAt).toISOString() : new Date().toISOString();
+  const updated = {
+    ...current,
+    publishRecord: buildPublishRecordSnapshot({
+      ...current.publishRecord,
+      ...record,
+      status: "published",
+      publishedAt,
+      platform: record.platform || current.platform || "",
+      registeredAt: new Date().toISOString(),
+    }),
+  };
+  state.editingPublishWorkId = "";
+  try {
+    await syncFinalWorkUpdate(updated);
+  } catch (error) {
+    state.archiveMessage = `${zh("&#21457;&#24067;&#30331;&#35760;&#24050;&#20445;&#23384;&#21040;&#24403;&#21069;&#27983;&#35272;&#22120;&#65292;&#20294;&#21516;&#27493;&#21040; 122 &#22833;&#36133;&#65306;")}${error.message}`;
+  }
+  renderAssetPage("assets");
+}
+
 async function savePublishMetrics(id) {
   const form = byId("assetBoard")?.querySelector(`[data-metrics-form="${CSS.escape(id)}"]`);
   if (!form) return;
@@ -4009,21 +4145,27 @@ async function savePublishMetrics(id) {
     reviewedAt,
     conclusion: buildCalibrationConclusion(updated),
   };
-  state.finalWorks = state.finalWorks.map((item) => item.id === id ? updated : item);
   state.editingMetricsWorkId = "";
-  persistWorkbenchSnapshot();
   try {
-    const res = await fetch(apiPath("/api/final-works"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ work: updated }),
-    });
-    const result = await res.json();
-    if (!res.ok || !result.ok) throw new Error(result.message || result.error || "sync_failed");
-    state.finalWorks = state.finalWorks.map((item) => item.id === id ? (result.work || updated) : item);
-    persistWorkbenchSnapshot();
+    await syncFinalWorkUpdate(updated);
   } catch (error) {
     state.archiveMessage = `${zh("&#22797;&#30424;&#24050;&#20445;&#23384;&#21040;&#24403;&#21069;&#27983;&#35272;&#22120;&#65292;&#20294;&#21516;&#27493;&#21040; 122 &#22833;&#36133;&#65306;")}${error.message}`;
+  }
+  renderAssetPage("assets");
+}
+
+async function labelFinalWorkSample(id, label) {
+  const current = state.finalWorks.find((item) => item.id === id);
+  if (!current) return;
+  const updated = {
+    ...current,
+    sampleLabel: label === "negative" ? "negative" : "positive",
+    sampleLabeledAt: new Date().toISOString(),
+  };
+  try {
+    await syncFinalWorkUpdate(updated);
+  } catch (error) {
+    state.archiveMessage = `${zh("&#26679;&#26412;&#26631;&#35760;&#24050;&#20445;&#23384;&#21040;&#24403;&#21069;&#27983;&#35272;&#22120;&#65292;&#20294;&#21516;&#27493;&#21040; 122 &#22833;&#36133;&#65306;")}${error.message}`;
   }
   renderAssetPage("assets");
 }
@@ -4175,9 +4317,24 @@ document.addEventListener("click", (event) => {
     toggleMetricsEditor(editMetrics.dataset.editMetrics);
     return;
   }
+  const editPublish = event.target.closest("[data-edit-publish]");
+  if (editPublish) {
+    togglePublishEditor(editPublish.dataset.editPublish);
+    return;
+  }
+  const savePublish = event.target.closest("[data-save-publish]");
+  if (savePublish) {
+    savePublishRecord(savePublish.dataset.savePublish);
+    return;
+  }
   const saveMetrics = event.target.closest("[data-save-metrics]");
   if (saveMetrics) {
     savePublishMetrics(saveMetrics.dataset.saveMetrics);
+    return;
+  }
+  const labelSample = event.target.closest("[data-label-sample]");
+  if (labelSample) {
+    labelFinalWorkSample(labelSample.dataset.labelSample, labelSample.dataset.sampleLabel || "positive");
     return;
   }
   const copyBody = event.target.closest("[data-copy-final-body]");

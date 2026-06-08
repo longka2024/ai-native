@@ -26,6 +26,12 @@ Layering model to preserve:
 Important rule:
 
 - After each meaningful task, ask which layer the learned lesson belongs to.
+- For `cheat-on-content` in Codex, natural-language triggers must route to the local source skill files. Codex should not rely on Claude Code slash commands or memory-only summaries:
+  - init -> `external/cheat-on-content/skills/cheat-init/SKILL.md`
+  - score -> `external/cheat-on-content/skills/cheat-score/SKILL.md`
+  - predict -> `external/cheat-on-content/skills/cheat-predict/SKILL.md`
+  - shoot/publish/retro/bump/status -> the matching `external/cheat-on-content/skills/cheat-*/SKILL.md`
+  - Longka UI internalizes these as `发布前判断`, `复盘校准`, and `评分公式升级`; customer-facing UI must not expose internal labels like `cheat-on-content`, `blind prediction`, or `rubric`.
 
 Commercial implication:
 
@@ -35,4 +41,3 @@ Docs updated:
 
 - `E:\Codex\SKILL_PRODUCTIZATION_PLAYBOOK.md`
 - `E:\Codex\LONG_TERM_HARNESS.md`
-

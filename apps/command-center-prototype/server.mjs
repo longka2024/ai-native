@@ -3650,6 +3650,9 @@ function normalizeFinalWork(input = {}) {
     publishMetrics: input.publishMetrics && typeof input.publishMetrics === 'object' ? input.publishMetrics : {},
     prediction: input.prediction && typeof input.prediction === 'object' ? input.prediction : {},
     calibration: input.calibration && typeof input.calibration === 'object' ? input.calibration : {},
+    publishRecord: input.publishRecord && typeof input.publishRecord === 'object' ? input.publishRecord : {},
+    sampleLabel: String(input.sampleLabel || '').trim(),
+    sampleLabeledAt: input.sampleLabeledAt || null,
   };
 }
 

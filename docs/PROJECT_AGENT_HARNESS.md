@@ -21,11 +21,13 @@ Read these before changing code:
 
 1. Start with a visible plan for any multi-step change.
 2. Define the acceptance standard before editing.
-3. Do not present mock data as real collected data.
-4. Keep operator analysis separate from audience-facing copy, cards, and videos.
-5. Use installed skills as production rules, not as names in UI.
-6. After edits, run syntax checks and, when possible, produce a visible screenshot/export path.
-7. Final response must include exact changed files and verification results.
+3. Before designing or developing a new function, discuss the workflow and acceptance standard with Longfei and wait for confirmation.
+4. Do not present mock data as real collected data.
+5. Keep operator analysis separate from audience-facing copy, cards, and videos.
+6. Use installed skills as production rules, not as names in UI.
+7. Follow `E:\Codex\ai-native\CODING_RULES.md`. All new files and edits must be UTF-8. Do not add new business logic to mojibake-heavy legacy files when a clean module can hold it.
+8. After edits, run syntax checks and, when possible, produce a visible screenshot/export path.
+9. Final response must include exact changed files and verification results.
 
 ## Merged Skill Stack
 
@@ -45,11 +47,27 @@ The responsibilities are fixed:
 - **Longka harness** is the gate: read context, define goal and boundary, show sources/rationale/draft, wait for confirmation, then execute and verify.
 - **Superpowers** is the development discipline layer: invoke relevant skills before coding, keep a plan for multi-step work, verify before claiming completion, and do not skip review because a task looks small.
 - **MediaCrawler** is the evidence source: collect high-performing posts, metrics, URLs, and comments. Do not replace failed real collection with fake samples.
+- **Agent-Reach** is the exploration and verification layer: use it to quickly inspect external pages, accounts, repos, videos, and social discussions before deciding whether a source is worth collecting. Do not treat Agent-Reach output as production crawler data unless it is converted into a normalized `content_sample` with source URL, tool name, and collection status.
 - **DBS skills** are the content judgment layer: deconstruct customer questions, validate topic value, generate title candidates, check hooks, diagnose content quality, and remove AI-like writing.
 - **cheat-on-content** is the calibration layer: onboarding anchors, scoring, blind prediction, post-publish retro, and rubric evolution.
 - **Image/card/video tools** are execution layers: only run after the operator confirms the copy or script in the web UI.
 
 Do not maintain parallel scoring systems. DBS observations must feed the Longka scoring rubric; cheat-on-content-style scoring and retro must be the single calibration record.
+
+### cheat-on-content Codex Routing
+
+Codex does not have Claude Code slash-command harness. When Longfei or an operator uses natural language that matches cheat-on-content actions, route by reading the source skill file first, not by memory:
+
+- `初始化 cheat-on-content` / `init cheat-on-content` -> read and execute `external/cheat-on-content/skills/cheat-init/SKILL.md`.
+- `打分这篇 ...` / `score this ...` -> read and execute `external/cheat-on-content/skills/cheat-score/SKILL.md`.
+- `启动预测 ...` / `start prediction ...` -> read and execute `external/cheat-on-content/skills/cheat-predict/SKILL.md`.
+- `拍了 ...` / `shot ...` -> read and execute `external/cheat-on-content/skills/cheat-shoot/SKILL.md`.
+- `已发布 ...` / `shipped ...` -> read and execute `external/cheat-on-content/skills/cheat-publish/SKILL.md`.
+- `复盘 ...` / `retro ...` -> read and execute `external/cheat-on-content/skills/cheat-retro/SKILL.md`.
+- `升级 rubric` / `bump rubric` -> read and execute `external/cheat-on-content/skills/cheat-bump/SKILL.md`.
+- `状态` / `status` -> read and execute `external/cheat-on-content/skills/cheat-status/SKILL.md`.
+
+For Longka product UI, keep using customer-facing words such as `发布前判断`, `复盘校准`, and `实际表现档位`. Do not expose `cheat-on-content`, `blind prediction`, or `rubric` as normal customer UI labels.
 
 ## Content Factory Loop
 
