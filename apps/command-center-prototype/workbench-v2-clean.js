@@ -2268,6 +2268,36 @@ async function loadFullAssetState() {
   }
 }
 
+async function syncLocalFinalWorksToServer(localWorks = [], remoteWorks = []) {
+  const remoteIds = new Set(remoteWorks.map((item) => item?.id).filter(Boolean));
+  const missing = localWorks.filter((item) => item?.id && item.body && !remoteIds.has(item.id)).slice(0, 30);
+  if (!missing.length) return { uploaded: 0, finalWorks: remoteWorks };
+  let uploaded = 0;
+  for (const work of missing) {
+    try {
+      const res = await fetch(apiPath("/api/final-works"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ work }),
+      });
+      const result = await res.json();
+      if (res.ok && result.ok) uploaded += 1;
+    } catch (error) {
+      log(`本机旧作品同步失败：${work.title || work.id} / ${error.message}`);
+    }
+  }
+  try {
+    const res = await fetch(apiPath("/api/final-works"));
+    const result = await res.json();
+    if (res.ok && result.ok && Array.isArray(result.finalWorks)) {
+      return { uploaded, finalWorks: result.finalWorks };
+    }
+  } catch (error) {
+    log(`同步后读取 122 作品库失败：${error.message}`);
+  }
+  return { uploaded, finalWorks: remoteWorks };
+}
+
 function sourceTitleForTarget() {
   if (state.sourceChannel !== "same-platform") return currentSource().title;
   const map = {
@@ -3694,14 +3724,17 @@ function renderTitleAssetCard(item) {
 async function renderAssets() {
   const target = $("#assetBoard");
   if (!target) return;
-  target.innerHTML = `<article class="empty-state"><b>正在读取母题资产库</b><span>正在从 122 内容资产库读取真实素材、成稿作品和可复用母题。</span></article>`;
+  target.innerHTML = `<article class="empty-state"><b>${zh("&#27491;&#22312;&#35835;&#21462;&#20869;&#23481;&#36164;&#20135;&#24211;")}</b><span>${zh("&#27491;&#22312;&#20174; 122 &#32479;&#19968;&#20316;&#21697;&#24211;&#21644;&#32032;&#26448;&#24211;&#35835;&#21462;&#25968;&#25454;&#12290;")}</span></article>`;
   let db;
   let topics = [];
   let sampleCount = 0;
   try {
     db = await loadFullAssetState();
-    const remoteWorks = Array.isArray(db.finalWorks) ? db.finalWorks : [];
+    let remoteWorks = Array.isArray(db.finalWorks) ? db.finalWorks : [];
     const localWorks = Array.isArray(state.finalWorks) ? state.finalWorks : [];
+    const syncResult = await syncLocalFinalWorksToServer(localWorks, remoteWorks);
+    remoteWorks = syncResult.finalWorks;
+    if (syncResult.uploaded) log(`${zh("&#24050;&#25226;&#26412;&#26426;")} ${syncResult.uploaded} ${zh("&#20010;&#26087;&#25104;&#31295;&#21516;&#27493;&#21040; 122 &#32479;&#19968;&#20316;&#21697;&#24211;&#12290;")}`);
     const mergedWorks = new Map();
     [...remoteWorks, ...localWorks].forEach((item) => {
       if (item?.id) mergedWorks.set(item.id, item);
@@ -3714,124 +3747,68 @@ async function renderAssets() {
     state.sourceChannel = oldSource;
     sampleCount = Array.isArray(db.contentSamples) ? db.contentSamples.length : 0;
   } catch (error) {
-    target.innerHTML = `<article class="empty-state"><b>母题资产库读取失败</b><span>${escapeHtml(error.message)}</span></article>`;
+    target.innerHTML = `<article class="empty-state"><b>${zh("&#20869;&#23481;&#36164;&#20135;&#24211;&#35835;&#21462;&#22833;&#36133;")}</b><span>${escapeHtml(error.message)}</span></article>`;
     return;
   }
   const finalWorksHtml = state.finalWorks.length
-    ? `<div class="title-group-head"><b>已完成作品</b><span>${state.finalWorks.length} 个可复用成稿</span></div><div class="asset-grid">${state.finalWorks.map(renderFinalWorkAsset).join("")}</div>`
-    : `<article class="empty-state"><b>还没有保存过成稿作品</b><span>从今日工作台完成第 10 步出图后，在第 12 步保存，这里会出现可复盘、可继续转平台的作品卡。</span></article>`;
-  const topicCards = topics.map((item) => `<article class="asset-item"><b>${escapeHtml(item.theme)}</b><span>${escapeHtml(item.reason)}</span><p><strong>适合复用：</strong>小红书图文、公众号长文、朋友圈、短视频脚本</p>${item.url ? `<a class="source-link" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">打开来源</a>` : ""}</article>`).join("") || `<article class="empty-state"><b>暂无源素材</b><span>先读取历史资产、采集 X 账号，或导入素材。</span></article>`;
+    ? `<div class="title-group-head"><b>${zh("&#24050;&#23436;&#25104;&#20316;&#21697;")}</b><span>${state.finalWorks.length} ${zh("&#20010;&#21487;&#22797;&#29992;&#25104;&#31295;")}</span></div><div class="asset-grid">${state.finalWorks.map(renderFinalWorkAsset).join("")}</div>`
+    : `<article class="empty-state"><b>${zh("&#36824;&#27809;&#26377;&#20445;&#23384;&#36807;&#25104;&#31295;&#20316;&#21697;")}</b><span>${zh("&#20174;&#20170;&#26085;&#24037;&#20316;&#21488;&#23436;&#25104;&#20986;&#22270;&#21518;&#65292;&#22312;&#31532;12&#27493;&#20445;&#23384;&#65292;&#36825;&#37324;&#20250;&#20986;&#29616;&#21487;&#22797;&#30424;&#12289;&#21487;&#36716;&#24179;&#21488;&#30340;&#20316;&#21697;&#21345;&#12290;")}</span></article>`;
+  const topicCards = topics.map((item) => `<article class="asset-item"><b>${escapeHtml(item.theme)}</b><span>${escapeHtml(item.reason)}</span><p><strong>${zh("&#36866;&#21512;&#22797;&#29992;&#65306;")}</strong>${zh("&#23567;&#32418;&#20070;&#22270;&#25991;&#12289;&#20844;&#20247;&#21495;&#38271;&#25991;&#12289;&#26379;&#21451;&#22280;&#12289;&#30701;&#35270;&#39057;&#33050;&#26412;")}</p>${item.url ? `<a class="source-link" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">${zh("&#25171;&#24320;&#26469;&#28304;")}</a>` : ""}</article>`).join("") || `<article class="empty-state"><b>${zh("&#26242;&#26080;&#28304;&#32032;&#26448;")}</b><span>${zh("&#20808;&#35835;&#21462;&#21382;&#21490;&#36164;&#20135;&#12289;&#37319;&#38598; X &#36134;&#21495;&#65292;&#25110;&#23548;&#20837;&#32032;&#26448;&#12290;")}</span></article>`;
   target.innerHTML = `
     <section class="asset-lane">
       <div class="asset-summary asset-command">
-        <b>母题资产库不是收藏夹</b>
-        <span>它把采集来的真实素材变成可复利复写的母题，再沉淀小红书、公众号、朋友圈、短视频脚本、图文资产和发布复盘。</span>
+        <b>${zh("&#20869;&#23481;&#36164;&#20135;&#24211;&#19981;&#26159;&#25910;&#34255;&#22841;")}</b>
+        <span>${zh("&#23427;&#25226;&#30495;&#23454;&#32032;&#26448;&#21464;&#25104;&#21487;&#22797;&#21033;&#22797;&#20889;&#30340;&#27597;&#39064;&#65292;&#20877;&#27785;&#28096;&#24179;&#21488;&#25104;&#31295;&#12289;&#22270;&#25991;&#36164;&#20135;&#21644;&#21457;&#24067;&#22797;&#30424;&#12290;")}</span>
       </div>
       <div class="asset-kpi-grid">
-        <article><b>${sampleCount}</b><span>源素材样本</span></article>
-        <article><b>${topics.length}</b><span>可用母题候选</span></article>
-        <article><b>${state.finalWorks.length}</b><span>已完成平台版本</span></article>
-        <article><b>7天</b><span>发布后复盘节奏</span></article>
+        <article><b>${sampleCount}</b><span>${zh("&#28304;&#32032;&#26448;&#26679;&#26412;")}</span></article>
+        <article><b>${topics.length}</b><span>${zh("&#21487;&#29992;&#27597;&#39064;&#20505;&#36873;")}</span></article>
+        <article><b>${state.finalWorks.length}</b><span>${zh("&#24050;&#23436;&#25104;&#24179;&#21488;&#29256;&#26412;")}</span></article>
+        <article><b>7d</b><span>${zh("&#21457;&#24067;&#21518;&#22797;&#30424;&#33410;&#28857;")}</span></article>
       </div>
       <div class="asset-grid">
-        <article class="asset-item"><b>采集基座</b><span>MediaCrawlerPro / XCrawl / RSS / 手动导入负责拿真实素材，不用假数据填页面。</span></article>
-        <article class="asset-item"><b>内容拆解基座</b><span>DBS、标题库、结构库把素材拆成用户痛点、标题公式、结构和复用角度。</span></article>
-        <article class="asset-item"><b>视觉生产基座</b><span>小黑、归藏、宝玉、Open Design 负责把确认文案做成小红书图文、公众号配图或演示稿。</span></article>
-        <article class="asset-item"><b>复盘训练基座</b><span>发布后补阅读、点赞、收藏、评论，判断母题是正例、反例，还是值得二次改写。</span></article>
+        <article class="asset-item"><b>${zh("&#37319;&#38598;&#22522;&#24231;")}</b><span>MediaCrawlerPro / XCrawl / RSS / ${zh("&#25163;&#21160;&#23548;&#20837;&#36127;&#36131;&#25343;&#30495;&#23454;&#32032;&#26448;&#65292;&#19981;&#29992;&#20551;&#25968;&#25454;&#22635;&#39029;&#38754;&#12290;")}</span></article>
+        <article class="asset-item"><b>${zh("&#20869;&#23481;&#25286;&#35299;&#22522;&#24231;")}</b><span>DBS / ${zh("&#26631;&#39064;&#24211; / &#32467;&#26500;&#24211;&#25226;&#32032;&#26448;&#25286;&#25104;&#29992;&#25143;&#30171;&#28857;&#12289;&#26631;&#39064;&#20844;&#24335;&#12289;&#32467;&#26500;&#21644;&#22797;&#29992;&#35282;&#24230;&#12290;")}</span></article>
+        <article class="asset-item"><b>${zh("&#35270;&#35273;&#29983;&#20135;&#22522;&#24231;")}</b><span>${zh("&#23567;&#40657;&#12289;&#24402;&#34255;&#12289;&#23453;&#29577;&#12289;Open Design &#36127;&#36131;&#25226;&#30830;&#35748;&#25991;&#26696;&#20570;&#25104;&#22270;&#25991;&#12289;&#38271;&#25991;&#37197;&#22270;&#25110;&#28436;&#31034;&#31295;&#12290;")}</span></article>
+        <article class="asset-item"><b>${zh("&#22797;&#30424;&#35757;&#32451;&#22522;&#24231;")}</b><span>${zh("&#21457;&#24067;&#21518;&#34917;&#38405;&#35835;&#12289;&#28857;&#36190;&#12289;&#25910;&#34255;&#12289;&#35780;&#35770;&#65292;&#21028;&#26029;&#27597;&#39064;&#26159;&#27491;&#20363;&#12289;&#21453;&#20363;&#65292;&#36824;&#26159;&#20540;&#24471;&#20108;&#27425;&#25913;&#20889;&#12290;")}</span></article>
       </div>
       ${finalWorksHtml}
     </section>
     <section class="asset-lane">
-      <div class="title-group-head"><b>源素材 / 母题候选</b><span>用于继续找选题和一鱼多吃。先选母题，再按平台重新写。</span></div>
+      <div class="title-group-head"><b>${zh("&#28304;&#32032;&#26448; / &#27597;&#39064;&#20505;&#36873;")}</b><span>${zh("&#29992;&#20110;&#32487;&#32493;&#25214;&#36873;&#39064;&#21644;&#19968;&#40060;&#22810;&#21507;&#12290;")}</span></div>
       <div class="asset-grid">${topicCards}</div>
     </section>`;
 }
+
 function renderFinalWorkAsset(item) {
   const images = Array.isArray(item.images) ? item.images : [];
   const body = String(item.body || "");
-  const bodyPreview = body.length > 900 ? `${body.slice(0, 900)}\n\n...` : body;
+  const bodyPreview = body.length > 900 ? body.slice(0, 900) + "\n\n..." : body;
   const metrics = item.publishMetrics || {};
   const views = Number(metrics.views || 0);
   const likes = Number(metrics.likes || 0);
   const saves = Number(metrics.saves || 0);
   const comments = Number(metrics.comments || 0);
   const shares = Number(metrics.shares || 0);
-  const saveRate = views ? `${((saves / views) * 100).toFixed(1)}%` : "??";
-  const engageRate = views ? `${(((likes + saves + comments + shares) / views) * 100).toFixed(1)}%` : "??";
+  const pending = zh("&#24453;&#34917;");
+  const saveRate = views ? `${((saves / views) * 100).toFixed(1)}%` : pending;
+  const engageRate = views ? `${(((likes + saves + comments + shares) / views) * 100).toFixed(1)}%` : pending;
   const isEditing = state.editingMetricsWorkId === item.id;
   const platformId = item.platformId || inferPlatformIdFromTitle(item.platform);
   const availableTargets = publishTargets.filter((target) => target.id !== "topic-only" && target.id !== platformId);
-  const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleString() : "?????";
+  const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleString() : zh("&#26410;&#35760;&#24405;&#26102;&#38388;");
   return `<article class="asset-item final-work-asset">
-    <header class="final-work-head">
-      <div>
-        <b>${escapeHtml(item.title)}</b>
-        <span>${escapeHtml(item.platform)} ?? ? ${body.length} ??? ? ${images.length} ??? ? ${escapeHtml(createdAt)}</span>
-      </div>
-      <em>?????</em>
-    </header>
-    <p><strong>?????</strong>${escapeHtml(item.topic || "???")}</p>
-    <p><strong>?????</strong>${escapeHtml(item.extractedAssets?.structure || "???")}</p>
-    <details class="asset-delivery-panel">
-      <summary><b>??????</b><span>???????????????</span></summary>
-      <pre>${escapeHtml(bodyPreview || "????????????????????????")}</pre>
-      <div class="asset-action-row">
-        <button class="primary" type="button" data-copy-final-body="${escapeHtml(item.id)}">??????</button>
-        <button class="secondary" type="button" data-copy-final-images="${escapeHtml(item.id)}" ${images.length ? "" : "disabled"}>??????</button>
-      </div>
-    </details>
-    ${images.length ? `<div class="asset-delivery-panel compact">
-      <div class="asset-delivery-head">
-        <b>??????</b>
-        <span>??????????????????????????</span>
-      </div>
-      <div class="asset-image-links">
-        ${images.map((url, index) => `<a class="source-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">P${index + 1} ??</a>`).join("")}
-      </div>
-    </div>` : `<div class="status-strip warn">????????????????????? 10 ????????????</div>`}
-    <div class="xhs-generated-grid asset-image-grid">
-      ${images.slice(0, 5).map((url, index) => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer" title="?? P${index + 1} ??">
-        <img src="${escapeHtml(url)}" alt="??? P${index + 1}" loading="lazy" />
-        <span>P${index + 1}</span>
-      </a>`).join("")}
-    </div>
-    <div class="asset-usage-panel">
-      <b>??????</b>
-      <ol>
-        <li><strong>?????</strong>??????????????????????????</li>
-        <li><strong>?????</strong>???????????????????????????????</li>
-        <li><strong>?????</strong>??????????????????????????????</li>
-        <li><strong>?????</strong>????????????????????????????</li>
-      </ol>
-    </div>
-    <div class="metric-row">
-      <span>????</span><span>????</span><span>??????</span>
-    </div>
-    <div class="asset-review-panel">
-      <b>??????</b>
-      <em>???????????????????????????</em>
-      <div class="asset-review-grid">
-        <span>??/?? <strong>${views || "??"}</strong></span>
-        <span>?? <strong>${likes || "??"}</strong></span>
-        <span>?? <strong>${saves || "??"}</strong></span>
-        <span>?? <strong>${comments || "??"}</strong></span>
-        <span>?? <strong>${shares || "??"}</strong></span>
-        <span>??? <strong>${saveRate}</strong></span>
-        <span>??? <strong>${engageRate}</strong></span>
-      </div>
-      ${isEditing ? renderPublishMetricsForm(item) : `<p>${escapeHtml(buildReviewConclusion(item))}</p>`}
-    </div>
-    <div class="asset-reuse-panel">
-      <b>?????????</b>
-      <span>??????????????????????????????</span>
-      <div class="asset-action-row">
-        ${availableTargets.map((target) => `<button class="secondary" type="button" data-reuse-work="${escapeHtml(item.id)}" data-reuse-target="${escapeHtml(target.id)}">??${escapeHtml(target.title)}</button>`).join("")}
-      </div>
-    </div>
-    <div class="asset-action-row">
-      <button class="secondary" type="button" data-edit-metrics="${escapeHtml(item.id)}">${isEditing ? "?????" : "?????"}</button>
-      <button class="secondary" type="button" data-deconstruct-work="${escapeHtml(item.id)}">????/????</button>
-    </div>
+    <header class="final-work-head"><div><b>${escapeHtml(item.title)}</b><span>${escapeHtml(item.platform)} ${zh("&#29256;&#26412;")} / ${body.length} ${zh("&#23383;&#27491;&#25991;")} / ${images.length} ${zh("&#24352;&#22270;&#29255;")} / ${escapeHtml(createdAt)}</span></div><em>${zh("&#24050;&#23436;&#25104;&#20316;&#21697;")}</em></header>
+    <p><strong>${zh("&#22797;&#29992;&#27597;&#39064;&#65306;")}</strong>${escapeHtml(item.topic || zh("&#26410;&#35760;&#24405;"))}</p>
+    <p><strong>${zh("&#25286;&#35299;&#36164;&#20135;&#65306;")}</strong>${escapeHtml(item.extractedAssets?.structure || zh("&#24453;&#25286;&#35299;"))}</p>
+    <details class="asset-delivery-panel"><summary><b>${zh("&#24179;&#21488;&#21457;&#24067;&#25104;&#31295;")}</b><span>${zh("&#23637;&#24320;&#26597;&#30475;&#27491;&#25991;&#65292;&#25353;&#38062;&#21487;&#30452;&#25509;&#22797;&#21046;&#12290;")}</span></summary><pre>${escapeHtml(bodyPreview || zh("&#36825;&#26465;&#20316;&#21697;&#27809;&#26377;&#20445;&#23384;&#21040;&#27491;&#25991;&#12290;"))}</pre><div class="asset-action-row"><button class="primary" type="button" data-copy-final-body="${escapeHtml(item.id)}">${zh("&#22797;&#21046;&#23436;&#25972;&#25991;&#26696;")}</button><button class="secondary" type="button" data-copy-final-images="${escapeHtml(item.id)}" ${images.length ? "" : "disabled"}>${zh("&#22797;&#21046;&#22270;&#29255;&#38142;&#25509;")}</button></div></details>
+    ${images.length ? `<div class="asset-delivery-panel compact"><div class="asset-delivery-head"><b>${zh("&#22270;&#29255;&#20132;&#20184;&#38142;&#25509;")}</b><span>${zh("&#28857;&#20987;&#32553;&#30053;&#22270;&#25171;&#24320;&#21407;&#22270;&#12290;")}</span></div><div class="asset-image-links">${images.map((url, index) => `<a class="source-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">P${index + 1} ${zh("&#21407;&#22270;")}</a>`).join("")}</div></div>` : `<div class="status-strip warn">${zh("&#36825;&#26465;&#20316;&#21697;&#27809;&#26377;&#20445;&#23384;&#22270;&#29255;&#12290;")}</div>`}
+    <div class="xhs-generated-grid asset-image-grid">${images.slice(0, 5).map((url, index) => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(url)}" alt="P${index + 1}" loading="lazy" /><span>P${index + 1}</span></a>`).join("")}</div>
+    <div class="asset-usage-panel"><b>${zh("&#19979;&#19968;&#27493;&#24590;&#20040;&#29992;")}</b><ol><li><strong>${zh("&#32487;&#32493;&#29983;&#20135;&#65306;")}</strong>${zh("&#25226;&#21516;&#19968;&#20010;&#27597;&#39064;&#25913;&#25104;&#21478;&#19968;&#20010;&#24179;&#21488;&#29256;&#26412;&#12290;")}</li><li><strong>${zh("&#21457;&#24067;&#22797;&#30424;&#65306;")}</strong>${zh("&#21457;&#20986;&#21435;&#21518;&#34917;&#25968;&#25454;&#65292;&#21028;&#26029;&#26159;&#21542;&#20540;&#24471;&#32487;&#32493;&#20570;&#12290;")}</li><li><strong>${zh("&#27785;&#28096;&#36164;&#20135;&#65306;")}</strong>${zh("&#25286;&#36827;&#26631;&#39064;&#24211;&#12289;&#32467;&#26500;&#24211;&#21644;&#22270;&#25991;&#39118;&#26684;&#24211;&#12290;")}</li></ol></div>
+    <div class="metric-row"><span>${zh("&#25104;&#31295;&#20316;&#21697;")}</span><span>${zh("&#22797;&#29992;&#27597;&#39064;")}</span><span>${zh("&#24453;&#34917;&#21457;&#24067;&#25968;&#25454;")}</span></div>
+    <div class="asset-review-panel"><b>${zh("&#21457;&#24067;&#22797;&#30424;&#25968;&#25454;")}</b><em>${zh("&#31532;&#19968;&#29256;&#30001;&#36816;&#33829;&#21457;&#24067;&#21518;&#25163;&#21160;&#22635;&#20889;&#12290;")}</em><div class="asset-review-grid"><span>${zh("&#38405;&#35835;/&#25773;&#25918;")} <strong>${views || pending}</strong></span><span>${zh("&#28857;&#36190;")} <strong>${likes || pending}</strong></span><span>${zh("&#25910;&#34255;")} <strong>${saves || pending}</strong></span><span>${zh("&#35780;&#35770;")} <strong>${comments || pending}</strong></span><span>${zh("&#36716;&#21457;")} <strong>${shares || pending}</strong></span><span>${zh("&#25910;&#34255;&#29575;")} <strong>${saveRate}</strong></span><span>${zh("&#20114;&#21160;&#29575;")} <strong>${engageRate}</strong></span></div>${isEditing ? renderPublishMetricsForm(item) : `<p>${escapeHtml(buildReviewConclusion(item))}</p>`}</div>
+    <div class="asset-reuse-panel"><b>${zh("&#36873;&#25321;&#19979;&#19968;&#20010;&#24179;&#21488;&#29256;&#26412;")}</b><span>${zh("&#20445;&#30041;&#21516;&#19968;&#20010;&#27597;&#39064;&#65292;&#20294;&#25353;&#30446;&#26631;&#24179;&#21488;&#37325;&#20889;&#12290;")}</span><div class="asset-action-row">${availableTargets.map((target) => `<button class="secondary" type="button" data-reuse-work="${escapeHtml(item.id)}" data-reuse-target="${escapeHtml(target.id)}">${zh("&#25913;&#25104;")}${escapeHtml(target.title)}</button>`).join("")}</div></div>
+    <div class="asset-action-row"><button class="secondary" type="button" data-edit-metrics="${escapeHtml(item.id)}">${isEditing ? zh("&#25910;&#36215;&#25968;&#25454;&#34920;") : zh("&#34917;&#21457;&#24067;&#25968;&#25454;")}</button><button class="secondary" type="button" data-deconstruct-work="${escapeHtml(item.id)}">${zh("&#25286;&#25104;&#26631;&#39064;/&#32467;&#26500;&#36164;&#20135;")}</button></div>
   </article>`;
 }
 function inferPlatformIdFromTitle(title = "") {
