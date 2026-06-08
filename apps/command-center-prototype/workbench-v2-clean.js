@@ -2485,7 +2485,7 @@ function sourceTitleForTarget() {
 function platformWanted() {
   if (state.sourceChannel === "same-platform") return currentTarget().platform;
   if (state.sourceChannel === "xhs") return "xiaohongshu";
-  if (state.sourceChannel === "x-history") return "all";
+  if (state.sourceChannel === "x-history") return "x";
   if (state.sourceChannel === "x-live") return "x";
   if (state.sourceChannel === "manual") return "manual";
   return "all";
@@ -2503,6 +2503,20 @@ function buildTopicsFromDb(db) {
     .filter((item) => item && (item.title || item.text || item.content || item.body || item.copy || item.structured))
     .map(normalizeSample)
     .filter(matchesWantedPlatform);
+  if (state.sourceChannel === "x-history" || state.sourceChannel === "x-live") {
+    const xScored = normalized
+      .map((sample) => ({ sample, score: scoreSample(sample, keywords), eligibility: judgeMotherTopicEligibility(sample) }))
+      .filter((item) => shouldKeepXSample(item, keywords))
+      .sort(sortXHistorySample);
+    const balanced = balanceXHistoryScored(xScored);
+    return dedupeMotherTopics(balanced.map(({ sample, eligibility }, index) => {
+      const topic = makeMotherTopic(sample, index, eligibility);
+      if (!eligibility.pass && eligibility.blockers?.length) {
+        topic.reason = `真实 X 素材，建议人工判断后再用；风险：${eligibility.blockers.slice(0, 2).join("；")}。`;
+      }
+      return topic;
+    })).slice(0, 10);
+  }
   const scored = normalized
     .map((sample) => ({ sample, score: scoreSample(sample, keywords), eligibility: judgeMotherTopicEligibility(sample) }))
     .filter((item) => shouldKeepScoredSample(item, keywords))
@@ -2524,6 +2538,9 @@ function dedupeMotherTopics(topics = []) {
 }
 
 function motherTopicKey(topic = {}) {
+  if (state.sourceChannel === "x-history" || state.sourceChannel === "x-live") {
+    return topic.url || topic.id || cleanSourceText(topic.title || topic.theme || "").slice(0, 80);
+  }
   const text = `${topic.theme} ${topic.sourceInsight?.angle || ""}`.toLowerCase();
   if (/同质化|模板|规范|打击/.test(text)) return "ai-content-template-risk";
   if (/拆文|爆款|关键|提示词/.test(text)) return "viral-deconstruction-missing-layer";
@@ -2536,6 +2553,43 @@ function shouldKeepScoredSample(item, keywords) {
   if (!keywords.length) return state.sourceChannel === "all-assets";
   if (item.score > 0) return true;
   return false;
+}
+
+function shouldKeepXSample(item, keywords) {
+  const text = cleanSourceText(`${item.sample.title} ${item.sample.body}`);
+  const tier = String(item.sample.assetTier || "");
+  const explicitGood = item.sample.keepForCreation === true || tier === "mother_topic_candidate";
+  if (text.length < 20) return false;
+  if (/^rt\s*@/i.test(text) || /^转发/.test(text)) return false;
+  if (/^https?:\/\/\S+$/i.test(text)) return false;
+  if (explicitGood) return true;
+  if (item.sample.rejectReason) return false;
+  if (!keywords.length) return (item.sample.contentValueScore || 0) >= 55;
+  if (item.score > 0 && (item.sample.contentValueScore || 0) >= 45) return true;
+  return item.score > 0 && ((item.eligibility.heat || 0) >= 12 || text.length >= 120);
+}
+
+function sortXHistorySample(a, b) {
+  const bt = Date.parse(b.sample.collectedAt || b.sample.createdAt || 0) || 0;
+  const at = Date.parse(a.sample.collectedAt || a.sample.createdAt || 0) || 0;
+  return bt - at
+    || Number(b.sample.keepForCreation === true) - Number(a.sample.keepForCreation === true)
+    || Number(b.sample.contentValueScore || 0) - Number(a.sample.contentValueScore || 0)
+    || (b.score + (b.eligibility.heat || 0) / 100) - (a.score + (a.eligibility.heat || 0) / 100);
+}
+
+function balanceXHistoryScored(items = []) {
+  const groups = new Map();
+  for (const item of items) {
+    const account = item.sample.keyword || item.sample.authorName || item.sample.author || item.sample.source || "unknown";
+    if (!groups.has(account)) groups.set(account, []);
+    groups.get(account).push(item);
+  }
+  const picked = [];
+  for (const group of groups.values()) picked.push(...group.slice(0, 2));
+  const used = new Set(picked.map((item) => item.sample.url || item.sample.id || item.sample.title));
+  const rest = items.filter((item) => !used.has(item.sample.url || item.sample.id || item.sample.title));
+  return [...picked, ...rest];
 }
 
 function judgeMotherTopicEligibility(sample = {}) {
@@ -2632,6 +2686,14 @@ function normalizeSample(item) {
     type: item.type || "",
     keyword: item.keyword || item.sourceKeyword || structured.keyword || "",
     url: item.url || item.sourceUrl || item.noteUrl || "",
+    keepForCreation: item.keepForCreation,
+    assetTier: item.assetTier || item.asset_tier || "",
+    rejectReason: item.rejectReason || item.reject_reason || "",
+    contentValueScore: Number(item.contentValueScore || item.content_value_score || 0),
+    radarScore: Number(item.radarScore || item.radar_score || 0),
+    qualityReasons: Array.isArray(item.qualityReasons) ? item.qualityReasons : [],
+    collectedAt: item.collectedAt || item.collected_at || "",
+    createdAt: item.createdAt || item.created_at || "",
     metrics,
     collectionStatus: item.collectionStatus || item.status || "real",
     reason: item.angle || item.reason || "",

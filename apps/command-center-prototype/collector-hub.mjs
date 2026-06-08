@@ -94,10 +94,20 @@ export async function loadUnifiedContentAssets(input = {}) {
     limit $2
   `, [platform, poolLimit, runIds.length ? runIds : null]);
   const samples = result.rows.map(dbRowToContentSample);
-  const assets = samples
+  const preparedSamples = platform === 'x' ? evaluateXContentSamples(samples).rows : samples;
+  const assets = preparedSamples
     .map((sample) => contentSampleToUnifiedAsset(sample, keywords))
     .filter((asset) => !keywords.length || asset.matchScore > 0)
-    .sort((a, b) => b.matchScore - a.matchScore || b.heatScore - a.heatScore)
+    .sort((a, b) => {
+      if (platform === 'x') {
+        return Date.parse(b.collectedAt || b.createdAt || 0) - Date.parse(a.collectedAt || a.createdAt || 0)
+          || Number(b.keepForCreation === true) - Number(a.keepForCreation === true)
+          || Number(b.contentValueScore || 0) - Number(a.contentValueScore || 0)
+          || b.matchScore - a.matchScore
+          || b.heatScore - a.heatScore;
+      }
+      return b.matchScore - a.matchScore || b.heatScore - a.heatScore;
+    })
     .slice(0, limit);
   return {
     ok: true,
@@ -1488,6 +1498,12 @@ function contentSampleToUnifiedAsset(sample = {}, keywords = []) {
     trainingRole: sample.labelType || 'unlabeled',
     heatScore,
     matchScore,
+    keepForCreation: sample.keepForCreation,
+    assetTier: sample.assetTier,
+    rejectReason: sample.rejectReason,
+    contentValueScore: sample.contentValueScore,
+    radarScore: sample.radarScore,
+    qualityReasons: sample.qualityReasons || [],
     qualitySignals: {
       hasSourceUrl: Boolean(sample.sourceUrl),
       hasBody: Boolean(sample.body && sample.body.length >= 20),
