@@ -49,7 +49,7 @@ const state = {
   isCollectingX: false,
 };
 
-const TITLE_LOGIC_VERSION = "topic-formula-readable-v3";
+const TITLE_LOGIC_VERSION = "topic-bound-readable-v4";
 
 const publishTargets = [
   { id: "xhs", title: "小红书图文", platform: "xiaohongshu", desc: "封面、标题、短正文、收藏点、标签" },
@@ -2069,7 +2069,7 @@ function bindWorkAreaActions() {
     button.addEventListener("click", () => {
       state.selectedTopicId = button.dataset.topicId;
       clearAfter(5);
-      state.titleChoices = buildTitleChoices(selectedTopic());
+      state.titleChoices = buildCleanTitleChoices(selectedTopic());
       state.titleChoiceKey = currentTitleChoiceKey(selectedTopic());
       setStep(6);
     });
@@ -2595,6 +2595,7 @@ function motherTopicKey(topic = {}) {
 }
 
 function shouldKeepScoredSample(item, keywords) {
+  if (item.sample.platform === "xiaohongshu" && item.sample.readyForCreation === true) return true;
   if (!keywords.length) return state.sourceChannel === "all-assets";
   if (item.score > 0) return true;
   return false;
@@ -2641,6 +2642,17 @@ function balanceXHistoryScored(items = []) {
 }
 
 function judgeMotherTopicEligibility(sample = {}) {
+  if (sample.platform === "xiaohongshu" && sample.readyForCreation === true) {
+    return {
+      pass: true,
+      reasons: [sample.qualityLabel || "小红书图文正文完整，适合进入二创"],
+      blockers: [],
+      heat: Number(sample.metrics?.likes || 0)
+        + Number(sample.metrics?.collects || sample.metrics?.saves || 0) * 1.2
+        + Number(sample.metrics?.comments || 0) * 2
+        + Number(sample.metrics?.shares || 0) * 2,
+    };
+  }
   const text = cleanSourceText(`${sample.title} ${sample.body}`);
   const metrics = sample.metrics || {};
   const heat = Number(metrics.likes || 0)
@@ -2739,6 +2751,12 @@ function normalizeSample(item) {
     rejectReason: item.rejectReason || item.reject_reason || "",
     contentValueScore: Number(item.contentValueScore || item.content_value_score || 0),
     radarScore: Number(item.radarScore || item.radar_score || 0),
+    mediaType: item.mediaType || item.media?.type || "",
+    qualityTier: item.qualityTier || "",
+    qualityLabel: item.qualityLabel || "",
+    readyForCreation: item.readyForCreation === true,
+    needsTranscript: item.needsTranscript === true,
+    bodyCompleteness: item.bodyCompleteness || "",
     qualityReasons: Array.isArray(item.qualityReasons) ? item.qualityReasons : [],
     collectedAt: item.collectedAt || item.collected_at || "",
     createdAt: item.createdAt || item.created_at || "",
@@ -2932,7 +2950,7 @@ function ensureFreshTitleChoices(titleAssets = state.titleAssets) {
   const key = currentTitleChoiceKey(topic);
   if (state.titleChoiceKey === key && state.titleChoices.length) return;
   state.titleChoiceKey = key;
-  state.titleChoices = buildTitleChoices(topic, titleAssets);
+  state.titleChoices = buildCleanTitleChoices(topic, titleAssets);
   if (!state.titleChoices.some((item) => item.title === state.selectedTitle)) state.selectedTitle = "";
 }
 
@@ -2952,7 +2970,8 @@ function topicTextForTitle(topic = {}) {
 
 function extractTopicSignals(topic = {}) {
   const text = topicTextForTitle(topic);
-  const caseSignal = extractCaseTitleSignal(text);
+  const hasCaseProof = /(?:收益|收入|变现|利润|流量|阅读|播放|涨粉|曝光|点赞|收藏|成交)[^，。！？\d]{0,12}\d|\d+(?:\.\d+)?\s*[万千百kK]?\+?\s*(?:曝光|阅读|播放|点赞|收藏|涨粉|收益|收入|成交|变现)/.test(text);
+  const caseSignal = hasCaseProof ? extractCaseTitleSignal(text) : null;
   if (caseSignal) return caseSignal;
   const clauses = text
     .split(/[。！？!?；;\n\r]+/)
@@ -3084,10 +3103,10 @@ function applyTitleFormula(formula, signal) {
   if (signal.mode === "case") {
     const caseMap = {
       contrast: `${main}的重点不是${second}，而是${third}`,
-      misread: `别小看${main}，真正香的是${third}`,
+      misread: `别把${main}只看成${second}`,
       behind: `${main}背后，藏着一套${third}`,
       "why-impact": `为什么${main}能跑出${third}`,
-      "three-points": `看懂${main}，先抓这 3 个点`,
+      "three-points": `${main}这件事，先拆清 3 个信号`,
       "not-new": `${main}不是偶然，真正关键是${third}`,
     };
     if (caseMap[formula.pattern]) return caseMap[formula.pattern];
@@ -3249,6 +3268,166 @@ function dedupeTitleChoices(items = []) {
   }
   return result.slice(0, 5);
 }
+function buildCleanTitleChoices(topic, titleAssets = state.titleAssets) {
+  if (!topic) return [];
+  const signal = extractCleanTitleSignal(topic);
+  const choices = titleTemplatesForTarget(state.publishTarget).map((template) => titleChoice(template.render(signal), template.reason));
+  const assetChoice = buildCleanAssetTitleChoice(signal, titleAssets);
+  return dedupeCleanTitleChoices(assetChoice ? [assetChoice, ...choices] : choices).slice(0, 5);
+}
+
+function extractCleanTitleSignal(topic = {}) {
+  const rawTitle = cleanReadableText(topic.title || topic.theme || "");
+  const rawBody = cleanReadableText(topic.body || topic.content || topic.summary || topic.reason || "");
+  const text = cleanReadableText([rawTitle, rawBody, state.keywords, state.businessLine].filter(Boolean).join(" "));
+  const sourceTitle = rawTitle || firstMeaningfulPhrase(text) || state.businessLine || "这个选题";
+  return {
+    text,
+    sourceTitle,
+    subject: shortenTitlePart(extractSubject(text, sourceTitle)),
+    audience: shortenTitlePart(extractAudience(text)),
+    action: shortenTitlePart(extractAction(text)),
+    pain: shortenTitlePart(extractPain(text, sourceTitle)),
+    result: shortenTitlePart(extractResult(text)),
+    platform: currentTarget().title || "小红书图文",
+  };
+}
+
+function cleanReadableText(value = "") {
+  return String(value || "")
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/#([^#\s]+)\[话题\]#/g, "$1")
+    .replace(/[#@]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function firstMeaningfulPhrase(text = "") {
+  return text.split(/[，。！？；：,.!?\n]/).map((item) => item.trim()).find((item) => item.length >= 4) || "";
+}
+
+function extractSubject(text = "", fallback = "") {
+  const patterns = [
+    /(AI做Plog|AI\s*Plog|Plog)/i,
+    /(AI做图|AI出图|AI作图|AI生成图片|AI绘图)/i,
+    /(AI自媒体|自媒体|内容创作|内容生产线)/i,
+    /(Agent工作流|Agent|工作流)/i,
+    /(小红书|公众号|视频号|朋友圈)/i,
+    /(爆款标题|标题|选题|素材库|内容资产库|知识库)/i,
+    /(Claude|DeepSeek|豆包|即梦|WorkBuddy|Skill|Skills)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+  return fallback;
+}
+
+function extractAudience(text = "") {
+  if (/女生|姐妹|宝妈|女性/.test(text)) return "想做自媒体的女生";
+  if (/新手|小白|0基础|零基础/.test(text)) return "新手";
+  if (/博主|账号|自媒体/.test(text)) return "内容创作者";
+  if (/老板|团队|公司|企业/.test(text)) return "小团队";
+  return "普通人";
+}
+
+function extractAction(text = "") {
+  if (/Plog|做图|出图|作图|图片|构图/.test(text)) return "把图片和文案做成流程";
+  if (/标题|爆款/.test(text)) return "先拆标题和爆点";
+  if (/素材|资产|知识库|收藏/.test(text)) return "先建可复用素材库";
+  if (/Agent|工作流|自动化/.test(text)) return "先跑通一个小闭环";
+  if (/公众号|长文/.test(text)) return "先拆成长文结构";
+  return "先把方法拆成步骤";
+}
+
+function extractPain(text = "", subject = "") {
+  if (/不会构图|道具不够|缺少一张图片|不出片/.test(text)) return "不会构图、素材不够";
+  if (/没方向|不知道.*发|没选题|缺.*素材/.test(text)) return "每天不知道发什么";
+  if (/AI味|像AI|同质化|模板/.test(text)) return "写出来太像模板";
+  if (/没流量|不涨粉|没结果/.test(text)) return "发了也没结果";
+  if (/太慢|效率|批量/.test(text)) return "效率太低";
+  return subject ? `${subject}做不出稳定效果` : "不知道第一步怎么做";
+}
+
+function extractResult(text = "") {
+  const metric = text.match(/(\d+(?:\.\d+)?\s*[万千百kK]?\+?)\s*(曝光|阅读|播放|点赞|收藏|涨粉|收益|收入|成交)/);
+  if (metric) return `${metric[1]}${metric[2]}`;
+  if (/起号|涨粉/.test(text)) return "更容易起号";
+  if (/变现|赚钱|收益|副业/.test(text)) return "更容易变现";
+  if (/效率|批量|半小时|三小时/.test(text)) return "效率翻倍";
+  if (/出片|好看|治愈/.test(text)) return "稳定出片";
+  return "稳定产出";
+}
+
+function shortenTitlePart(value = "") {
+  const clean = cleanReadableText(value).replace(/[，。！？；：,.!?].*$/, "").trim();
+  return clean.length > 18 ? clean.slice(0, 18) : clean || "这个方法";
+}
+
+function titleTemplatesForTarget(target) {
+  if (target === "moments") {
+    return [
+      { reason: "朋友圈观察型", render: (s) => `我最近重新理解了${s.subject}` },
+      { reason: "朋友圈反差型", render: (s) => `以前以为难在${s.subject}，后来发现是${s.action}` },
+      { reason: "朋友圈经验型", render: (s) => `${s.pain}这事，真的不能只靠感觉` },
+      { reason: "朋友圈提醒型", render: (s) => `如果你也在做${s.subject}，先别急着照搬` },
+      { reason: "朋友圈结论型", render: (s) => `${s.subject}真正值钱的是能复用` },
+    ];
+  }
+  if (target === "wechat-article") {
+    return [
+      { reason: "公众号深度型", render: (s) => `${s.subject}真正难的不是工具，而是${s.action}` },
+      { reason: "公众号问题型", render: (s) => `为什么很多人做${s.subject}，最后都卡在${s.pain}` },
+      { reason: "公众号方法型", render: (s) => `从${s.pain}到${s.result}：一套可复用的${s.subject}方法` },
+      { reason: "公众号复盘型", render: (s) => `我拆完这条${s.subject}爆款后，发现关键在${s.action}` },
+      { reason: "公众号系统型", render: (s) => `${s.subject}不能只靠灵感，要靠一套内容系统` },
+    ];
+  }
+  if (target === "douyin" || target === "video-account") {
+    return [
+      { reason: "短视频钩子型", render: (s) => `别再乱做${s.subject}了，先看这一步` },
+      { reason: "短视频反差型", render: (s) => `${s.subject}没效果，问题通常不是工具` },
+      { reason: "短视频清单型", render: (s) => `${s.audience}做${s.subject}，先抓这3个信号` },
+      { reason: "短视频结果型", render: (s) => `我是怎么用${s.subject}做到${s.result}的` },
+      { reason: "短视频避坑型", render: (s) => `${s.pain}，多半是少了这套流程` },
+    ];
+  }
+  return [
+    { reason: "小红书痛点型", render: (s) => `${s.audience}做${s.subject}，别先死磕工具` },
+    { reason: "小红书方法型", render: (s) => `${s.subject}想出效果，先把这一步做好` },
+    { reason: "小红书收藏型", render: (s) => `${s.pain}？这套${s.subject}流程建议收藏` },
+    { reason: "小红书反差型", render: (s) => `${s.subject}的重点不是技巧，是${s.action}` },
+    { reason: "小红书结果型", render: (s) => `我用${s.subject}跑通了${s.result}，关键是这3点` },
+  ];
+}
+
+function buildCleanAssetTitleChoice(signal, assets = []) {
+  const matched = (assets || []).find((item) => item?.title && cleanReadableText(item.title).length >= 6);
+  if (!matched) return null;
+  const title = cleanReadableText(matched.title);
+  const style = /[？?]/.test(title) ? "问题式" : /\d/.test(title) ? "数字清单式" : "爆款参考式";
+  const rendered = style === "数字清单式"
+    ? `${signal.audience}做${signal.subject}，先记住这3个动作`
+    : style === "问题式"
+      ? `为什么你做${signal.subject}总是卡在${signal.pain}`
+      : `${signal.subject}想做出效果，别忽略${signal.action}`;
+  return titleChoice(rendered, `标题库参考：${style}，已按当前选题重写`);
+}
+
+function dedupeCleanTitleChoices(items = []) {
+  const seen = new Set();
+  const result = [];
+  for (const item of items) {
+    const title = clampTitle(cleanReadableText(item.title));
+    const key = title.replace(/[，。！？、\s]/g, "");
+    if (!title || seen.has(key)) continue;
+    if (/大城市流量|跑出结果|真正香|当前选题|绑定当前选题|公式/.test(title)) continue;
+    seen.add(key);
+    result.push({ title, reason: cleanReadableText(item.reason || "绑定当前选题生成") });
+  }
+  return result;
+}
+
 function safeThemeForTitle(topic = {}) {
   const sourceTheme = cleanSourceText(topic.theme || topic.title || state.businessLine);
   if (!sourceTheme || looksLikeGenericDiagnosis(sourceTheme)) return state.businessLine;
@@ -4539,7 +4718,7 @@ function reuseFinalWork(id, target) {
   state.titleAssets = [];
   state.titleAssetMessage = "";
   state.titleAssetKey = "";
-  state.titleChoices = buildTitleChoices(reuseTopic, []);
+  state.titleChoices = buildCleanTitleChoices(reuseTopic, []);
   state.titleChoiceKey = currentTitleChoiceKey(reuseTopic);
   state.selectedTitle = "";
   state.draft = "";
