@@ -248,6 +248,40 @@ export async function confirmContentAsset(input = {}) {
   };
 }
 
+export async function deleteCollectionRun(input = {}) {
+  await requireCollectorDb();
+  const runId = normalizeText(input.runId || input.run_id || input.id || '');
+  if (!runId) return { ok: false, error: 'missing_run_id', message: 'runId is required.' };
+  const before = await pgPool.query(
+    'select id, platform, source_type, query, status from longka_collection_runs where id=$1',
+    [runId],
+  );
+  const sampleCount = await pgPool.query(
+    'select count(*)::int as count from longka_content_samples where run_id=$1',
+    [runId],
+  );
+  if (!before.rows.length && !sampleCount.rows[0]?.count) {
+    return { ok: false, error: 'run_not_found', message: `Collection run not found: ${runId}` };
+  }
+  await pgPool.query('begin');
+  try {
+    const deletedSamples = await pgPool.query('delete from longka_content_samples where run_id=$1 returning id', [runId]);
+    const deletedRun = await pgPool.query('delete from longka_collection_runs where id=$1 returning id', [runId]);
+    await pgPool.query('commit');
+    return {
+      ok: true,
+      runId,
+      run: before.rows[0] || null,
+      sampleCount: sampleCount.rows[0]?.count || 0,
+      deletedSamples: deletedSamples.rowCount,
+      deletedRuns: deletedRun.rowCount,
+    };
+  } catch (error) {
+    await pgPool.query('rollback');
+    throw error;
+  }
+}
+
 export async function createCollectionRun(input = {}) {
   await requireCollectorDb();
   const now = new Date().toISOString();

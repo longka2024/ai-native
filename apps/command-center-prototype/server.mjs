@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { collectorHealth, confirmContentAsset, importLocalPlatformBatch, initCollectorHub, loadLatestXBatch, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch } from './collector-hub.mjs';
+import { collectorHealth, confirmContentAsset, deleteCollectionRun, importLocalPlatformBatch, initCollectorHub, loadLatestXBatch, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch } from './collector-hub.mjs';
 
 const root = resolve(fileURLToPath(new URL('.', import.meta.url)));
 const dataDir = join(root, 'data');
@@ -269,6 +269,11 @@ createServer(async (req, res) => {
       const result = await loadLatestXBatch({
         limitRuns: url.searchParams.get('limitRuns') || 3,
       });
+      return sendJson(res, result, result.ok ? 200 : 400);
+    }
+
+    if (req.method === 'DELETE' && url.pathname === '/api/content-assets/collection-run') {
+      const result = await deleteCollectionRun({ runId: url.searchParams.get('runId') || '' });
       return sendJson(res, result, result.ok ? 200 : 400);
     }
 
