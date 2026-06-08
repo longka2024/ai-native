@@ -4009,6 +4009,18 @@ function normalizeDraftShape(raw = {}, payload = {}) {
   const xhsBody = asText(xhsSource.body || xhsSource.content || xhsSource.copy || raw.body || raw.copy || raw.xhsCopy);
   const imagePlan = normalizeStringArray(raw.imagePlan || xhsSource.imagePlan || xhsSource.images || xhsSource.cards, []);
   const tags = normalizeStringArray(xhsSource.tags || raw.tags || raw.hashtags, []);
+  const wechatSource = raw.wechatArticle || raw.articleDraft || {};
+  const wechatArticle = typeof wechatSource === 'string' ? {
+    title: selectedTitle,
+    body: wechatSource,
+    imageInsertionPlan: normalizeStringArray(raw.imageInsertionPlan || raw.imagePlan, []),
+  } : {
+    title: asText(wechatSource.title || selectedTitle),
+    body: asText(wechatSource.body || wechatSource.content || wechatSource.copy || ''),
+    imageInsertionPlan: Array.isArray(wechatSource.imageInsertionPlan)
+      ? wechatSource.imageInsertionPlan
+      : normalizeStringArray(wechatSource.imageInsertionPlan || raw.imageInsertionPlan, []),
+  };
   const videoSource = raw.videoScript || {};
   const videoScript = typeof videoSource === 'string' ? videoSource : {
     title: asText(videoSource.title || selectedTitle),
@@ -4035,6 +4047,7 @@ function normalizeDraftShape(raw = {}, payload = {}) {
       imagePlan,
       tags,
     },
+    wechatArticle,
     videoScript,
     imagePlan,
     riskNote: asText(raw.riskNote || payload.topic?.risk || ''),
@@ -4305,6 +4318,7 @@ async function generateSopRewriteDraft(payload = {}) {
         publishable: '今天能发布什么',
       },
       xhsCopy: '完整小红书图文，字段为 title/body/imagePlan/tags。body 控制在 600-900 中文字，必须像真实运营稿，不要写内部分析腔。',
+      wechatArticle: 'When the selected platform is WeChat/public-account long article, return wechatArticle: { title, body, imageInsertionPlan }. Do not stretch word count as KPI. Use a strong article structure: hook, problem definition, evidence or scene, method, action entry. Use natural length based on logic, usually 700-1400 Chinese characters. imageInsertionPlan must say where P1-P5 images fit by section and why.',
       structureRequirement: '正文必须按 contentStrategy.selectedAngle 写，不同标题换正文结构。不要每次都写“四种类型逐条科普”。',
       commentRequirement: '正文必须明显回应 contentStrategy.selectedQuestion，并自然吸收 1-2 个评论区追问。',
       videoScript: '短视频脚本摘要，字段为 title/hook/voiceover/shotList/riskNote。',
@@ -4318,10 +4332,13 @@ async function generateSopRewriteDraft(payload = {}) {
     const titleOnlyTask = /只根据|不要写正文/.test(asText(requestUser.task));
     if (titleOnlyTask) return { ok: true };
     const format = asText(payload.selectedFormat || payload.platform || '');
-    const body = /视频/.test(format)
-      ? asText(draft.videoScript?.voiceover || draft.xhsCopy?.body)
-      : asText(draft.xhsCopy?.body);
-    if (body.length < 180) {
+    const isWechatArticle = /wechat/i.test(format) || format.includes('\u516c\u4f17\u53f7') || format.includes('\u957f\u6587');
+    const body = isWechatArticle
+      ? asText(draft.wechatArticle?.body || draft.xhsCopy?.body)
+      : format.includes('\u89c6\u9891')
+        ? asText(draft.videoScript?.voiceover || draft.xhsCopy?.body)
+        : asText(draft.xhsCopy?.body);
+    if (body.length < (isWechatArticle ? 450 : 180)) {
       return {
         ok: false,
         error: 'ai_empty_body',

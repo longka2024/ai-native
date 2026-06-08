@@ -3737,7 +3737,7 @@ function formatSopDraft(draft = {}) {
 }
 
 function formatWechatSopDraft({ title = "", body = "", draft = {} } = {}) {
-  const clean = stripPlatformNoise(body || draft.article?.body || draft.article || "");
+  const clean = stripPlatformNoise(draft.wechatArticle?.body || body || draft.article?.body || draft.article || "");
   const articleTitle = title || state.selectedTitle || selectedTopic()?.theme || "未命名长文";
   if (/^#\s+/m.test(clean) || /^##\s+/m.test(clean)) {
     return clean.replace(/^标题[：:].*$/gm, "").trim();
