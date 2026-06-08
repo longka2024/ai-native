@@ -3756,82 +3756,84 @@ function renderFinalWorkAsset(item) {
   const saves = Number(metrics.saves || 0);
   const comments = Number(metrics.comments || 0);
   const shares = Number(metrics.shares || 0);
-  const saveRate = views ? `${((saves / views) * 100).toFixed(1)}%` : "待补";
-  const engageRate = views ? `${(((likes + saves + comments + shares) / views) * 100).toFixed(1)}%` : "待补";
+  const saveRate = views ? `${((saves / views) * 100).toFixed(1)}%` : "??";
+  const engageRate = views ? `${(((likes + saves + comments + shares) / views) * 100).toFixed(1)}%` : "??";
   const isEditing = state.editingMetricsWorkId === item.id;
   const platformId = item.platformId || inferPlatformIdFromTitle(item.platform);
   const availableTargets = publishTargets.filter((target) => target.id !== "topic-only" && target.id !== platformId);
+  const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleString() : "?????";
   return `<article class="asset-item final-work-asset">
-    <b>${escapeHtml(item.title)}</b>
-    <span>${escapeHtml(item.platform)} 版本 · ${escapeHtml(images.length || 0)} 张可用图 · ${new Date(item.createdAt).toLocaleString()}</span>
-    <p><strong>复用母题：</strong>${escapeHtml(item.topic || "未记录")}</p>
-    <p><strong>拆解资产：</strong>${escapeHtml(item.extractedAssets?.structure || "")}</p>
-    <div class="asset-delivery-panel">
-      <div class="asset-delivery-head">
-        <b>平台发布成稿</b>
-        <span>${body.length} 字正文 / ${images.length} 张图片</span>
+    <header class="final-work-head">
+      <div>
+        <b>${escapeHtml(item.title)}</b>
+        <span>${escapeHtml(item.platform)} ?? ? ${body.length} ??? ? ${images.length} ??? ? ${escapeHtml(createdAt)}</span>
       </div>
-      <pre>${escapeHtml(bodyPreview || "这条作品没有保存到正文，请回今日工作台重新保存。")}</pre>
+      <em>?????</em>
+    </header>
+    <p><strong>?????</strong>${escapeHtml(item.topic || "???")}</p>
+    <p><strong>?????</strong>${escapeHtml(item.extractedAssets?.structure || "???")}</p>
+    <details class="asset-delivery-panel">
+      <summary><b>??????</b><span>???????????????</span></summary>
+      <pre>${escapeHtml(bodyPreview || "????????????????????????")}</pre>
       <div class="asset-action-row">
-        <button class="primary" type="button" data-copy-final-body="${escapeHtml(item.id)}">复制完整文案</button>
-        <button class="secondary" type="button" data-copy-final-images="${escapeHtml(item.id)}" ${images.length ? "" : "disabled"}>复制图片链接</button>
+        <button class="primary" type="button" data-copy-final-body="${escapeHtml(item.id)}">??????</button>
+        <button class="secondary" type="button" data-copy-final-images="${escapeHtml(item.id)}" ${images.length ? "" : "disabled"}>??????</button>
       </div>
-    </div>
-    ${images.length ? `<div class="asset-delivery-panel">
+    </details>
+    ${images.length ? `<div class="asset-delivery-panel compact">
       <div class="asset-delivery-head">
-        <b>图片交付链接</b>
-        <span>点击缩略图打开原图，复制链接后可发给运营或下载发布。</span>
+        <b>??????</b>
+        <span>??????????????????????????</span>
       </div>
       <div class="asset-image-links">
-        ${images.map((url, index) => `<p><strong>P${index + 1}</strong> <a class="source-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(url)}</a></p>`).join("")}
+        ${images.map((url, index) => `<a class="source-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">P${index + 1} ??</a>`).join("")}
       </div>
-    </div>` : `<div class="status-strip warn">这条作品没有保存图片。小红书图文必须先在第 10 步生成图片，再保存成稿。</div>`}
-    <div class="asset-usage-panel">
-      <b>下一步怎么用</b>
-      <ol>
-        <li><strong>继续生产：</strong>点下面的平台按钮，把同一个母题改成另一个平台版本。</li>
-        <li><strong>发布复盘：</strong>发出去后补阅读、点赞、收藏、评论，判断这个母题值不值得继续做。</li>
-        <li><strong>沉淀资产：</strong>把标题、开头、结构和配图策略继续拆进标题库/结构库/图文风格库。</li>
-        <li><strong>训练语料：</strong>表现好的归为正例，表现差的归为反例，后续进入平台指纹库。</li>
-      </ol>
-    </div>
-    <div class="metric-row">
-      <span>成稿作品</span><span>复用母题</span><span>待补发布数据</span>
-    </div>
-    <div class="asset-review-panel">
-      <b>发布复盘数据</b>
-      <em>数据来源：第一版由运营发布后，从小红书/公众号/视频号后台手动填写；后续接发布回流后自动更新。</em>
-      <div class="asset-review-grid">
-        <span>阅读/播放 <strong>${views || "待补"}</strong></span>
-        <span>点赞 <strong>${likes || "待补"}</strong></span>
-        <span>收藏 <strong>${saves || "待补"}</strong></span>
-        <span>评论 <strong>${comments || "待补"}</strong></span>
-        <span>转发 <strong>${shares || "待补"}</strong></span>
-        <span>收藏率 <strong>${saveRate}</strong></span>
-        <span>互动率 <strong>${engageRate}</strong></span>
-      </div>
-      ${isEditing ? renderPublishMetricsForm(item) : `<p>${escapeHtml(buildReviewConclusion(item))}</p>`}
-    </div>
+    </div>` : `<div class="status-strip warn">????????????????????? 10 ????????????</div>`}
     <div class="xhs-generated-grid asset-image-grid">
-      ${images.slice(0, 5).map((url, index) => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer" title="打开 P${index + 1} 原图">
-        <img src="${escapeHtml(url)}" alt="成稿图 P${index + 1}" loading="lazy" />
+      ${images.slice(0, 5).map((url, index) => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer" title="?? P${index + 1} ??">
+        <img src="${escapeHtml(url)}" alt="??? P${index + 1}" loading="lazy" />
         <span>P${index + 1}</span>
       </a>`).join("")}
     </div>
+    <div class="asset-usage-panel">
+      <b>??????</b>
+      <ol>
+        <li><strong>?????</strong>??????????????????????????</li>
+        <li><strong>?????</strong>???????????????????????????????</li>
+        <li><strong>?????</strong>??????????????????????????????</li>
+        <li><strong>?????</strong>????????????????????????????</li>
+      </ol>
+    </div>
+    <div class="metric-row">
+      <span>????</span><span>????</span><span>??????</span>
+    </div>
+    <div class="asset-review-panel">
+      <b>??????</b>
+      <em>???????????????????????????</em>
+      <div class="asset-review-grid">
+        <span>??/?? <strong>${views || "??"}</strong></span>
+        <span>?? <strong>${likes || "??"}</strong></span>
+        <span>?? <strong>${saves || "??"}</strong></span>
+        <span>?? <strong>${comments || "??"}</strong></span>
+        <span>?? <strong>${shares || "??"}</strong></span>
+        <span>??? <strong>${saveRate}</strong></span>
+        <span>??? <strong>${engageRate}</strong></span>
+      </div>
+      ${isEditing ? renderPublishMetricsForm(item) : `<p>${escapeHtml(buildReviewConclusion(item))}</p>`}
+    </div>
     <div class="asset-reuse-panel">
-      <b>选择下一个平台版本</b>
-      <span>当前已有 ${escapeHtml(item.platform)} 版本。下面会保留母题，但按目标平台重新写标题、结构、正文和图片策略。</span>
+      <b>?????????</b>
+      <span>??????????????????????????????</span>
       <div class="asset-action-row">
-        ${availableTargets.map((target) => `<button class="secondary" type="button" data-reuse-work="${escapeHtml(item.id)}" data-reuse-target="${escapeHtml(target.id)}">改成${escapeHtml(target.title)}</button>`).join("")}
+        ${availableTargets.map((target) => `<button class="secondary" type="button" data-reuse-work="${escapeHtml(item.id)}" data-reuse-target="${escapeHtml(target.id)}">??${escapeHtml(target.title)}</button>`).join("")}
       </div>
     </div>
     <div class="asset-action-row">
-      <button class="secondary" type="button" data-edit-metrics="${escapeHtml(item.id)}">${isEditing ? "收起数据表" : "补发布数据"}</button>
-      <button class="secondary" type="button" data-deconstruct-work="${escapeHtml(item.id)}">拆成标题/结构资产</button>
+      <button class="secondary" type="button" data-edit-metrics="${escapeHtml(item.id)}">${isEditing ? "?????" : "?????"}</button>
+      <button class="secondary" type="button" data-deconstruct-work="${escapeHtml(item.id)}">????/????</button>
     </div>
   </article>`;
 }
-
 function inferPlatformIdFromTitle(title = "") {
   if (/小红书/.test(title)) return "xhs";
   if (/公众号|长文/.test(title)) return "wechat-article";
