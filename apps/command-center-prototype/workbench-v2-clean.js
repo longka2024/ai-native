@@ -2583,7 +2583,7 @@ function dedupeMotherTopics(topics = []) {
 }
 
 function motherTopicKey(topic = {}) {
-  if (state.sourceChannel === "x-history" || state.sourceChannel === "x-live") {
+  if (state.sourceChannel === "x-history" || state.sourceChannel === "x-live" || topic.platform === "xiaohongshu") {
     return topic.url || topic.id || cleanSourceText(topic.title || topic.theme || "").slice(0, 80);
   }
   const text = `${topic.theme} ${topic.sourceInsight?.angle || ""}`.toLowerCase();
