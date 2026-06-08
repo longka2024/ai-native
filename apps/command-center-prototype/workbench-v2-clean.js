@@ -335,6 +335,18 @@ function confirmedCopyText() {
   return normalizeCopyText(confirmed?.copy || activeCopyText());
 }
 
+function cleanPublishBodyForCopy(raw = "") {
+  const text = normalizeCopyText(raw);
+  const lines = text.split(/\n/);
+  const cutIndex = lines.findIndex((line) => /^\s*(配图建议|配图|图片建议|图片规划|标签|话题标签|hashtags?)\s*[：:]/iu.test(line));
+  const withoutTail = cutIndex >= 0 ? lines.slice(0, cutIndex).join("\n") : text;
+  return normalizeCopyText(withoutTail)
+    .replace(/(?:^|\n)\s*(配图建议|配图|图片建议|图片规划|标签|话题标签|hashtags?)\s*[：:][\s\S]*$/iu, "")
+    .replace(/\n\s*#\S+(?:\s+#\S+)*\s*$/u, "")
+    .replace(/^\s*(标题|正文)\s*[：:]\s*/gmu, "")
+    .trim();
+}
+
 function extractBodyLinesForCards(copy = "") {
   return normalizeCopyText(copy)
     .split(/\n+/)
@@ -1525,7 +1537,7 @@ function buildFinalWorkAsset() {
   const reusableImages = getReusableImagesForCurrentTopic();
   const topic = selectedTopic();
   const target = currentTarget();
-  const body = confirmedCopyText();
+  const body = cleanPublishBodyForCopy(confirmedCopyText());
   const visual = currentVisualStyle();
   return {
     id: currentFinalWorkId(),
@@ -3782,7 +3794,7 @@ async function renderAssets() {
 
 function renderFinalWorkAsset(item) {
   const images = Array.isArray(item.images) ? item.images : [];
-  const body = String(item.body || "");
+  const body = cleanPublishBodyForCopy(item.body || "");
   const bodyPreview = body.length > 900 ? body.slice(0, 900) + "\n\n..." : body;
   const metrics = item.publishMetrics || {};
   const views = Number(metrics.views || 0);
@@ -3892,7 +3904,7 @@ async function copyFinalWorkBody(id) {
     alert("这条作品没有保存正文。");
     return;
   }
-  await copyTextToClipboard(`${work.title || ""}\n\n${work.body}`.trim());
+  await copyTextToClipboard(`${work.title || ""}\n\n${cleanPublishBodyForCopy(work.body)}`.trim());
   alert("已复制完整文案。");
 }
 
