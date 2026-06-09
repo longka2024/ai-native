@@ -3592,7 +3592,7 @@ function isCompleteShortTitle(title = "", target = state.publishTarget) {
   const clean = readableCn(title);
   if (!clean) return false;
   const length = titleCharLength(clean);
-  if (length < 6 || length > titleMaxLengthForTarget(target)) return false;
+  if (length < 10 || length > titleMaxLengthForTarget(target)) return false;
   if (/[，、：；,;:]$/.test(clean)) return false;
   if (/(别|先|这份|这点|这步|这条|这个|的是|而是|不是|因为|如果|到底)$/.test(clean)) return false;
   return true;
@@ -3609,7 +3609,7 @@ function extractTopicBoundSignal(topic = {}) {
   const problem = pickProblemPhrase(text, pain, subject);
   const action = pickActionPhrase(text, subject);
   const result = pickResultPhrase(text);
-  const shortSubject = shortTitlePhrase(subject, 8);
+  const shortSubject = shortTitlePhrase(subject, 10);
   const shortProblem = shortTitlePhrase(problem, 8);
   const shortAction = shortTitlePhrase(action, 8);
   const shortResult = shortTitlePhrase(result, 7);
@@ -3688,10 +3688,10 @@ function clampTitlePart(value = "", max = 18) {
 function topicBoundTemplatesForTarget(target) {
   if (target === "xhs") {
     return [
-      { reason: "小红书痛点型", render: (s) => `${s.shortSubject}别急着冲` },
-      { reason: "小红书避坑型", render: (s) => `${s.shortSubject}先避这坑` },
-      { reason: "小红书收藏型", render: (s) => `${s.shortSubject}准备清单` },
-      { reason: "小红书判断型", render: (s) => `${s.shortSubject}值不值得做` },
+      { reason: "小红书痛点型", render: (s) => `${s.shortSubject}别急着报名` },
+      { reason: "小红书避坑型", render: (s) => `${s.shortSubject}先看这3点` },
+      { reason: "小红书收藏型", render: (s) => `${s.shortSubject}高分准备清单` },
+      { reason: "小红书判断型", render: (s) => `${s.shortSubject}到底值不值得` },
       { reason: "小红书方法型", render: (s) => `${s.shortSubject}这样准备更稳` },
     ];
   }
@@ -3736,8 +3736,8 @@ function buildTopicBoundAssetTitle(signal, assets = []) {
   if (!matched) return null;
   const example = readableCn(matched.title);
   if (state.publishTarget === "xhs") {
-    if (/\d/.test(example)) return titleChoiceForTarget(`${signal.shortSubject}看这3点`, `标题库参考：${example}`, "xhs");
-    if (/[？?]/.test(example)) return titleChoiceForTarget(`${signal.shortSubject}怎么判断`, `标题库参考：${example}`, "xhs");
+    if (/\d/.test(example)) return titleChoiceForTarget(`${signal.shortSubject}先看这3个信号`, `标题库参考：${example}`, "xhs");
+    if (/[？?]/.test(example)) return titleChoiceForTarget(`${signal.shortSubject}怎么判断才稳`, `标题库参考：${example}`, "xhs");
     return titleChoiceForTarget(`${signal.shortSubject}别踩这个坑`, `标题库参考：${example}`, "xhs");
   }
   if (/\d/.test(example)) return titleChoice(`${signal.audience}看${signal.subject}，先记住这3个判断`, `标题库参考：${example}`);
