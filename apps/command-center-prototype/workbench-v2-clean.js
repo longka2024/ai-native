@@ -3578,7 +3578,8 @@ function buildTopicBoundTitleChoices(topic = {}, titleAssets = []) {
   const assetChoice = buildTopicBoundAssetTitle(signal, titleAssets);
   const templates = topicBoundTemplatesForTarget(state.publishTarget);
   const choices = templates.map((template) => titleChoiceForTarget(template.render(signal), template.reason, state.publishTarget));
-  return assetChoice ? [assetChoice, ...choices] : choices;
+  const allChoices = assetChoice ? [assetChoice, ...choices] : choices;
+  return rankTitleChoicesForTarget(allChoices, signal, state.publishTarget);
 }
 
 function titleChoiceForTarget(title, reason, target = state.publishTarget) {
@@ -3598,6 +3599,39 @@ function isCompleteShortTitle(title = "", target = state.publishTarget) {
   return true;
 }
 
+function rankTitleChoicesForTarget(items = [], signal = {}, target = state.publishTarget) {
+  const ranked = (items || [])
+    .filter(Boolean)
+    .map((item) => ({
+      ...item,
+      title: trimTitleForTarget(item.title, target),
+      score: scoreTitleChoiceForTarget(item.title, signal, target),
+    }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+  return ranked.map(({ score, ...item }) => item);
+}
+
+function scoreTitleChoiceForTarget(title = "", signal = {}, target = state.publishTarget) {
+  const clean = readableCn(trimTitleForTarget(title, target));
+  if (!isCompleteShortTitle(clean, target)) return 0;
+  const length = titleCharLength(clean);
+  let score = 40;
+  if (target === "xhs") {
+    if (length >= 14 && length <= 20) score += 26;
+    else if (length >= 12) score += 16;
+    else score -= 10;
+  }
+  const signalWords = [signal.shortSubject, signal.shortProblem, signal.shortAction, signal.shortResult]
+    .filter(Boolean)
+    .map((item) => readableCn(item));
+  if (signalWords.some((word) => word && clean.includes(word.slice(0, Math.min(4, word.length))))) score += 18;
+  if (/[0-9一二三四五六七八九十]/.test(clean)) score += 6;
+  if (/清单|避坑|判断|准备|高分|信号|报名|值得|稳|关键/.test(clean)) score += 10;
+  if (/当前|标题|生成|平台|成品|素材库|工具/.test(clean)) score -= 30;
+  return score;
+}
+
 function extractTopicBoundSignal(topic = {}) {
   const title = readableCn(topic.title || topic.theme || "");
   const theme = readableCn(topic.theme || topic.title || "");
@@ -3609,11 +3643,31 @@ function extractTopicBoundSignal(topic = {}) {
   const problem = pickProblemPhrase(text, pain, subject);
   const action = pickActionPhrase(text, subject);
   const result = pickResultPhrase(text);
-  const shortSubject = shortTitlePhrase(subject, 10);
+  const shortSubject = pickCompactTitleSubject(text, subject);
   const shortProblem = shortTitlePhrase(problem, 8);
   const shortAction = shortTitlePhrase(action, 8);
   const shortResult = shortTitlePhrase(result, 7);
   return { title, theme, body, pain, text, subject, audience, problem, action, result, shortSubject, shortProblem, shortAction, shortResult };
+}
+
+function pickCompactTitleSubject(text = "", fallback = "") {
+  const clean = readableCn([text, fallback].filter(Boolean).join(" "));
+  const patterns = [
+    [/低龄.{0,4}英文写作比赛|英文写作比赛|写作比赛/, "低龄英文写作比赛"],
+    [/私校面试|面试/, "私校面试"],
+    [/私校申请|申请季|择校/, "私校申请"],
+    [/夏校|夏令营/, "夏校申请"],
+    [/标化|SSAT|托福|雅思|AP/, "标化备考"],
+    [/AI\s*Native|AI原生/, "AI原生项目"],
+    [/Agent|工作流/, "Agent工作流"],
+    [/内容资产库|素材库|知识库/, "内容资产库"],
+    [/小红书|图文/, "小红书图文"],
+    [/公众号|长文/, "公众号长文"],
+  ];
+  for (const [pattern, subject] of patterns) {
+    if (pattern.test(clean)) return subject;
+  }
+  return shortTitlePhrase(fallback || firstReadableSentence(clean), 10);
 }
 
 function shortTitlePhrase(value = "", max = 8) {
@@ -3693,6 +3747,11 @@ function topicBoundTemplatesForTarget(target) {
       { reason: "小红书收藏型", render: (s) => `${s.shortSubject}高分准备清单` },
       { reason: "小红书判断型", render: (s) => `${s.shortSubject}到底值不值得` },
       { reason: "小红书方法型", render: (s) => `${s.shortSubject}这样准备更稳` },
+      { reason: "小红书家长代入型", render: (s) => `家长看${s.shortSubject}先看这篇` },
+      { reason: "小红书结果型", render: (s) => `${s.shortSubject}想出结果先避坑` },
+      { reason: "小红书信号型", render: (s) => `${s.shortSubject}这3个信号很关键` },
+      { reason: "小红书反差型", render: (s) => `${s.shortSubject}不是越早越好` },
+      { reason: "小红书决策型", render: (s) => `${s.shortSubject}适不适合孩子` },
     ];
   }
   if (target === "wechat-article") {
