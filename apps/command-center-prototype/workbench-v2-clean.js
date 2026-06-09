@@ -6,7 +6,7 @@ const state = {
   industry: "AI 与自媒体",
   businessLine: "AI 内容创作",
   goal: "获客和建立专业感",
-  keywords: "AI自媒体, 内容资产库, Agent工作流",
+  keywords: "AI自媒体 内容资产库 Agent工作流",
   materialScope: "all",
   materialAuthor: "",
   materialLatestRuns: 3,
@@ -39,6 +39,7 @@ const state = {
   xhsCardProgress: null,
   xhsCardJobBase: "",
   xhsCardAsyncJobId: "",
+  xhsCardStartPayload: null,
   xhsCardManifest: null,
   finalWorks: [],
   archiveMessage: "",
@@ -53,6 +54,7 @@ const state = {
 };
 
 const TITLE_LOGIC_VERSION = "topic-bound-readable-v4";
+const VISUAL_PROMPT_VERSION = "visual-v20260610-juju-bichon-lock";
 
 const publishTargets = [
   { id: "xhs", title: "小红书图文", platform: "xiaohongshu", desc: "封面、标题、短正文、收藏点、标签" },
@@ -64,84 +66,116 @@ const publishTargets = [
 ];
 
 const sourceChannels = [
-  { id: "same-platform", title: "同平台对标素材", desc: "默认选择。在哪个平台发，就优先读哪个平台的爆款素材。" },
-  { id: "xhs", title: "小红书素材", desc: "适合学习小红书标题、封面、评论痛点、收藏结构。" },
-  { id: "x-history", title: "历史资产", desc: "先复用之前采集的真实素材，找出今天能写的选题。" },
-  { id: "x-live", title: "X 账号资产", desc: "只读取 X/推特来源，适合提炼观点、洞察和方法论。" },
-  { id: "all-assets", title: "全库选题复用", desc: "一鱼多吃：从资产库里找好选题，再改写到目标平台。" },
+  { id: "same-platform", title: "同平台对标素材", desc: "在哪个平台发，就优先读取哪个平台的高表现素材。" },
+  { id: "xhs", title: "小红书素材", desc: "学习小红书标题、封面、评论痛点和收藏结构。" },
+  { id: "x-history", title: "历史资产", desc: "复用以前采集过的真实素材，找出今天能写的选题。" },
+  { id: "x-live", title: "X 账号资产", desc: "读取 X/推特来源，适合提炼观点、洞察和方法论。" },
+  { id: "all-assets", title: "全库选题复用", desc: "从内容资产库里找好选题，再改写到目标平台。" },
   { id: "manual", title: "手动导入", desc: "粘贴你看到的好内容，整理成可写选题。" },
 ];
-
 const visualStyles = [
   {
     id: "xiaohei-metaphor",
     title: "小黑漫画隐喻",
-    desc: "适合观点型、避坑型、方法论内容。用角色和场景讲明白，不做大字报。",
-    route: "43 小黑真出图",
+    desc: "适合观点、避坑、反差和情绪场景。用小黑的动作把观点讲明白。",
+    route: "ian-xiaohei-illustrations",
     assetLabel: "小黑手绘漫画 / 观点隐喻",
   },
   {
     id: "juju-organizing",
     title: "卷卷整理插画",
-    desc: "适合把复杂方法、复盘、教程整理成白底纸面手绘现场，适合小红书方法卡和公众号正文图。",
+    desc: "适合把复杂方法、复盘和教程整理成白底纸面手绘现场。",
     route: "juju-content-illustrations",
     assetLabel: "卷卷整理研究所 / 内容插画",
   },
   {
     id: "xhs-knowledge-card",
-    title: "小红书知识卡",
-    desc: "适合清单、步骤、对比和收藏型内容。文字少、层级清楚、适合手机看。",
-    route: "HTML 卡片 / PNG 导出",
+    title: "宝玉知识卡",
+    desc: "适合清单、步骤、对比和收藏型内容。一页一个重点。",
+    route: "baoyu-xhs-images / baoyu-infographic",
     assetLabel: "小红书知识卡 / 信息图",
   },
   {
     id: "guizang-editorial",
     title: "归藏杂志风",
-    desc: "适合方法论、行业洞察、投资人展示。更像高级 Deck，不适合生活口吻内容。",
+    desc: "适合方法论、行业洞察和投资人演示。更像高级 Deck。",
     route: "open-design / guizang deck",
     assetLabel: "归藏编辑风 / 杂志 Deck",
   },
 ];
+
+const VISUAL_STYLE_REGISTRY = {
+  "xiaohei-metaphor": {
+    route: "ian-xiaohei-illustrations",
+    character: "Xiaohei: a small black round stick-figure character with tiny white eyes. Xiaohei must be the main actor and must perform one concrete strange-but-clear metaphor action.",
+    styleBrief: "Ian Xiaohei article illustration: pure white background, minimal black ink linework, lots of whitespace, light red/orange/blue handwritten annotations, witty metaphor, not a poster.",
+    styleLock: "3:4 social image. One image explains one core metaphor/action. Main subject occupies 40%-60% of the canvas. At least 35% blank white space. Use at most 5-8 short handwritten Chinese labels.",
+    negativePrompt: "No Juju dog, no human protagonist, no PPT, no dashboard, no formal flowchart, no cute children's illustration, no commercial stock illustration, no dense text, no gradient decoration.",
+    qa: ["Xiaohei is visible", "one concrete metaphor action", "white background", "no poster/dashboard/PPT"],
+    actions: {
+      cover: "Xiaohei performs a strange-but-clear action on an object representing the current topic.",
+      problem: "Xiaohei faces a broken device, gap, trap, or problem mark representing the reader pain.",
+      case: "Xiaohei breaks the source case into a few simple objects instead of a table.",
+      method: "Xiaohei pushes a simple path or mechanism that shows the method steps.",
+      action: "Xiaohei completes one small executable action and lands the next step on an object.",
+    },
+  },
+  "juju-organizing": {
+    route: "juju-content-illustrations",
+    character: "Juju: a white bichon dog organizer with fluffy white fur, black eyes, black nose, clear eye-nose triangle, floppy ears, short legs, small-dog proportions, and an optional orange scarf or badge.",
+    styleBrief: "Original JUJU visual language: white or near-white paper background, light black hand-drawn linework, low-saturation accents, visible paper-world props, generous whitespace. Chinese labels must be integrated into note cards, tabs, arrows, tools, frames, or props.",
+    styleLock: "paper practice field + small working props + clear Juju action + low-saturation color shifts. One image = one cognitive action. Juju must physically perform the main action in every card.",
+    negativePrompt: "No sheep, no wool ball, no generic plush toy, no pet portrait, no Xiaohei, no black stick figure, no human/girl/student/teacher protagonist, no hand-only protagonist, no slide template, no dashboard, no pasted subtitle, no dense paragraph, no watermark, no big-character poster.",
+    qa: ["Juju white bichon is visible", "Juju performs the main action", "no human/girl protagonist", "paper-world props carry labels"],
+    actions: {
+      cover: "Juju stands in the paper practice field and pins one main note about the current topic.",
+      problem: "Juju uses a magnifying glass to inspect a pain-point note.",
+      case: "Juju sorts three case cards into who / what worked / result.",
+      method: "Juju draws a route map with a pencil and four small stations.",
+      action: "Juju stamps a checklist as ready.",
+    },
+  },
+  "xhs-knowledge-card": {
+    route: "card-xiaohongshu / baoyu-xhs-images",
+    character: "No fixed mascot. Use icons, highlighted keywords, layout blocks, comparisons, flows, checklists, or hand-drawn information objects.",
+    styleBrief: "Xiaohongshu high-save knowledge card: concise information, clear hierarchy, ample whitespace, highlighted keywords, useful checklist/comparison/flow when relevant.",
+    styleLock: "One card one purpose. Auto-select layout from content: list, comparison, flow, quadrant, mindmap, or checklist. Mobile readability is mandatory.",
+    negativePrompt: "No Xiaohei metaphor, no Juju dog protagonist, no Guizang magazine deck, no dense article paragraph, no unreadable tiny text, no meaningless stickers.",
+    qa: ["one card one point", "mobile-readable labels", "clear layout type", "not a wall of text"],
+    actions: {
+      cover: "Sparse hook card with one strong title and one visual anchor.",
+      problem: "Comparison or warning card showing before/after, wrong/right, or hidden problem.",
+      case: "Dense/list or quadrant card extracting 3-5 reusable source points.",
+      method: "Flow/list card turning the method into 3-5 steps.",
+      action: "Checklist/ending card giving one practical next step.",
+    },
+  },
+  "guizang-editorial": {
+    route: "guizang-social-card-skill / open-design",
+    character: "No cartoon mascot. Use editorial layout, evidence blocks, screenshots, titles, pull quotes, marginal notes, data rows, or grids.",
+    styleBrief: "Guizang social card: Editorial Magazine or Swiss International. Refined typography feeling, strict grid, strong hierarchy, paper/ink atmosphere, one sharp visual argument.",
+    styleLock: "Expression comes first. Content shape decides layout. Every page needs a clear focal point and visual relation to the selected topic. Do not mix Editorial and Swiss in one set.",
+    negativePrompt: "No Xiaohei, no Juju dog, no Baoyu hand-drawn info card, no children's cartoon, no ordinary big-character poster, no random blobs/stickers, no nested cards, no text overflow.",
+    qa: ["clear editorial focal point", "premium grid", "no cartoon mascot", "text does not overflow"],
+    actions: {
+      cover: "Swiss or editorial cover with restrained big title and one evidence/atmosphere block.",
+      problem: "Tension page using contrast, marginalia, or separated evidence rows.",
+      case: "Feature/evidence page using proof block, ledger row, matrix, or pull quote.",
+      method: "Structured method page with numbered statements, KPI tower, h-bar, ledger, or magazine column.",
+      action: "Closing takeaway page with refined quote/checklist/issue strip.",
+    },
+  },
+};
 
 function currentVisualStyle() {
   return visualStyles.find((item) => item.id === state.visualStyle) || visualStyles[0];
 }
 
 function visualStyleContract(styleId) {
-  const contracts = {
-    "xiaohei-metaphor": {
-      route: "ian-xiaohei-illustrations",
-      character: "小黑：黑色实心、白点眼、细腿、空表情、认真做一件荒诞但成立的事。小黑必须参与核心动作，不能站在旁边当装饰。",
-      styleBrief: "Ian 小黑怪诞正文配图：纯白背景、极简黑色手绘线稿、轻微抖动笔触、大量留白、少量红/橙/蓝中文手写批注。用于把观点、流程、结构、状态或隐喻变成清爽但有创意的解释图。",
-      negativePrompt: "不要卷卷小狗，不要归藏杂志排版，不要宝玉信息卡，不要商业插画，不要PPT信息图，不要正式流程图，不要课程课件，不要可爱儿童插画，不要科技UI，不要复杂背景/渐变/阴影/纹理，不要左上角写结构类型标题。",
-      styleLock: "3:4 Xiaohongshu adaptation of Xiaohei article illustration. One image explains one core metaphor/action. Main subject occupies 40%-60% canvas, at least 35% blank white space, at most 5-8 short handwritten Chinese labels. Invent a fresh weird-but-valid metaphor for the selected topic."
-    },
-    "juju-organizing": {
-      route: "juju-content-illustrations",
-      character: "Juju/卷卷是 white bichon organizer：白色比熊犬，黑眼睛、黑鼻子、清楚的眼鼻三角、下垂耳朵、短腿、小狗比例，可有橙色小围巾或徽章。",
-      styleBrief: "Original JUJU visual language：white or near-white paper background, light black hand-drawn linework, low-saturation accent colors, visible paper-world props, generous whitespace. Chinese handwritten labels must be integrated into note cards, paper tabs, arrows, frames, tools or props.",
-      negativePrompt: "Juju must not look like a sheep, wool ball, generic plush toy, pet portrait, Xiaohei, black stick figure, human protagonist, slide template, dashboard, pasted subtitle, dense paragraph, watermark, or poster dominated by large text.",
-      styleLock: "Use the current stable direction: paper practice field + small working props + clear Juju action + low-saturation color shifts. One image = one cognitive action. Juju must physically perform the main action in every card."
-    },
-    "xhs-knowledge-card": {
-      route: "card-xiaohongshu",
-      character: "无固定角色。以手绘信息图、关键词高亮、图标、分区、对比、流程或清单表达；角色只能作为辅助，不抢信息层级。",
-      styleBrief: "宝玉小红书知识卡：3:4 竖版 infographic。Style x Layout 分离：可用 notion/minimal/warm/bold/study-notes 等风格，搭配 list/comparison/flow/mindmap/quadrant 等布局。全部文字必须是手绘感或卡片排版感，突出关键词和核心概念，适合收藏。",
-      negativePrompt: "不要小黑隐喻图，不要卷卷小狗主角，不要归藏杂志deck，不要照片写实，不要密集文章段落，不要无意义贴纸，不要复杂装饰，不要无法手机阅读的小字。",
-      styleLock: "Each page is a Xiaohongshu infographic: concise information, clear hierarchy, ample whitespace, highlighted keywords, one card one purpose. Auto-select style/layout from content: knowledge/productivity/AI -> notion or minimal + dense/list/flow; warning/critical -> bold + list/comparison; story/emotion -> warm + balanced."
-    },
-    "guizang-editorial": {
-      route: "guizang-social-card-skill",
-      character: "无卡通主角。用编辑版式、证据图片/截图、标题层级、引文、边注、数据行或网格模块表达。",
-      styleBrief: "归藏 social card：二选一视觉姿态。Editorial Magazine x E-ink = 宋体/衬线标题、纸张/墨色、留白、杂志栏目、pull quote、marginalia、真实证据图。Swiss International = Inter/Helvetica 感、严格左对齐网格、hairline rules、单一高饱和 accent、KPI/matrix/h-bar/numbered statements。",
-      negativePrompt: "不要小黑人物，不要卷卷小狗，不要宝玉手绘信息卡，不要儿童卡通，不要普通大字报，不要随机圆形/blob/装饰贴纸，不要渐变装饰，不要嵌套卡片，不要文字溢出，不要小到手机看不清。",
-      styleLock: "Expression comes first. Content shape decides layout. Every page needs a clear focal point, strong hierarchy, and visual relation to the selected topic. Do not mix Editorial and Swiss in one set. For AI tools/system/method content prefer Swiss; for reflective/story/industry insight prefer Editorial. Use real evidence image/screenshot when available."
-    }
-  };
-  return contracts[styleId] || contracts["xiaohei-metaphor"];
+  return VISUAL_STYLE_REGISTRY[styleId] || VISUAL_STYLE_REGISTRY["xiaohei-metaphor"];
 }
-
 function visualCardActionBriefs(styleId) {
+  if (VISUAL_STYLE_REGISTRY[styleId]?.actions) return VISUAL_STYLE_REGISTRY[styleId].actions;
   const briefs = {
     "juju-organizing": {
       cover: "Juju action: Juju stands in the paper practice field and pins one main note about the current topic. Cognitive action: enter the topic quickly. Parallel world: method desk. Metaphor props: main note card, tape, one arrow, two small paper tabs.",
@@ -151,11 +185,11 @@ function visualCardActionBriefs(styleId) {
       action: "Juju action: Juju stamps a checklist as ready. Cognitive action: know the next practical step. Parallel world: tiny execution counter. Metaphor props: checklist, stamp, small envelope, done mark."
     },
     "xiaohei-metaphor": {
-      cover: "Xiaohei action: 小黑用一个荒诞动作抓住主题，比如扛起、拉动、拆开或卡住一个代表当前话题的物件。Metaphor must be strange but clear.",
-      problem: "Xiaohei action: 小黑认真面对一个出问题的装置、断点或坑洞，表达读者痛点。Use red only for the problem mark.",
-      case: "Xiaohei action: 小黑把案例拆成几个极简物件，不做表格，不做PPT。Use white space and 3-5 short handwritten labels.",
-      method: "Xiaohei action: 小黑推动一条极简路径或机关，表现方法步骤。Orange can mark the main path.",
-      action: "Xiaohei action: 小黑完成一个小动作，把下一步落到一个可执行物件上。Keep it deadpan, clean, not cute."
+      cover: "Xiaohei action: Xiaohei uses a strange clear action to catch the topic, such as twisting, pulling, opening, or jamming an object that represents the current theme. Metaphor must be strange but clear.",
+      problem: "Xiaohei action: Xiaohei faces a broken device, breakpoint, or pit that represents the reader pain. Use red only for the problem mark.",
+      case: "Xiaohei action: Xiaohei breaks the case into several minimal objects, not a table, not PPT. Use white space and 3-5 short handwritten labels.",
+      method: "Xiaohei action: Xiaohei pushes a minimal path or mechanism to show the method steps. Orange can mark the main path.",
+      action: "Xiaohei action: Xiaohei completes one small action and lands the next step on an executable object. Keep it deadpan, clean, not cute."
     },
     "xhs-knowledge-card": {
       cover: "Layout: sparse hook card with one strong title, one highlighted keyword, and a simple visual anchor. Use hand-drawn infographic style.",
@@ -173,6 +207,27 @@ function visualCardActionBriefs(styleId) {
     }
   };
   return briefs[styleId] || briefs["xiaohei-metaphor"];
+}
+
+function styleLockedVisualBrief(card, visual) {
+  const contract = visualStyleContract(visual.id);
+  const originalBrief = card.visualBrief || "";
+  const jujuGuard = visual.id === "juju-organizing"
+    ? "Hard style requirement: Juju must be the visible main actor in this image. Juju is a white bichon dog organizer with black eyes, black nose, floppy ears, short legs, small-dog proportions, and a small scarf or badge. Do not use a human/girl as protagonist. Do not replace Juju with hand-only props. Juju must physically perform the core organizing action."
+    : "";
+  const xiaoheiGuard = visual.id === "xiaohei-metaphor"
+    ? "Hard style requirement: Xiaohei must be the visible main actor in this image. Xiaohei is a small black round stick-figure character with tiny white eyes. Do not use Juju, dog, human protagonist, or generic watercolor illustration."
+    : "";
+  const allCards = [
+    originalBrief,
+    `Current style route: ${visual.id}.`,
+    `Style route base: ${contract.route}.`,
+    `Character contract: ${contract.character}.`,
+    `Style lock: ${contract.styleLock}.`,
+    jujuGuard,
+    xiaoheiGuard,
+    `Negative prompt: ${contract.negativePrompt}.`,
+  ].filter(Boolean).join("\n");
 }
 
 const steps = [
@@ -378,7 +433,7 @@ function restoreWorkbenchSnapshot() {
       isCollectingX: false,
     });
     state.step = Math.max(1, Math.min(12, Number(state.step || 1)));
-    state.logs = [`已恢复上次工作进度：${new Date(snapshot.savedAt || Date.now()).toLocaleString()}`, ...(state.logs || [])].slice(0, 10);
+    state.logs = [`宸叉仮澶嶄笂娆″伐浣滆繘搴︼細${new Date(snapshot.savedAt || Date.now()).toLocaleString()}`, ...(state.logs || [])].slice(0, 10);
     return true;
   } catch (error) {
     console.warn("Longka snapshot restore failed", error);
@@ -438,7 +493,7 @@ function repairCopyState() {
   }
 }
 
-function rememberCopyVersion(copy, label = "初稿") {
+function rememberCopyVersion(copy, label = "鍒濈") {
   const text = normalizeCopyText(copy);
   if (!text) return null;
   const last = state.copyVersions[state.copyVersions.length - 1];
@@ -463,7 +518,7 @@ function rememberCopyVersion(copy, label = "初稿") {
   return version;
 }
 
-function currentCopySnapshot(label = "当前版本") {
+function currentCopySnapshot(label = "褰撳墠鐗堟湰") {
   repairCopyState();
   const current = state.copyVersions.find((item) => item.id === state.currentCopyVersionId);
   const copy = activeCopyText() || normalizeCopyText(current?.copy || "");
@@ -524,7 +579,6 @@ function renderCopyVersionList() {
     </div>`).join("")}
   </div>`;
 }
-
 function confirmedCopyText() {
   const confirmed = state.copyVersions.find((item) => item.id === state.confirmedCopyVersionId);
   return normalizeCopyText(confirmed?.copy || activeCopyText());
@@ -533,46 +587,31 @@ function confirmedCopyText() {
 function cleanPublishBodyForCopy(raw = "") {
   const text = normalizeCopyText(raw);
   const lines = text.split(/\n/);
-  const cutIndex = lines.findIndex((line) => /^\s*(配图建议|配图|图片建议|图片规划|标签|话题标签|hashtags?)\s*[：:]/iu.test(line));
+  const cutIndex = lines.findIndex((line) => /^\s*(配图建议|配图|图片建议|图片规划|标签|话题标签|hashtags?)\s*[:：]/iu.test(line));
   const withoutTail = cutIndex >= 0 ? lines.slice(0, cutIndex).join("\n") : text;
   return normalizeCopyText(withoutTail)
-    .replace(/(?:^|\n)\s*(配图建议|配图|图片建议|图片规划|标签|话题标签|hashtags?)\s*[：:][\s\S]*$/iu, "")
+    .replace(/(?:^|\n)\s*(配图建议|配图|图片建议|图片规划|标签|话题标签|hashtags?)\s*[:：][\s\S]*$/iu, "")
     .replace(/\n\s*#\S+(?:\s+#\S+)*\s*$/u, "")
-    .replace(/^\s*(标题|正文)\s*[：:]\s*/gmu, "")
+    .replace(/^\s*(标题|正文)\s*[:：]\s*/gmu, "")
     .trim();
 }
 
 function extractBodyLinesForCards(copy = "") {
   return normalizeCopyText(copy)
     .split(/\n+/)
-    .map((line) => line.replace(/^(标题|正文|配图建议|标签)[:：]\s*/u, "").trim())
+    .map((line) => line.replace(/^(标题|正文|配图建议|标签)[:：\s]*/u, "").trim())
     .filter((line) => line && !/^#/.test(line))
     .slice(0, 12);
 }
-
 function buildXhsCardPlanFromConfirmedCopy() {
   const copy = confirmedCopyText();
   const topic = selectedTopic() || {};
+  const visual = currentVisualStyle();
   const lines = extractBodyLinesForCards(copy);
   const title = state.selectedTitle || topic.theme || topic.title || "AI 内容创作为什么总是没流量";
-  const pain = lines.find((line) => /没流量|AI|内容|素材|选题|爆款|不会写|卡住/.test(line)) || topic.pain || "很多人不是不会用 AI，而是没有自己的内容资产库。";
-  const method = lines.find((line) => /先|再|系统|资产|拆解|复用|标准|流程/.test(line)) || "先沉淀素材，再拆解爆点，最后让 AI 按你的资产重写。";
-  const checklist = [
-    "先收集真实高质量素材",
-    "拆标题、开头、结构和用户痛点",
-    "把可复用部分存进资产库",
-    "写作时先匹配资产，再生成内容",
-  ];
-  const action = lines.find((line) => /私信|评论|收藏|下一步|评估|咨询|试/.test(line)) || "先拿一个主题跑通：素材 -> 文案 -> 图文，再逐步沉淀自己的内容系统。";
-  return [
-    { type: "cover", role: "封面", title, text: "别再只让 AI 凭空写爆款，先把内容资产库搭起来。" },
-    { type: "pain", role: "问题卡", title: "为什么 AI 写文案没流量", text: pain },
-    { type: "method", role: "方法卡", title: "真正该做的是这套系统", text: method },
-    { type: "checklist", role: "清单卡", title: "每天按这 4 步跑", text: checklist.join("\n") },
-    { type: "action", role: "行动卡", title: "今天先做一个最小闭环", text: action },
-  ];
+  const director = buildLongkaIllustrationDirectorPlan({ copy, topic, visual, lines, title });
+  return buildTopicBoundVisualCards({ copy, topic, visual, lines, title, director });
 }
-
 function ensureXhsCardPlan() {
   if (!state.xhsCardPlan.length && state.copyConfirmed) {
     state.xhsCardPlan = buildCleanXhsCardPlanFromConfirmedCopy();
@@ -586,151 +625,66 @@ function buildCleanXhsCardPlanFromConfirmedCopy() {
   const visual = currentVisualStyle();
   const lines = extractBodyLinesForCards(copy);
   const title = state.selectedTitle || topic.theme || topic.title || "AI 内容创作为什么总是没流量";
-  return buildTopicBoundVisualCards({ copy, topic, visual, lines, title });
-  const pain = lines.find((line) => /没流量|AI|内容|素材|选题|爆款|卡住|不好用|写不出/.test(line)) || topic.pain || "很多人不是不会用 AI，而是没有自己的内容资产库，所以每次写作都像从零开始。";
-  const action = lines.find((line) => /私信|评论|收藏|下一步|评估|咨询|测试|行动/.test(line)) || "先拿一个主题跑通：素材 -> 文案 -> 图文，再逐步沉淀自己的内容系统。";
-  const sourceName = topic.source || topic.platform || currentSource()?.title || "内容资产库";
-  const bodyLead = lines[0] || pain;
-  return [
-    {
-      type: "cover",
-      role: "封面",
-      title,
-      text: "别再让 AI 凭空写爆款，先把素材、拆解和复用串成一套系统。",
-      visualStyle: visual.id,
-      carouselJob: "第 1 张：负责让人停下来",
-      visualBrief: visual.id === "xiaohei-metaphor"
-        ? "小黑站在一堆散落 prompt 和素材卡前，旁边是一台正在整理内容资产的机器。画面只保留必要短标题，不写过程提示。"
-        : "杂志感封面。大标题压住屏幕，中间用“素材库/拆解卡/标题库/成稿”四个层级做视觉钩子。",
-      readerTakeaway: "这不是普通 AI 写作教程，而是一套能持续投喂的内容系统。",
-      imagePrompt: "3:4 Xiaohongshu cover, editorial magazine style, Chinese typography, AI content asset system, layered archive cards, premium but warm, no fake UI text except provided title."
-    },
-    {
-      type: "pain",
-      role: "问题页",
-      title: "为什么你用 AI 写，还是没流量",
-      text: pain,
-      visualStyle: visual.id,
-      carouselJob: "第 2 张：放大用户痛点",
-      visualBrief: visual.id === "xiaohei-metaphor"
-        ? "小黑拿着一张写满标题的纸，却面对空空的资料柜。重点表达“不是工具问题，是没有积累”。"
-        : "左侧是零散 prompt、标题和草稿堆在一起，右侧是空的内容资产库，形成强反差。",
-      readerTakeaway: "问题不是工具差，而是没有长期积累和可复用标准。",
-      imagePrompt: "3:4 Rednote infographic, contrast layout, messy AI prompts versus organized empty content library, readable Chinese labels, clean editorial look."
-    },
-    {
-      type: "assets",
-      role: "资产页",
-      title: "真正有用的是这 4 个库",
-      text: ["爆款素材库", "标题公式库", "用户问题库", "结构拆解库"].join("\n"),
-      visualStyle: visual.id,
-      carouselJob: "第 3 张：给出系统框架",
-      visualBrief: visual.id === "xiaohei-metaphor"
-        ? "小黑把四个抽屉贴上标签：素材、标题、问题、结构。画面像整理工作台，不要大段文字。"
-        : "四宫格资产地图，每一格有一个清晰用途，不堆废话。",
-      readerTakeaway: "爆款不是临时套模板，而是调用已经沉淀好的资产。",
-      imagePrompt: "3:4 Xiaohongshu knowledge card, four quadrant asset map, title formula library, user question library, content structure library, viral sample library, Chinese, high clarity."
-    },
-    {
-      type: "flow",
-      role: "流程页",
-      title: "每天按这条线跑",
-      text: ["采集好内容", "拆标题和开头", "沉淀到资产库", "再生成成稿"].join("\n"),
-      visualStyle: visual.id,
-      carouselJob: "第 4 张：让用户知道怎么做",
-      visualBrief: visual.id === "xiaohei-metaphor"
-        ? "小黑沿着一条传送带完成采集、拆解、入库、创作四步。每步用小图标表达，不写长句。"
-        : "竖向流程线，四个节点有明确动词，让普通用户知道下一步点什么。",
-      readerTakeaway: "用户每天只需要按流程执行，而不是重新想一遍怎么做。",
-      imagePrompt: "3:4 Rednote workflow card, vertical pipeline, collect, deconstruct, archive, create, strong hierarchy, premium Chinese infographic."
-    },
-    {
-      type: "action",
-      role: "行动页",
-      title: "今天先跑通一个最小闭环",
-      text: action || bodyLead,
-      visualStyle: visual.id,
-      carouselJob: "第 5 张：收束到收藏和行动",
-      visualBrief: visual.id === "xiaohei-metaphor"
-        ? `小黑把一张完成的图文卡放进“内容资产库”盒子，旁边留出下一平台复用的空位。只表达完成闭环，不写“第几张/负责人”等过程语。`
-        : `行动清单页。底部保留“从 ${sourceName} 开始”的来源感，避免像空泛鸡汤。`,
-      readerTakeaway: "看完以后知道今天先做什么，而不是只收藏不行动。",
-      imagePrompt: "3:4 Xiaohongshu final CTA card, checklist, content workflow, warm professional style, action oriented, Chinese typography."
-    }
+  const director = buildLongkaIllustrationDirectorPlan({ copy, topic, visual, lines, title });
+  return buildTopicBoundVisualCards({ copy, topic, visual, lines, title, director });
+}
+function buildTopicBoundVisualCardsLegacy(options = {}) {
+  return buildTopicBoundVisualCards(options);
+}
+function buildLongkaIllustrationDirectorPlan({ copy = "", topic = {}, visual = currentVisualStyle(), lines = [], title = "" } = {}) {
+  const signal = extractVisualTopicSignals({ copy, topic, title, lines });
+  const platform = visualPlatformForCurrentTarget();
+  const style = visual.id;
+  const contract = visualStyleContract(style);
+  const density = estimateIllustrationDensity({ copy, lines, platform });
+  const styleReason = style === "juju-organizing"
+    ? "This copy needs a paper-world organizer: turn abstract method/process into enterable scenes."
+    : style === "xiaohei-metaphor"
+      ? "This copy has tension or opinion: use one weird-but-clear character action to make readers stop."
+      : style === "guizang-editorial"
+        ? "This copy is closer to insight/report/deck: use editorial hierarchy and evidence layout."
+        : "This copy has checklist or tutorial value: turn it into save-worthy knowledge cards.";
+  const platformMode = platform === "wechat-article"
+    ? "semantic article illustration"
+    : platform === "moments"
+      ? "single light social image"
+      : platform === "douyin-images"
+        ? "cover plus image-post storyboard"
+        : "xiaohongshu carousel";
+  const qa = contract.qa || ["style contract is followed", "content matches topic", "text is readable", "image is publishable"];
+  const allSlots = [
+    { type: "cover", role: "Stop-scroll cover", placement: platform === "wechat-article" ? "article opening cover" : "P1", job: "make the reader stop and understand the main promise", focus: `${signal.subject} + ${signal.result}` },
+    { type: "problem", role: "Problem visual", placement: platform === "wechat-article" ? "after the first pain paragraph" : "P2", job: "externalize the hidden question or pitfall", focus: signal.pain },
+    { type: "case", role: "Source deconstruction", placement: platform === "wechat-article" ? "after source/case paragraph" : "P3", job: "show what is worth borrowing from the source", focus: signal.casePoints.join(" / ") },
+    { type: "method", role: "Method path", placement: platform === "wechat-article" ? "inside method section" : "P4", job: "turn the idea into an executable path", focus: signal.methodSteps.join(" -> ") },
+    { type: "action", role: "Next action", placement: platform === "wechat-article" ? "before the ending CTA" : "P5", job: "tell the operator/reader the next concrete step", focus: signal.action },
   ];
+  const slots = allSlots.filter((slot) => density.types.includes(slot.type));
+  return { style, styleReason, platformMode, signal, qa, slots, imageCount: slots.length, countReason: density.reason };
 }
 
-function buildTopicBoundVisualCardsLegacy({ copy = "", topic = {}, visual = currentVisualStyle(), lines = [], title = "" } = {}) {
-  const signal = extractVisualTopicSignals({ copy, topic, title, lines });
-  const styleBrief = visual.id === "xiaohei-metaphor"
-    ? "小黑人物隐喻，场景要围绕当前话题，不要复用内容资产库模板。"
-    : visual.id === "juju-organizing"
-      ? "卷卷整理研究所风格：白底纸面手绘、便利贴、手写箭头、桌面研究笔记；必须围绕当前话题。"
-      : visual.id === "guizang-editorial"
-        ? "归藏杂志风：高级留白、编辑感、少量大字、围绕当前话题做视觉叙事。"
-        : "小红书知识卡：一页一个重点，围绕当前话题做清晰信息图。";
-  const promptBase = `3:4 social content image. Topic: ${signal.subject}. Result/proof: ${signal.result}. Current title: ${title}. Style: ${styleBrief}. Avoid generic content asset library, title formula library, user question library, structure library unless the selected topic is explicitly about those libraries.`;
-  return [
-    {
-      type: "cover",
-      role: "封面",
-      title,
-      text: signal.coverText,
-      visualStyle: visual.id,
-      carouselJob: "第 1 张：用当前话题让人停下来",
-      visualBrief: `${styleBrief} 封面只讲“${signal.subject}”和“${signal.result}”，不要画无关的素材库/标题库。`,
-      readerTakeaway: signal.takeaway,
-      imagePrompt: `${promptBase} Cover page, strong focal point: ${signal.subject} + ${signal.result}.`
-    },
-    {
-      type: "problem",
-      role: "问题页",
-      title: signal.problemTitle,
-      text: signal.pain,
-      visualStyle: visual.id,
-      carouselJob: "第 2 张：把当前话题的疑问讲清楚",
-      visualBrief: `${styleBrief} 画出读者看到“${signal.result}”后的真实疑问：为什么${signal.subject}能做到。`,
-      readerTakeaway: `读者要明白这页在解释${signal.subject}的关键问题。`,
-      imagePrompt: `${promptBase} Problem page, show the question behind ${signal.subject}, no unrelated libraries.`
-    },
-    {
-      type: "case",
-      role: "案例页",
-      title: signal.caseTitle,
-      text: signal.casePoints.join("\n"),
-      visualStyle: visual.id,
-      carouselJob: "第 3 张：拆当前案例，不拆通用模板",
-      visualBrief: `${styleBrief} 用 3 张纸卡拆解当前案例：对象=${signal.subject}，结果=${signal.result}，关键=${signal.keyPoint}。`,
-      readerTakeaway: "这一页必须让读者看到案例背后的关键变量。",
-      imagePrompt: `${promptBase} Case deconstruction page with three paper cards: who, what worked, result.`
-    },
-    {
-      type: "method",
-      role: "方法页",
-      title: signal.methodTitle,
-      text: signal.methodSteps.join("\n"),
-      visualStyle: visual.id,
-      carouselJob: "第 4 张：给出当前话题的可执行路径",
-      visualBrief: `${styleBrief} 把${signal.subject}跑出${signal.result}的路径拆成 4 步，像手写操作清单。`,
-      readerTakeaway: "这一页给读者可以照着做的路径。",
-      imagePrompt: `${promptBase} Four-step practical method page for this exact topic.`
-    },
-    {
-      type: "action",
-      role: "行动页",
-      title: signal.actionTitle,
-      text: signal.action,
-      visualStyle: visual.id,
-      carouselJob: "第 5 张：收束到当前话题的下一步行动",
-      visualBrief: `${styleBrief} 只围绕${signal.subject}给出下一步行动，不要出现内部流程词。`,
-      readerTakeaway: "看完以后知道今天可以先做哪一步。",
-      imagePrompt: `${promptBase} Action checklist page, practical next step for ${signal.subject}.`
-    },
-  ];
+function estimateIllustrationDensity({ copy = "", lines = [], platform = "xhs" } = {}) {
+  if (platform === "moments") return { types: ["cover"], reason: "朋友圈只需要一张轻配图，不做图集。" };
+  if (platform === "wechat-article") {
+    const rich = lines.length >= 8 || /案例|步骤|方法|流程|对比|复盘|数据|清单/.test(copy);
+    return rich
+      ? { types: ["cover", "problem", "case", "method", "action"], reason: "公众号长文信息量足够，适合 4-5 张语义插图。" }
+      : { types: ["cover", "problem", "action"], reason: "正文信息量一般，只插 3 张关键图，避免硬凑。" };
+  }
+  const signals = [
+    /案例|来源|样本|对标|爆款/.test(copy),
+    /步骤|方法|流程|SOP|路径|清单/.test(copy),
+    /问题|痛点|坑|误区|为什么/.test(copy),
+    /数据|结果|收益|阅读|收藏|评论|增长/.test(copy),
+    lines.length >= 7,
+  ].filter(Boolean).length;
+  if (signals >= 4) return { types: ["cover", "problem", "case", "method", "action"], reason: "当前文案信息密度够，适合 5 张小红书图集。" };
+  if (signals >= 2) return { types: ["cover", "problem", "action"], reason: "当前文案只有 2-3 个关键关系，做 3 张更干净。" };
+  return { types: ["cover"], reason: "当前文案只适合一张主视觉，硬凑多图会稀释重点。" };
 }
-
-function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVisualStyle(), lines = [], title = "" } = {}) {
+function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVisualStyle(), lines = [], title = "", director = null } = {}) {
   const signal = extractVisualTopicSignals({ copy, topic, title, lines });
+  const plan = director || buildLongkaIllustrationDirectorPlan({ copy, topic, visual, lines, title });
   const contract = visualStyleContract(visual.id);
   const juju = visual.id === "juju-organizing";
   const actionBriefs = visualCardActionBriefs(visual.id);
@@ -746,53 +700,54 @@ function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVis
     `Negative prompt: ${contract.negativePrompt}.`,
     "Do not reuse unrelated content asset library, title formula library, user question library, or structure library visuals unless this selected topic is explicitly about those libraries."
   ].join(" ");
-  const card = (type, role, cardTitle, text, extra, promptExtra) => ({
-    type,
-    role,
-    title: cardTitle,
-    text,
-    visualStyle: visual.id,
-    carouselJob: role,
-    visualBrief: `${contract.styleBrief} ${actionBriefs[type] || ""} ${extra}`,
-    readerTakeaway: signal.takeaway,
-    imagePrompt: `${promptBase} Title: ${cardTitle}. Allowed text only: ${String(cardTitle || "").slice(0, 18)}; ${String(text || "").split("\n").slice(0, 3).join("; ").slice(0, 48)}. ${promptExtra} ${actionBriefs[type] || ""} ${juju ? "Juju must look like a white bichon dog, not a sheep or wool ball. Text must be attached to paper objects, never pasted as a giant subtitle." : ""}`,
+  const cardSpecs = {
+    cover: { title: title || signal.coverText, text: signal.coverText, extra: `Only express ${signal.subject} and ${signal.result}.`, prompt: `Cover page. Strong focal point: ${signal.subject} + ${signal.result}.` },
+    problem: { title: signal.problemTitle, text: signal.pain, extra: `Show the real reader question behind ${signal.result}.`, prompt: `Problem page. Show the question behind ${signal.subject}.` },
+    case: { title: signal.caseTitle, text: signal.casePoints.join("\n"), extra: `Break the current case into subject=${signal.subject}, result=${signal.result}, key=${signal.keyPoint}.`, prompt: "Case deconstruction page with three paper cards: who, what worked, result." },
+    method: { title: signal.methodTitle, text: signal.methodSteps.join("\n"), extra: `Break the path to ${signal.result} into executable steps.`, prompt: "Method page. Show an executable route, not a generic template." },
+    action: { title: signal.actionTitle, text: signal.action, extra: `Give only the next practical step around ${signal.subject}.`, prompt: `Action checklist page, practical next step for ${signal.subject}.` },
+  };
+  return plan.slots.map((slot) => {
+    const spec = cardSpecs[slot.type] || cardSpecs.cover;
+    const actionBrief = actionBriefs[slot.type] || "";
+    const role = `${slot.placement || ""} ${slot.role || slot.type}`.trim();
+    return {
+      type: slot.type,
+      role,
+      title: spec.title,
+      text: spec.text,
+      visualStyle: visual.id,
+      carouselJob: role,
+      visualBrief: `${contract.styleBrief} Director placement: ${slot.placement || "current page"}. Reader job: ${slot.job || ""}. Visual focus: ${slot.focus || ""}. ${actionBrief} ${spec.extra}`,
+      readerTakeaway: slot.job || signal.takeaway,
+      imagePrompt: `${promptBase} Placement: ${slot.placement || ""}. Reader job: ${slot.job || ""}. Visual focus: ${slot.focus || ""}. Title: ${spec.title}. Allowed text only: ${String(spec.title || "").slice(0, 18)}; ${String(spec.text || "").split("\n").slice(0, 3).join("; ").slice(0, 48)}. ${spec.prompt} ${actionBrief} ${juju ? "Juju must look like a white bichon dog, not a sheep or wool ball. Text must be attached to paper objects, never pasted as a giant subtitle." : ""}`,
+    };
   });
-  return [
-    card("cover", "封面：让人停下来", title || signal.coverText, signal.coverText, `只讲 ${signal.subject} 和 ${signal.result}，不要画无关素材库。`, `Cover page. Strong focal point: ${signal.subject} + ${signal.result}.`),
-    card("problem", "问题：讲清为什么值得看", signal.problemTitle, signal.pain, `画出读者看到 ${signal.result} 后的真实疑问。`, `Problem page. Show the question behind ${signal.subject}.`),
-    card("case", "案例：拆当前素材", signal.caseTitle, signal.casePoints.join("\n"), `用三张卡拆当前案例：对象=${signal.subject}，结果=${signal.result}，关键=${signal.keyPoint}。`, "Case deconstruction page with three paper cards: who, what worked, result."),
-    card("method", "方法：给可执行路径", signal.methodTitle, signal.methodSteps.join("\n"), `把 ${signal.subject} 跑出 ${signal.result} 的路径拆成 4 步。`, "Four-step practical method page for this exact topic."),
-    card("action", "行动：收束到下一步", signal.actionTitle, signal.action, `只围绕 ${signal.subject} 给下一步行动，不出现内部流程词。`, `Action checklist page, practical next step for ${signal.subject}.`),
-  ];
 }
-
 function extractVisualTopicSignals({ copy = "", topic = {}, title = "", lines = [] } = {}) {
   const source = cleanSourceText([title, copy, topic.title, topic.theme, topic.body, topic.content].filter(Boolean).join(" "));
-  const money = source.match(/(?:一天|每日|每天)?\s*(\d+(?:\.\d+)?\s*[万千百]?\+?)\s*(?:收益|收入|变现|利润|元|块)?/)?.[1] || "";
-  const subject = /公众号|流量主/.test(source)
-    ? "公众号流量主"
-    : cleanSourceText(topic.theme || topic.title || title).replace(/[？?].*$/, "").slice(0, 16) || "这个案例";
-  const result = money ? `一天 ${money} 收益` : (source.match(/(涨粉|阅读|播放|成交|获客|收益|收入)[^，。！？]{0,16}/)?.[0] || "跑出结果");
-  const pain = lines.find((line) => /为什么|不是|关键|忽略|收益|流量|定位|内容|案例/.test(line)) || `很多人只看到${result}，但没看懂${subject}背后的定位、内容和复盘。`;
-  const action = lines.find((line) => /先|第一步|建议|测试|行动|复盘|观察/.test(line)) || `先拆一个真实${subject}案例：看它服务谁、发什么、怎么把流量变成${result}。`;
-  const keyPoint = /定位/.test(source) ? "账号定位" : /内容/.test(source) ? "持续内容" : /收益|流量/.test(source) ? "收益路径" : "可复制动作";
+  const metric = source.match(/(\d+(?:\.\d+)?\s*[万千百]?\+?\s*(?:阅读|播放|收藏|点赞|评论|收益|收入|粉丝|转化))/)?.[1] || "";
+  const subject = cleanSourceText(topic.theme || topic.title || title).replace(/[，。！？].*$/, "").slice(0, 18) || "这个选题";
+  const result = metric || (source.match(/(涨粉|阅读|播放|成交|获客|收益|收入|增长)[^，。！？]{0,16}/)?.[0] || "跑出结果");
+  const pain = lines.find((line) => /为什么|不是|关键|忽略|收益|流量|定位|内容|案例|痛点|问题/.test(line)) || `很多人只看到${result}，但没看懂${subject}背后的关键变量。`;
+  const action = lines.find((line) => /先|第一步|建议|测试|行动|复盘|观察|评论|私信/.test(line)) || `先拆一个真实${subject}案例：看它服务谁、发什么、怎么把注意力变成${result}。`;
+  const keyPoint = /定位/.test(source) ? "账号定位" : /内容/.test(source) ? "持续内容" : /收益|流量|增长/.test(source) ? "结果路径" : "可复用动作";
   return {
     subject,
     result,
     keyPoint,
-    coverText: `${subject}为什么能跑出${result}`,
+    coverText: `${subject}为什么能${result}`,
     problemTitle: `为什么${subject}能跑出来`,
     caseTitle: `${subject}案例拆解`,
-    methodTitle: `跑通${subject}的 4 个动作`,
+    methodTitle: `跑通${subject}的动作`,
     actionTitle: "先照着拆一个真实案例",
     pain,
     action,
     takeaway: `这篇讲的是${subject}的真实结果，不是泛泛讲内容资产库。`,
     casePoints: [`对象：${subject}`, `结果：${result}`, `关键：${keyPoint}`],
-    methodSteps: ["找准具体人群", "持续发有用内容", "观察收益数据", "复盘可复制动作"],
+    methodSteps: ["找准具体人群", "持续发有用内容", "观察结果数据", "复盘可复制动作"],
   };
 }
-
 function renderCleanXhsCardPreview() {
   const cards = ensureXhsCardPlan();
   if (!cards.length) return `<div class="empty-state"><b>${zh("&#35831;&#20808;&#30830;&#35748;&#25991;&#26696;")}</b><span>${zh("&#30830;&#35748;&#25991;&#26696;&#21518;&#65292;&#25165;&#20250;&#29983;&#25104;&#21487;&#25191;&#34892;&#30340;&#20986;&#22270; brief&#12290;")}</span></div>`;
@@ -808,6 +763,7 @@ function renderCleanXhsCardPreview() {
     </div>
     ${hasRealImages ? "" : `<div class="status-strip warn">${zh("&#36825;&#37324;&#20808;&#25226;&#25991;&#26696;&#25286;&#25104; 5 &#39029;&#21487;&#25191;&#34892;&#20986;&#22270; brief&#12290;&#26368;&#32456;&#33021;&#21457;&#24067;&#30340;&#32467;&#26524;&#65292;&#20197; 43 &#36820;&#22238;&#30340;&#30495;&#23454;&#22270;&#29255;&#20026;&#20934;&#12290;")}</div>`}
     ${renderCurrentCopyForImage()}
+    ${renderIllustrationDirectorPanel()}
     ${renderXhsGeneratedGallery()}
     <details class="xhs-carousel-plan" ${hasRealImages ? "" : "open"}>
       <summary>${zh("&#26597;&#30475; 5 &#39029;&#20986;&#22270; brief")}</summary>
@@ -818,6 +774,33 @@ function renderCleanXhsCardPreview() {
   </div>`;
 }
 
+function renderIllustrationDirectorPanel() {
+  const copy = confirmedCopyText();
+  const topic = selectedTopic() || {};
+  const visual = currentVisualStyle();
+  const lines = extractBodyLinesForCards(copy);
+  const title = state.selectedTitle || topic.theme || topic.title || "";
+  const plan = buildLongkaIllustrationDirectorPlan({ copy, topic, visual, lines, title });
+  return `<div class="illustration-director">
+    <div class="director-head">
+      <div>
+        <b>Longka 配图导演</b>
+        <span>先判断图位和阅读功能，再调用对应风格 skill 出图。图数按内容密度决定，不硬凑。</span>
+      </div>
+      <em>${escapeHtml(plan.platformMode)} / ${escapeHtml(visualRouteNameClean(plan.style))}</em>
+    </div>
+    <div class="director-reason"><b>推荐理由</b><span>${escapeHtml(plan.styleReason)} ${escapeHtml(plan.countReason || "")}</span></div>
+    <div class="director-slots">
+      ${plan.slots.map((slot) => `<article>
+        <em>${escapeHtml(slot.placement)}</em>
+        <b>${escapeHtml(slot.role)}</b>
+        <span>${escapeHtml(slot.job)}</span>
+        <small>${escapeHtml(String(slot.focus || "").slice(0, 90))}</small>
+      </article>`).join("")}
+    </div>
+    <div class="director-qa"><b>出图验收</b>${plan.qa.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
+  </div>`;
+}
 function renderVisualStylePicker() {
   return `<div class="visual-style-grid">
     ${visualStyles.map((item) => `<button type="button" class="visual-style-option ${item.id === state.visualStyle ? "active" : ""}" data-visual-style="${escapeHtml(item.id)}">
@@ -846,7 +829,6 @@ function renderCurrentCopyForImage() {
     </div>
   </div>`;
 }
-
 function renderXhsGeneratedGallery() {
   const files = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
   const isXiaohei = String(state.xhsCardManifest?.renderer || "").includes("43-gpt-image-2-xiaohei");
@@ -876,14 +858,14 @@ function renderXhsGeneratedGallery() {
     const done = Number(state.xhsCardProgress?.done || files.length || 0);
     const total = Number(state.xhsCardProgress?.total || 5);
     return `<div class="xhs-generated-empty loading">
-      <b>43 正在生成小黑漫画图</b>
-      <span>正在逐张生成：${done}/${total}。已生成的图片会先保留，避免 5 张一起请求超时后全丢。</span>
+      <b>43 正在生成配图</b>
+      <span>正在逐张生成：${done}/${total}。已生成的图片会先保留，避免整批超时后全部丢失。</span>
       ${files.length ? `<div class="xhs-generated-grid partial">
         ${files.map((file, index) => {
           const raw = String(file);
           const src = /^https?:\/\//.test(raw) ? raw : `./${raw.replace(/^\/+/, "")}`;
           return `<a href="${escapeHtml(src)}" target="_blank" rel="noreferrer">
-            <img src="${escapeHtml(src)}" alt="小黑漫画图 ${index + 1}" loading="lazy" />
+            <img src="${escapeHtml(src)}" alt="配图 ${index + 1}" loading="lazy" />
             <span>P${index + 1}</span>
           </a>`;
         }).join("")}
@@ -893,27 +875,27 @@ function renderXhsGeneratedGallery() {
   if (state.xhsCardExportStatus === "loading") {
     return `<div class="xhs-generated-empty loading">
       <b>正在导出拆页方案</b>
-      <span>这一步只是导出网页 brief PNG，用来检查每页承载，不是最终小黑漫画图。</span>
+      <span>这一步用于检查每页承载的信息，不代表最终出图结果。</span>
     </div>`;
   }
   if (!files.length) {
     return `<div class="xhs-generated-empty">
-      <b>还没有生成小黑图</b>
-      <span>确认当前文案后，点击“生成 5 张小黑漫画图”，这里会直接显示 43 返回的真实图片。</span>
+      <b>还没有生成配图</b>
+      <span>确认当前文案后，点击生成配图。这里会直接显示 43 返回的真实图片。</span>
       <button class="secondary" type="button" data-restore-latest-xiaohei>查询当前主题已生成图片</button>
     </div>`;
   }
   return `<div class="xhs-generated-gallery">
     <div class="xhs-generated-head">
-      <b>${isXiaohei ? "43 小黑真出图结果" : "拆页方案导出结果"}</b>
-      <span>${isXiaohei ? "这些图片来自 43 出图服务，可点击打开原图检查。" : "这些只是网页方案 PNG，不是小黑漫画成品。"}</span>
+      <b>${isXiaohei ? "43 真实出图结果" : "拆页方案导出结果"}</b>
+      <span>${isXiaohei ? "这些图片来自 43 出图服务，可点击打开原图检查。" : "这些只是页面方案 PNG，不是最终配图成品。"}</span>
     </div>
     <div class="xhs-generated-grid">
       ${files.map((file, index) => {
         const raw = String(file);
         const src = /^https?:\/\//.test(raw) ? raw : `./${raw.replace(/^\/+/, "")}`;
         return `<a href="${escapeHtml(src)}" target="_blank" rel="noreferrer">
-          <img src="${escapeHtml(src)}" alt="${isXiaohei ? "小黑漫画图" : "小红书拆页图"} ${index + 1}" loading="lazy" />
+          <img src="${escapeHtml(src)}" alt="${isXiaohei ? "配图" : "拆页图"} ${index + 1}" loading="lazy" />
           <span>P${index + 1}</span>
         </a>`;
       }).join("")}
@@ -922,13 +904,11 @@ function renderXhsGeneratedGallery() {
 }
 
 function renderXhsCarouselCard(card, index) {
-  const page = String(index + 1).padStart(2, "0");
   const role = escapeHtml(card.role || "内容页");
   const job = escapeHtml(card.carouselJob || "");
   const title = escapeHtml(card.title || "");
   const text = escapeHtml(card.text || "");
   const takeaway = escapeHtml(card.readerTakeaway || "");
-  const brief = escapeHtml(card.visualBrief || "");
   const items = String(card.text || "").split(/\n+/).map((line) => line.trim()).filter(Boolean).slice(0, 6);
   const ops = `<div class="xhs-card-ops"><span>P${index + 1} / ${role}</span><em>${job}</em></div>`;
   if (index === 0) {
@@ -946,7 +926,7 @@ function renderXhsCarouselCard(card, index) {
         <h3>${title}</h3>
         <div class="xhs-contrast-board">
           <section><b>只靠工具</b><span>prompt</span><span>模板</span><span>换标题</span></section>
-          <section><b>缺的系统</b><span>素材</span><span>拆解</span><span>复用</span></section>
+          <section><b>真正系统</b><span>素材</span><span>拆解</span><span>复用</span></section>
         </div>
         <p>${text}</p>
       </article></div>`;
@@ -955,7 +935,7 @@ function renderXhsCarouselCard(card, index) {
     return `<div class="xhs-card-wrap">${ops}<article class="xhs-preview-card xhs-recipe-matrix ${escapeHtml(card.type)}">
         <h3>${title}</h3>
         <div class="xhs-asset-matrix">
-          ${(items.length ? items : ["爆款素材库", "标题公式库", "用户问题库", "结构拆解库"]).slice(0, 4).map((item, itemIndex) => `<div><em>0${itemIndex + 1}</em><strong>${escapeHtml(item)}</strong><span>${["看什么值得写", "标题不再乱编", "知道用户在问啥", "复用爆款结构"][itemIndex] || "沉淀资产"}</span></div>`).join("")}
+          ${(items.length ? items : ["爆款素材库", "标题公式库", "用户问题库", "结构拆解库"]).slice(0, 4).map((item, itemIndex) => `<div><em>0${itemIndex + 1}</em><strong>${escapeHtml(item)}</strong><span>${["看什么值得写", "标题不再乱编", "知道用户在问什么", "复用爆款结构"][itemIndex] || "沉淀资产"}</span></div>`).join("")}
         </div>
       </article></div>`;
   }
@@ -963,7 +943,7 @@ function renderXhsCarouselCard(card, index) {
     return `<div class="xhs-card-wrap">${ops}<article class="xhs-preview-card xhs-recipe-flow ${escapeHtml(card.type)}">
         <h3>${title}</h3>
         <div class="xhs-flow-line">
-          ${(items.length ? items : ["采集好内容", "拆标题和开头", "沉淀到资产库", "再生成成稿"]).slice(0, 4).map((item, itemIndex) => `<div><em>${itemIndex + 1}</em><strong>${escapeHtml(item)}</strong></div>`).join("")}
+          ${(items.length ? items : ["采集合格素材", "拆标题和开头", "沉淀到资产库", "再生成成稿"]).slice(0, 4).map((item, itemIndex) => `<div><em>${itemIndex + 1}</em><strong>${escapeHtml(item)}</strong></div>`).join("")}
         </div>
         <p>${takeaway || text}</p>
       </article></div>`;
@@ -986,7 +966,7 @@ async function exportCleanXhsCardPlan() {
   state.xhsCardExportStatus = "loading";
   state.xhsCardOperation = "plan";
   state.xhsCardProgress = null;
-  state.xhsCardExportMessage = "正在导出拆页方案 PNG。注意：这不是小黑漫画真出图。";
+  state.xhsCardExportMessage = "正在导出拆页方案 PNG。注意：这不是最终真实配图。";
   state.xhsCardManifest = null;
   renderToday();
   try {
@@ -1023,7 +1003,7 @@ async function exportCleanXhsCardPlan() {
   } catch (error) {
     state.xhsCardExportStatus = "error";
     state.xhsCardOperation = "plan";
-    state.xhsCardExportMessage = `导出失败：${error.message}。网页卡片预览仍可用于演示，但不能冒充已出图。`;
+    state.xhsCardExportMessage = `导出失败：${error.message}。网页卡片预览仍可用于演示，但不能冒充已经出图。`;
     state.xhsCardManifest = null;
   }
   renderToday();
@@ -1041,7 +1021,7 @@ async function generateXiaoheiCards() {
   if (!cards.length) {
     state.xhsCardExportStatus = "error";
     state.xhsCardOperation = "visual";
-    state.xhsCardExportMessage = "当前文案还没有拆成 5 张图的 brief，无法启动 43 出图。请先返回确认文案或重新生成文案。";
+    state.xhsCardExportMessage = "当前文案还没有拆成可出图的 brief，无法启动 43 出图。请先确认文案或重新生成文案。";
     renderToday();
     return;
   }
@@ -1065,10 +1045,7 @@ async function generateXiaoheiCards() {
   };
   renderToday();
   try {
-    const res = await fetch(apiPath("/api/xhs-cards/generate-xiaohei/start"), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
+    const startPayload = {
         title: state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "",
         body: confirmedCopyText(),
         topicId: selectedTopic()?.id || `xhs-xiaohei-${Date.now()}`,
@@ -1088,13 +1065,18 @@ async function generateXiaoheiCards() {
           role: card.role,
           title: card.title,
           text: card.text,
-          visualBrief: card.visualBrief,
+          visualBrief: styleLockedVisualBrief(card, visual),
           readerTakeaway: card.readerTakeaway,
           carouselJob: card.carouselJob,
           imagePrompt: card.imagePrompt,
           visualStyle: card.visualStyle,
         })),
-      }),
+      };
+    state.xhsCardStartPayload = startPayload;
+    const res = await fetch(apiPath("/api/xhs-cards/generate-xiaohei/start"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(startPayload),
     });
     const result = await res.json().catch(() => ({}));
     if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
@@ -1112,7 +1094,7 @@ async function generateXiaoheiCards() {
   renderToday();
 }
 
-async function pollXiaoheiCards({ jobId, total }) {
+async function pollXiaoheiCards({ jobId, total, repairAttempts = 0 }) {
   lastPollRenderSignature = "";
   for (let round = 0; round < 180; round += 1) {
     const res = await fetch(apiPath(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=${encodeURIComponent(total)}`));
@@ -1128,9 +1110,24 @@ async function pollXiaoheiCards({ jobId, total }) {
       return;
     }
     state.xhsCardProgress = { done: count, total };
-    state.xhsCardExportMessage = `43 后台出图中：已完成 ${count}/${total} 张。你可以停留等待，也可以稍后再点继续查询。`;
+    state.xhsCardExportMessage = `43 后台出图中：已完成 ${count}/${total} 张。你可以停留等待，也可以稍后继续查询。`;
     const failedPages = Array.isArray(result.failed) ? result.failed.map((item) => Number(item.page || 0)).filter(Boolean) : [];
     if (["partial", "error"].includes(result.status) && count > 0 && count + failedPages.length >= total) {
+      if (repairAttempts < 2 && state.xhsCardStartPayload) {
+        state.xhsCardExportStatus = "loading";
+        state.xhsCardProgress = { done: count, total };
+        state.xhsCardExportMessage = `43 当前只完成 ${count}/${total} 张，系统正在自动补齐缺页${failedPages.length ? ` P${failedPages.join("/P")}` : ""}，补齐前不会保存为完成作品。`;
+        renderToday();
+        const repairRes = await fetch(apiPath("/api/xhs-cards/generate-xiaohei/start"), {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ...state.xhsCardStartPayload, jobId }),
+        });
+        const repairResult = await repairRes.json().catch(() => ({}));
+        if (!repairRes.ok || !repairResult.ok) throw new Error(repairResult.message || repairResult.error || `HTTP ${repairRes.status}`);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        return pollXiaoheiCards({ jobId, total, repairAttempts: repairAttempts + 1 });
+      }
       state.xhsCardExportStatus = "error";
       state.xhsCardProgress = null;
       state.xhsCardExportMessage = `43 当前已生成 ${count}/${total} 张${failedPages.length ? `，缺 P${failedPages.join("/P")}` : ""}。请再次点击出图按钮补齐缺页，补齐前不能保存为已完成作品。`;
@@ -1156,7 +1153,7 @@ async function restoreLatestXiaoheiCards() {
   state.xhsCardOperation = "xiaohei";
   state.xhsCardAsyncJobId = jobId;
   state.xhsCardJobBase = jobId;
-  state.xhsCardExportMessage = `正在从 43 恢复当前主题的小黑图：${jobId}`;
+  state.xhsCardExportMessage = `正在从 43 恢复当前主题的图片：${jobId}`;
   renderToday();
   try {
     const res = await fetch(apiPath(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=5`));
@@ -1170,8 +1167,8 @@ async function restoreLatestXiaoheiCards() {
     state.xhsCardOperation = "xiaohei";
     state.xhsCardProgress = null;
     state.xhsCardExportMessage = count
-      ? `已恢复当前主题 ${count}/5 张小黑图。`
-      : "当前主题还没有生成过小黑图，请点击生成 5 张小黑漫画图。";
+      ? `已恢复当前主题 ${count}/5 张配图。`
+      : "当前主题还没有生成过配图，请点击生成配图。";
   } catch (error) {
     state.xhsCardExportStatus = "error";
     state.xhsCardProgress = null;
@@ -1183,6 +1180,7 @@ async function restoreLatestXiaoheiCards() {
 
 function buildCurrentXiaoheiJobId() {
   const seed = [
+    VISUAL_PROMPT_VERSION,
     selectedTopic()?.id || "topic",
     state.confirmedCopyVersionId || state.currentCopyVersionId || "copy",
     state.visualStyle || "visual",
@@ -1293,11 +1291,12 @@ function renderToday() {
 
 function renderHeroStatus() {
   const topic = selectedTopic();
+  const copyStatus = state.copyConfirmed ? "已确认，可制作" : state.draft ? "待确认" : "未生成";
   $("#heroStatus").innerHTML = `
     <div class="status-row"><b>发布目标</b><span>${escapeHtml(currentTarget().title)}</span></div>
     <div class="status-row"><b>素材来源</b><span>${escapeHtml(currentSource().title)}</span></div>
     <div class="status-row"><b>候选选题</b><span>${state.topics.length} 个</span></div>
-    <div class="status-row"><b>文案状态</b><span>${state.copyConfirmed ? "已确认，可制作" : state.draft ? "待确认" : "未生成"}</span></div>
+    <div class="status-row"><b>文案状态</b><span>${copyStatus}</span></div>
     <div class="status-row"><b>已选选题</b><span>${escapeHtml(topic?.theme || topic?.title || "未选择")}</span></div>
   `;
 }
@@ -1410,14 +1409,21 @@ function renderSourceStep() {
 
 function renderCollectStep() {
   const progress = state.topics.length ? "100%" : state.logs.length ? "55%" : "0";
+  const headTitle = state.sourceChannel === "x-live" ? "第 4 步：先把今天可写的素材找出来" : "第 4 步：读取真实素材并生成选题";
+  const headDesc = state.sourceChannel === "x-live"
+    ? "你只需要二选一：抓一批新帖子，或者直接用以前保存过的素材。系统会筛出候选选题，然后自动进入第 5 步。"
+    : "如果当前来源没有匹配素材，系统会明确提示，不会跨业务线乱推荐。";
+  const emptyLog = state.sourceChannel === "x-live"
+    ? "你现在只要选一个动作：\n1. 采集新素材：抓取 X 推主最新帖子，系统筛选后进入第 5 步。\n2. 使用历史素材：不重新抓取，直接从保存过的素材里推荐选题。"
+    : "点击按钮后，这里会显示读取、筛选和生成候选选题的进度。";
   return `<section class="work-card">
-    ${cardHead(state.sourceChannel === "x-live" ? "第 4 步：先把今天可写的素材找出来" : "第 4 步：读取真实素材并生成选题", state.sourceChannel === "x-live" ? "你只需要二选一：抓一批新帖子，或者直接用以前保存过的素材。系统会筛出候选选题，然后自动进入第 5 步。" : "如果当前来源没有匹配素材，系统会明确提示，不会跨业务线乱推荐。")}
+    ${cardHead(headTitle, headDesc)}
     ${state.sourceChannel === "x-live" ? renderXCollectControls() : ""}
     ${renderMaterialFilterControls()}
     <div class="console">
       <div class="console-head"><b>${escapeHtml(sourceTitleForTarget())} 工作窗口</b><span>${escapeHtml(state.assetStatus)}</span></div>
       <div class="progress"><i id="progressBar" style="width:${progress}"></i></div>
-      <pre class="console-log" id="consoleLog">${escapeHtml(state.logs.join("\n") || (state.sourceChannel === "x-live" ? "你现在只要选一个动作：\n1. 采集新素材：抓 X 推主最新帖子，系统筛选后进入第 5 步。\n2. 使用历史素材：不重新抓取，直接从保存过的素材里推荐选题。" : "点击按钮后，这里会显示读取、筛选和生成候选选题的进度。"))}</pre>
+      <pre class="console-log" id="consoleLog">${escapeHtml(state.logs.join("\n") || emptyLog)}</pre>
     </div>
     <div class="actions">
       <button class="ghost" data-step-target="3">返回来源选择</button>
@@ -1455,7 +1461,7 @@ function renderXCollectControls() {
       <div>
         <span class="eyebrow">实时采集</span>
         <h3>采集新素材</h3>
-        <p>适合你换了对标账号，想抓当下新帖。点这里后，系统会在当前工作台里采集、筛选，并把结果变成第 5 步可选题。</p>
+        <p>适合换了对标账号，想抓当下新帖。点击后系统会在当前工作台采集、筛选，并把结果变成第 5 步可选题。</p>
       </div>
       <label>账号，多个用换行或逗号隔开
         <textarea id="xAccountsInput" rows="4" placeholder="xionghuanwei&#10;snail_9106&#10;Xudong07452910">xionghuanwei
@@ -1473,7 +1479,7 @@ Xudong07452910</textarea>
       <div>
         <span class="eyebrow">复用资产</span>
         <h3>使用历史素材</h3>
-        <p>适合你不想重新采集，直接用以前保存过的 X 素材，找今天能写的选题。</p>
+        <p>适合不想重新采集，直接用以前保存过的 X 素材，找今天能写的选题。</p>
       </div>
       <button class="primary" data-read-materials>使用历史素材生成选题</button>
       <span class="muted-text">不会重新采集。成功后直接进入第 5 步。</span>
@@ -1483,7 +1489,7 @@ Xudong07452910</textarea>
 
 function renderTopicStep() {
   return `<section class="work-card">
-    ${cardHead("第 5 步：选择一个今天要写的选题", "这里展示的是系统从真实素材里筛出来的可写方向。选一个后，下一步生成平台标题。")}
+    ${cardHead("第 5 步：选择一个今天要写的选题", "这里展示系统从真实素材里筛出来的可写方向。选一个后，下一步生成平台标题。")}
     ${state.topics.length ? `<div class="topic-grid">${state.topics.map(renderTopicCard).join("")}</div>` : `<div class="empty-state"><b>当前来源没有匹配选题</b><span>请换关键词、切换素材来源，或先采集/导入对应平台素材。</span></div>`}
     <div class="actions">
       <button class="ghost" data-step-target="4">返回重新找素材</button>
@@ -1580,7 +1586,7 @@ function renderWechatArticleImageLayout(copy = "") {
   return `<div class="article-layout-preview">
     <div class="title-group-head">
       <b>公众号图文排版稿</b>
-      <span>已把小黑图按语义插入正文：痛点、框架、流程、行动段落。点击图片可打开原图。</span>
+      <span>已按语义把图片插入正文：痛点、框架、流程、行动段落。点击图片可打开原图。</span>
     </div>
     <article class="wechat-article-preview">
       ${blocks.map((block, index) => `${renderArticleBlock(block)}${slots[index] ? renderArticleImageSlot(slots[index]) : ""}`).join("")}
@@ -1590,10 +1596,10 @@ function renderWechatArticleImageLayout(copy = "") {
 
 function stripDraftTitleLabels(copy = "") {
   return String(copy || "")
-    .replace(/^标题：.*\n+/m, "")
-    .replace(/^正文：\n?/m, "")
-    .replace(/\n+配图建议：[\s\S]*$/m, "")
-    .replace(/\n+标签：[\s\S]*$/m, "")
+    .replace(/^标题[:：]\s*.*\n+/m, "")
+    .replace(/^正文[:：]\s*\n?/m, "")
+    .replace(/\n+配图建议[:：][\s\S]*$/m, "")
+    .replace(/\n+标签[:：][\s\S]*$/m, "")
     .trim();
 }
 
@@ -1602,7 +1608,7 @@ function splitArticleBlocks(copy = "") {
   const blocks = [];
   let current = [];
   for (const line of lines) {
-    if (/^#{1,3}\s+|^第?[一二三四五六七八九十]+[、.．]|^##\s*/.test(line) && current.length) {
+    if (/^#{1,3}\s+|^第?[一二三四五六七八九十\d]+[、.：:-]|^##\s*/.test(line) && current.length) {
       blocks.push(current.join("\n"));
       current = [line];
     } else {
@@ -1637,7 +1643,7 @@ function renderArticleBlock(block = "") {
   const safe = escapeHtml(block);
   if (/^#\s+/.test(block)) return `<h1>${safe.replace(/^#\s+/, "")}</h1>`;
   if (/^##\s+/.test(block)) return `<h2>${safe.replace(/^##\s+/, "")}</h2>`;
-  if (/^第?[一二三四五六七八九十]+[、.．]/.test(block)) return `<h2>${safe}</h2>`;
+  if (/^第?[一二三四五六七八九十\d]+[、.：:-]/.test(block)) return `<h2>${safe}</h2>`;
   return `<p>${safe.replace(/\n/g, "<br>")}</p>`;
 }
 
@@ -1672,7 +1678,7 @@ function renderCheckStep() {
 
 function renderConfirmStep() {
   return `<section class="work-card">
-    ${cardHead("确认文案", "只有网页端点击确认后，才允许生成卡片图、视频脚本、任务包或导出。")}
+    ${cardHead("确认文案", "只有在网页端点击确认后，才允许生成卡片图、视频脚本、任务包或导出。")}
     <div class="draft-text"><pre>${escapeHtml(state.improvedDraft || state.draft || "暂无可确认文案")}</pre></div>
     <div class="actions">
       <button class="ghost" data-step-target="8">返回继续优化</button>
@@ -1687,15 +1693,15 @@ function renderProductionStepLegacyVisualRoutes() {
   if (state.publishTarget !== "xhs") return renderNonXhsProductionStep(locked);
   ensureXhsCardPlan();
   const visual = currentVisualStyle();
-  const primaryLabel = visual.id === "xiaohei-metaphor" ? "生成 5 张小黑漫画图" : "生成 5 张当前风格图";
-  const loadingLabel = visual.id === "xiaohei-metaphor" ? "43 正在生成..." : "正在生成...";
+  const primaryLabel = visual.id === "xiaohei-metaphor" ? "生成小黑漫画图" : "生成当前风格配图";
+  const loadingLabel = "43 正在生成...";
   return `<section class="work-card">
-    ${cardHead("小红书图文成稿", "确认文案后，生成 5 张小红书轮播配图，并在本页直接回显结果。")}
+    ${cardHead("小红书图文成稿", "确认文案后，按配图导演建议生成小红书轮播配图，并在本页直接回显结果。")}
     ${renderCleanXhsCardPreview()}
     <div class="production-grid">
       <article class="production-card ${locked ? "locked" : ""}">
         <b>${escapeHtml(visual.title)}</b>
-        <span>按当前确认文案和视觉风格生成 5 张小红书轮播图，并在本页回显真实图片或导出结果。</span>
+        <span>按当前确认文案和视觉风格生成配图，并在本页回显真实图片或导出结果。</span>
         <button class="primary" ${locked || state.xhsCardExportStatus === "loading" ? "disabled" : ""} data-generate-xiaohei-cards>${state.xhsCardExportStatus === "loading" && state.xhsCardOperation === "xiaohei" ? loadingLabel : primaryLabel}</button>
         <button class="secondary" ${locked || state.xhsCardExportStatus === "loading" ? "disabled" : ""} data-export-xhs-cards>${state.xhsCardExportStatus === "loading" && state.xhsCardOperation === "plan" ? "正在导出方案..." : "仅导出拆页方案"}</button>
       </article>
@@ -1721,12 +1727,12 @@ function renderNonXhsProductionStep(locked) {
     ${cardHead(`${currentTarget().title} 成稿`, "当前是跨平台复用任务：保留母题，按目标平台重新组织正文、脚本和配图策略。")}
     <div class="production-grid">
       <article class="production-card ${locked ? "locked" : ""}">
-        <b>${isWechat ? "公众号图文排版" : isVideo ? "视频脚本/分镜" : "平台文案"}</b>
-        <span>${isWechat ? "长文会自动匹配可复用小黑图的插入位置。" : isVideo ? "脚本要重新拆成钩子、口播、镜头和字幕。" : "按当前平台重新表达，不沿用原平台结构。"}</span>
+        <b>${isWechat ? "公众号图文排版" : isVideo ? "视频脚本 / 分镜" : "平台文案"}</b>
+        <span>${isWechat ? "长文会自动匹配可复用图片的插入位置。" : isVideo ? "脚本要重新拆成钩子、口播、镜头和字幕。" : "按当前平台重新表达，不沿用原平台结构。"}</span>
       </article>
       <article class="production-card ${locked ? "locked" : ""}">
         <b>可复用图片</b>
-        <span>${images.length ? `${images.length} 张，可按语义复用或后续重做。` : "当前母题没有可复用图片，可只输出文字或后续补图。"}</span>
+        <span>${images.length ? `${images.length} 张，可按语义复用或后续重做。` : "当前母题没有可复用图片，可先输出文字或后续补图。"}</span>
       </article>
     </div>
     ${isWechat ? renderWechatArticleImageLayout(copy) : ""}
@@ -1743,7 +1749,7 @@ function renderVideoProductionPreview(copy = "") {
   return `<div class="article-layout-preview">
     <div class="title-group-head"><b>视频脚本预览</b><span>这里检查钩子、口播、分镜和字幕节奏，后续可接视频生产模块。</span></div>
     <div class="asset-grid">
-      ${lines.map((line, index) => `<article class="asset-item"><b>${index === 0 ? "标题/钩子" : `段落 ${index}`}</b><span>${escapeHtml(line)}</span></article>`).join("")}
+      ${lines.map((line, index) => `<article class="asset-item"><b>${index === 0 ? "标题 / 钩子" : `段落 ${index}`}</b><span>${escapeHtml(line)}</span></article>`).join("")}
     </div>
   </div>`;
 }
@@ -1763,7 +1769,7 @@ function renderExportStep() {
       <div class="draft-text"><h3>发布正文</h3><pre>${escapeHtml(copy || "暂无确认文案")}</pre></div>
       <div class="check-panel">
         <h3>图片文件</h3>
-        ${files.length ? files.map((url, index) => `<p><strong>P${index + 1}</strong><br><a class="source-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">打开第 ${index + 1} 张图</a></p>`).join("") : `<p>当前平台以文字/脚本交付为主，图片可后续补充或从母题复用。</p>`}
+        ${files.length ? files.map((url, index) => `<p><strong>P${index + 1}</strong><br><a class="source-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">打开第 ${index + 1} 张图</a></p>`).join("") : `<p>当前平台以文字或脚本交付为主，图片可后续补充或从母题复用。</p>`}
       </div>
     </div>
     <div class="actions">
@@ -1784,7 +1790,7 @@ function renderArchiveStep() {
   return `<section class="work-card">
     ${cardHead("保存为母题资产", "不是只收藏成品，而是把这次内容沉淀成可复盘、可拆解、可切换平台再生产的母题资产。")}
     ${state.archiveMessage ? `<div class="status-strip success">${escapeHtml(state.archiveMessage)}</div>` : ""}
-    ${state.publishTarget === "xhs" && !imageComplete ? `<div class="status-strip warn">小红书图文需要 ${expectedImages} 张图才算完整成稿。当前只有 ${files.length}/${expectedImages} 张，请回到第 10 步点击出图按钮继续补齐，补齐前不会保存为已完成作品。</div>` : ""}
+    ${state.publishTarget === "xhs" && !imageComplete ? `<div class="status-strip warn">小红书图文需要 ${expectedImages} 张图才算完整成稿。当前只有 ${files.length}/${expectedImages} 张，请回到第 10 步继续补齐，补齐前不会保存为已完成作品。</div>` : ""}
     <div class="production-grid">
       <article class="production-card"><b>1. 平台成稿</b><span>${escapeHtml(currentTarget().title)} · ${state.publishTarget === "xhs" ? `${files.length}/${expectedImages}` : (files.length || reusableImages.length)} 张可用图 / ${confirmedCopyText().length} 字正文 / 可回看交付链接。</span></article>
       <article class="production-card"><b>2. 母题复用</b><span>${escapeHtml(selectedTopic()?.theme || "本次选题")} 后续可切换成公众号、视频号、抖音、朋友圈或小红书二版。</span></article>
@@ -1849,7 +1855,7 @@ function buildLongkaPredictionSnapshot({ topic = {}, target = {}, body = "", ima
   const sourceBound = Boolean(topic?.url || topic?.sourceUrl || topic?.sourcePostId || topic?.id);
   const hasImages = Array.isArray(images) && images.length > 0;
   const saveValue = /清单|步骤|方法|模板|自查|判断|收藏|复用|系统|避坑|案例|经验/.test(body) ? 18 : 10;
-  const hookValue = /为什么|别|不要|不是|而是|先|真正|普通人|小白|老板|小妹|客户/.test(state.selectedTitle || body) ? 18 : 11;
+  const hookValue = /为什么|别|不要|不是|而是|其实|真正|普通人|小白|老板|小妹|客户/.test(state.selectedTitle || body) ? 18 : 11;
   const sourceValue = sourceBound ? 16 : 8;
   const visualValue = hasImages ? 14 : (target?.id === "moments" ? 10 : 6);
   const checkValue = Math.max(8, Math.min(18, Math.round((Number(score || 70) / 100) * 18)));
@@ -1993,7 +1999,7 @@ async function archiveFinalWork() {
 }
 function buildPlatformReusePlan(platformId) {
   const common = [
-    "小红书：改成 5 张图文轮播，首屏必须有强钩子和明确收藏价值。",
+    "小红书：改成图文轮播，首屏必须有强钩子和明确收藏价值。",
     "公众号：扩写成长文，增加论证、案例和方法步骤，图片按语义插入。",
     "视频号/抖音：改成口播脚本、分镜、字幕节奏和封面方向。",
     "朋友圈：压缩成观点、经历、信任背书和私聊入口。",
@@ -2107,7 +2113,7 @@ function renderVisualRoutePicker(locked) {
     {
       id: "guizang-editorial",
       name: "归藏杂志",
-      use: "高级杂志/Deck 感，适合方法论、行业洞察、投资人展示。",
+      use: "高级杂志 / Deck 感，适合方法论、行业洞察、投资人展示。",
       base: "guizang-social-card / Open Design",
     },
     {
@@ -2127,10 +2133,10 @@ function renderVisualRoutePicker(locked) {
 }
 
 function visualProductionCopy(styleId) {
-  if (styleId === "xiaohei-metaphor") return "调用 43 小黑真出图，生成 5 张带场景隐喻的漫画图。适合当前演示闭环。";
+  if (styleId === "xiaohei-metaphor") return "调用 43 小黑真实出图，生成带场景隐喻的漫画图。适合当前演示闭环。";
   if (styleId === "juju-organizing") return "按卷卷整理研究所风格，把当前文案变成白底纸面手绘方法图；适合方法论、小红书知识卡和公众号正文插图。";
-  if (styleId === "guizang-editorial") return "按归藏杂志风拆成高级图文卡，适合给投资人看方法论和系统感。当前先导出拆页方案，后续接真图服务。";
-  return "按宝玉小红书知识卡拆页，适合清单、步骤和收藏型内容。当前先导出拆页方案，后续接真图服务。";
+  if (styleId === "guizang-editorial") return "按归藏杂志风拆成高级图文卡，适合方法论和系统感展示。";
+  return "按宝玉小红书知识卡拆页，适合清单、步骤和收藏型内容。";
 }
 
 function primaryVisualActionLabel(styleId) {
@@ -2149,13 +2155,13 @@ function zh(entity) {
 function recommendVisualRouteClean() {
   const topic = selectedTopic() || {};
   const text = `${state.selectedTitle || ""}\n${confirmedCopyText() || state.draft || ""}\n${topic.theme || ""}\n${topic.pain || ""}`;
-  if (/流程|步骤|系统|资产库|方法|框架|拆解|复盘|教程|清单/.test(text)) {
+  if (/娴佺▼|姝ラ|绯荤粺|璧勪骇搴搢鏂规硶|妗嗘灦|鎷嗚В|澶嶇洏|鏁欑▼|娓呭崟/.test(text)) {
     return { id: "juju-organizing", reason: zh("&#36825;&#31687;&#20869;&#23481;&#22312;&#35762;&#26041;&#27861;&#21644;&#31995;&#32479;&#65292;&#38656;&#35201;&#25226;&#22797;&#26434;&#27969;&#31243;&#25972;&#29702;&#25104;&#19968;&#20010;&#33021;&#36827;&#20837;&#30340;&#29616;&#22330;&#65307;&#21367;&#21367;&#27604;&#21333;&#32431;&#28459;&#30011;&#26356;&#36866;&#21512;&#25215;&#36733;&#27493;&#39588;&#21644;&#36164;&#20135;&#20851;&#31995;&#12290;") };
   }
-  if (/避坑|焦虑|卡住|误区|为什么|别|不要|问题|失败/.test(text)) {
+  if (/閬垮潙|鐒﹁檻|鍗′綇|璇尯|涓轰粈涔坾鍒珅涓嶈|闂|澶辫触/.test(text)) {
     return { id: "xiaohei-metaphor", reason: zh("&#36825;&#31687;&#20869;&#23481;&#26377;&#26126;&#26174;&#30171;&#28857;&#21644;&#24773;&#32490;&#24352;&#21147;&#65292;&#36866;&#21512;&#29992;&#23567;&#40657;&#20154;&#29289;&#22330;&#26223;&#20570;&#38544;&#21947;&#65292;&#35753;&#35835;&#32773;&#20808;&#34987;&#30011;&#38754;&#25235;&#20303;&#12290;") };
   }
-  if (/行业|趋势|洞察|商业|投资人|方法论|战略|中台/.test(text)) {
+  if (/琛屼笟|瓒嬪娍|娲炲療|鍟嗕笟|鎶曡祫浜簗鏂规硶璁簗鎴樼暐|涓彴/.test(text)) {
     return { id: "guizang-editorial", reason: zh("&#36825;&#31687;&#20869;&#23481;&#20559;&#26041;&#27861;&#35770;&#21644;&#34892;&#19994;&#21028;&#26029;&#65292;&#24402;&#34255;&#26434;&#24535;&#21345;&#26356;&#36866;&#21512;&#21576;&#29616;&#39640;&#32423;&#24863;&#21644;&#31995;&#32479;&#24863;&#12290;") };
   }
   return { id: "xhs-knowledge-card", reason: zh("&#36825;&#31687;&#20869;&#23481;&#26356;&#20687;&#21487;&#25910;&#34255;&#30693;&#35782;&#28857;&#65292;&#23453;&#29577;&#30693;&#35782;&#21345;&#36866;&#21512;&#19968;&#39029;&#19968;&#20010;&#37325;&#28857;&#65292;&#26041;&#20415;&#23567;&#32418;&#20070;&#29992;&#25143;&#25910;&#34255;&#12290;") };
@@ -2216,13 +2222,14 @@ function applyRemoteVisualManifest(manifest) {
   state.xhsCardManifest = manifest;
   const files = Array.isArray(manifest.publicFiles) ? manifest.publicFiles : [];
   const count = Number(manifest.count || files.length || 0);
-  if (count >= 5) {
+  const total = Number(state.xhsCardProgress?.total || manifest.total || Math.max(1, count));
+  if (count >= total) {
     state.xhsCardExportStatus = "done";
     state.xhsCardProgress = null;
     state.xhsCardExportMessage = `43 已生成 ${count} 张${visualRouteNameClean(state.visualStyle)}，下面可以逐张打开检查。`;
   } else if (count > 0 && state.xhsCardExportStatus === "loading") {
-    state.xhsCardProgress = { done: count, total: 5 };
-    state.xhsCardExportMessage = `43 后台出图中：已完成 ${count}/5 张。已生成的图片会先显示。`;
+    state.xhsCardProgress = { done: count, total };
+    state.xhsCardExportMessage = `43 后台出图中：已完成 ${count}/${total} 张。已生成的图片会先显示。`;
   }
   return true;
 }
@@ -2295,7 +2302,7 @@ function renderVisualRoutePickerClean(locked, recommendedId = "") {
     { id: "guizang-editorial", name: zh("&#24402;&#34255;&#26434;&#24535;"), use: zh("&#39640;&#32423;&#26434;&#24535;&#21644; Deck &#24863;&#65292;&#36866;&#21512;&#26041;&#27861;&#35770;&#12289;&#34892;&#19994;&#27934;&#23519;&#12290;"), base: "guizang-social-card / Open Design" },
     { id: "xhs-knowledge-card", name: zh("&#23453;&#29577;&#30693;&#35782;&#21345;"), use: zh("&#28165;&#21333;&#12289;&#27493;&#39588;&#12289;&#23545;&#27604;&#12289;&#25910;&#34255;&#22411;&#20869;&#23481;&#65292;&#19968;&#39029;&#19968;&#20010;&#37325;&#28857;&#12290;"), base: "baoyu-xhs-images / baoyu-infographic" },
   ];
-  return `<div class="visual-route-grid">${routes.map((item) => `<button type="button" class="visual-route-card ${item.id === state.visualStyle ? "active" : ""}" data-visual-style="${escapeHtml(item.id)}" ${locked ? "disabled" : ""}><b>${escapeHtml(item.name)}</b><span>${escapeHtml(item.use)}</span><em>${item.id === recommendedId ? "recommended · " : ""}${escapeHtml(item.base)}</em></button>`).join("")}</div>`;
+  return `<div class="visual-route-grid">${routes.map((item) => `<button type="button" class="visual-route-card ${item.id === state.visualStyle ? "active" : ""}" data-visual-style="${escapeHtml(item.id)}" ${locked ? "disabled" : ""}><b>${escapeHtml(item.name)}</b><span>${escapeHtml(item.use)}</span><em>${item.id === recommendedId ? "recommended 路 " : ""}${escapeHtml(item.base)}</em></button>`).join("")}</div>`;
 }
 
 function bindWorkAreaActions() {
@@ -2421,7 +2428,7 @@ function bindWorkAreaActions() {
   });
   byId("workArea")?.querySelector("[data-confirm-copy]")?.addEventListener("click", () => {
     if (!state.draft) return;
-    const version = state.copyVersions.find((item) => item.id === state.currentCopyVersionId) || rememberCopyVersion(activeCopyText(), "确认版本");
+    const version = state.copyVersions.find((item) => item.id === state.currentCopyVersionId) || rememberCopyVersion(activeCopyText(), "纭鐗堟湰");
     if (version) {
       state.confirmedCopyVersionId = version.id;
       state.copyVersions = state.copyVersions.map((item) => ({ ...item, confirmed: item.id === version.id }));
@@ -2469,7 +2476,7 @@ async function readMaterials() {
   log("读取任务信息");
   log(`发布目标：${currentTarget().title}`);
   log(`素材来源：${sourceTitleForTarget()}`);
-  log(`关键词：${state.keywords}`);
+  log(`鍏抽敭璇嶏細${state.keywords}`);
   renderToday();
   await delay(180);
 
@@ -2639,7 +2646,7 @@ function buildTopicsFromLiveXSamples(samples = []) {
         sourceInsight: {
           theme: title,
           pain,
-          angle: "这条选题直接来自本轮 X 采集结果，优先学习它的观点、问题意识和结构，不照搬原文。",
+          angle: "这条选题直接来自本轮 X 采集结果，优先学习它的观点、问题意识和结构，不照抄原文。",
         },
         metrics: {
           likes: metrics.likes || 0,
@@ -2661,7 +2668,7 @@ function buildTopicsFromLiveXSamples(samples = []) {
 
 function inferLiveXTopicPain(title = "", body = "") {
   const text = cleanSourceText(`${title} ${body}`);
-  const sentence = text.split(/[。！？!?；;\n]/).find((line) => /难|痛|卡|问题|为什么|怎么|如何|不懂|没效果|踩坑|焦虑|失败|浪费/.test(line));
+  const sentence = text.split(/[。！？?!\n]/).find((line) => /难|痛|卡|问题|为什么|怎么|如何|不懂|没效果|踩坑|焦虑|失败|浪费/.test(line));
   if (sentence) return sentence.slice(0, 96);
   if (/AI|Agent|内容|自媒体|写作|爆款|素材/.test(text)) {
     return "用户想用 AI 做内容和自媒体，但缺少可复用素材、判断标准和稳定流程。";
@@ -2677,7 +2684,7 @@ function buildLiveXReason(sample = {}, heat = 0) {
   if (Number(metrics.replies || metrics.comments || 0) > 0) parts.push("有讨论信号");
   if (cleanSourceText(sample.body || "").length >= 120) parts.push("正文信息量足够");
   return parts.length
-    ? `入选依据：${parts.join("，")}。`
+    ? `入选依据：${parts.join("；")}。`
     : "入选依据：来自本轮真实采集，适合人工判断是否继续创作。";
 }
 
@@ -2821,8 +2828,8 @@ function sourceTitleForTarget() {
     xhs: "小红书同平台素材",
     douyin: "抖音同平台素材",
     "video-account": "视频号同平台素材",
-    "wechat-article": "公众号/长文同平台素材",
-    moments: "朋友圈/私域素材",
+    "wechat-article": "公众号长文同平台素材",
+    moments: "朋友圈私域素材",
     "topic-only": "全库选题资产",
   };
   return map[state.publishTarget] || currentSource().title;
@@ -2888,7 +2895,7 @@ function motherTopicKey(topic = {}) {
     return topic.url || topic.id || cleanSourceText(topic.title || topic.theme || "").slice(0, 80);
   }
   const text = `${topic.theme} ${topic.sourceInsight?.angle || ""}`.toLowerCase();
-  if (/同质化|模板|规范|打击/.test(text)) return "ai-content-template-risk";
+  if (/同质化|模板|规范|点击/.test(text)) return "ai-content-template-risk";
   if (/拆文|爆款|关键|提示词/.test(text)) return "viral-deconstruction-missing-layer";
   if (/社群|同频|连接/.test(text)) return "community-filtering";
   if (/素材|清洗|去重|资产/.test(text)) return "content-asset-cleaning";
@@ -2907,7 +2914,7 @@ function shouldKeepXSample(item, keywords) {
   const tier = String(item.sample.assetTier || "");
   const explicitGood = item.sample.keepForCreation === true || tier === "mother_topic_candidate";
   if (text.length < 20) return false;
-  if (/^rt\s*@/i.test(text) || /^转发/.test(text)) return false;
+  if (/^rt\s*@/i.test(text) || /^杞彂/.test(text)) return false;
   if (/^https?:\/\/\S+$/i.test(text)) return false;
   if (explicitGood) return true;
   if (item.sample.rejectReason && item.sample.rejectReason !== "weak_content_signal") return false;
@@ -2962,7 +2969,7 @@ function judgeMotherTopicEligibility(sample = {}) {
     + Number(metrics.retweets || metrics.shares || 0) * 2
     + Number(metrics.quotes || 0) * 1.5;
   const reasons = [];
-  if (text.length >= 70) reasons.push("内容信息量够，能拆出观点或方法");
+  if (text.length >= 70) reasons.push("内容信息量足够，能拆出观点或方法");
   if (heat >= 30) reasons.push("互动数据有信号");
   if (/AI|自媒体|公众号|小红书|爆款|拆文|提示词|素材|同质化|模板|社群|内容/.test(text)) reasons.push("与当前赛道相关");
   if (/怎么|为什么|问题|经验|方法|总结|避坑|拆|复盘|真正|关键|别|不要|发现/.test(text)) reasons.push("有可二创的表达角度");
@@ -3014,14 +3021,14 @@ function scoreSample(sample, keywords) {
     return sum;
   }, 0);
   const metrics = sample.metrics || {};
-  const heat = Number(metrics.likes || metrics.like || metrics.赞 || 0)
-    + Number(metrics.saves || metrics.collects || metrics.藏 || 0) * 1.2
-    + Number(metrics.comments || metrics.评 || 0) * 2;
+  const heat = Number(metrics.likes || metrics.like || metrics["赞"] || metrics["点赞"] || 0)
+    + Number(metrics.saves || metrics.collects || metrics["藏"] || metrics["收藏"] || 0) * 1.2
+    + Number(metrics.comments || metrics["评"] || metrics["评论"] || 0) * 2;
   return keywordScore + Math.min(heat / 500, 20);
 }
 
 function expandKeywordParts(keyword) {
-  const value = String(keyword || "").toLowerCase().replace(/[，,、]/g, " ");
+  const value = String(keyword || "").toLowerCase().replace(/[，、]/g, " ");
   const parts = value.split(/\s+/).filter(Boolean);
   if (/ai/.test(value)) parts.push("ai", "提示词", "自媒体", "内容");
   if (/agent|工作流/.test(value)) parts.push("agent", "工作流", "自动化");
@@ -3105,18 +3112,18 @@ function inferPain(sample, sourceInsight = extractSourceInsight(sample)) {
   const match = text.match(/[^。！？\n]*(不知道|怎么|为什么|到底|不会|分不清|没效果|没流量|没人看|卡住|走弯路|焦虑)[^。！？\n]*/);
   if (match && !looksLikeGenericDiagnosis(match[0])) return match[0].slice(0, 90);
   if (sourceInsight.pain) return sourceInsight.pain;
-  return `做${state.businessLine}的人，最怕不是不会用工具，而是看不出什么内容值得拆、怎么改才不像模板。`;
+  return `做 ${state.businessLine} 的人，最怕不是不会用工具，而是看不出什么内容值得拆、怎么改才不像模板。`;
 }
 
 function extractSourceInsight(sample = {}) {
   const title = cleanSourceText(sample.title || "");
   const body = cleanSourceText(sample.body || "");
   const text = `${title}\n${body}`;
-  if (/套路|模板|同质化|规范|打击/.test(text)) {
+  if (/套路|模板|同质化|规范|点击/.test(text)) {
     return {
       theme: "AI 自媒体内容别再套模板，平台已经开始打同质化",
       pain: "很多人用 AI 写得更快了，但内容越来越像模板，担心没流量甚至被平台判低质。",
-      angle: "从平台新规和同质化风险切入，讲普通人如何把 AI 内容写得更像自己的经验。",
+      angle: "从平台规则和同质化风险切入，讲普通人如何把 AI 内容写得更像自己的经验。",
     };
   }
   if (/拆文|爆款|100篇|关键的一层|提示词/.test(text)) {
@@ -3214,7 +3221,7 @@ function buildAssetBackedTitleChoices(topic, assets = []) {
     const proof = metrics.likes || metrics.saves || metrics.comments
       ? `赞${metrics.likes || 0}/藏${metrics.saves || 0}/评${metrics.comments || 0}`
       : "真实标题资产";
-    return titleChoice(title, `${group.name}：参考「${example.title || "标题资产"}」，${proof}`);
+    return titleChoice(title, `${group.name}：参考《${example.title || "标题资产"}》，${proof}`);
   });
 }
 
@@ -3230,7 +3237,7 @@ function rewriteTitleFromAsset(seed, formula = "", example = "") {
   if (/结果|承诺|如何|怎么/.test(mark)) return `如何把${scene}变成稳定选题`;
   if (/经验|案例|复盘|我/.test(mark)) return `我做${core}后才明白的一件事`;
   if (/争议|互动|测试|问题/.test(mark)) return `${problem}，到底卡在哪一步？`;
-  return `${core}不是照搬爆款，而是先建资产`;
+  return `${core}不是照抄爆款，而是先建资产`;
 }
 
 function currentTitleChoiceKey(topic = selectedTopic()) {
@@ -3275,7 +3282,7 @@ function extractTopicSignals(topic = {}) {
   const caseSignal = hasCaseProof ? extractCaseTitleSignal(text) : null;
   if (caseSignal) return caseSignal;
   const clauses = text
-    .split(/[。！？!?；;\n\r]+/)
+    .split(/[。！？?!\n\r]+/)
     .map((item) => item.trim())
     .filter((item) => item.length >= 4)
     .slice(0, 8);
@@ -3290,7 +3297,7 @@ function extractTopicSignals(topic = {}) {
     if (/^(这个|那个|因为|所以|但是|如果|不是|而是|真正|可以|已经|现在|昨天|今天|一个|一种|很多|时候|内容|选题|素材)$/.test(word)) continue;
     if (/AI|Agent|FDE|自媒体|企业|落地|组织|工作流|岗位|采购|部署|培训|知识库|资产库|小红书|公众号|视频号|朋友圈|模型|爆款|人味|复写|复盘|工具/.test(word)) push(word);
   }
-  const contrast = text.match(/不是([^，。！？;；]{2,24})[，,]?\s*而是([^，。！？;；]{2,32})/);
+  const contrast = text.match(/不是([^，。！？?；]{2,24})[，；]?\s*而是([^，。！？?；]{2,32})/);
   const cleanKeywords = keep.filter((item) => isGoodTitleSlot(item));
   const sourceTitle = cleanSourceText(topic.title || topic.theme || clauses[0] || "").slice(0, 42);
   const main = cleanTitleSlot(cleanKeywords[0] || sourceTitle || state.businessLine);
@@ -3311,7 +3318,7 @@ function extractTopicSignals(topic = {}) {
 
 function extractCaseTitleSignal(text = "") {
   const clean = cleanSourceText(text);
-  const money = clean.match(/(?:收益|收入|变现|利润|流量|阅读|播放|涨粉)[^，。！？]{0,12}?(\d+(?:\.\d+)?\s*[万千百]?\+?)/);
+  const money = clean.match(/(?:收益|收入|变现|利润|流量|阅读|播放|涨粉)[^，。！？]{0,12}?(\d+(?:\.\d+)?\s*[万千百kK]?\+?)/);
   const daily = /一天|每日|每天|日更|24h|24小时/.test(clean);
   const account = clean.match(/([^，。！？\s]{0,10}(?:公众号流量主|公众号|小红书账号|账号|视频号|自媒体|项目|副业))/);
   const location = clean.match(/(小地方|县城|本地|三四线|大城市|普通人|新人|新手)/);
@@ -3354,7 +3361,7 @@ function buildTopicDrivenTitleChoices(topic = {}) {
   if (!signal.text || signal.text.length < 8) return [];
   return dedupeTitleChoices(titleFormulaLibraryForTarget(state.publishTarget).map((formula) => {
     const title = applyTitleFormula(formula, signal);
-    return titleChoice(title, `公式：${formula.name}｜替换：${formula.slots.join(" / ")}｜绑定当前选题`);
+    return titleChoice(title, `公式：${formula.name} · 替换：${formula.slots.join(" / ")} · 绑定当前选题`);
   }));
 }
 
@@ -3381,7 +3388,7 @@ function titleFormulaLibraryForTarget(target) {
       { name: "从 X 看懂 Y", pattern: "from-to", slots: ["选题", "真实变化"] },
       { name: "X 背后的真正问题", pattern: "deep-problem", slots: ["选题", "表层认知"] },
       common[3],
-      { name: "X 之后，Y 怎么重理解", pattern: "after-rethink", slots: ["选题", "影响对象"] },
+      { name: "X 之后，Y 怎么重新理解", pattern: "after-rethink", slots: ["选题", "影响对象"] },
     ];
   }
   if (target === "douyin" || target === "video-account") {
@@ -3435,7 +3442,7 @@ function cleanTitleSlot(value = "") {
   const clean = cleanSourceText(value)
     .replace(/^(关于|这个|那个|一种|一个|很多|真正|关键|当前)/, "")
     .replace(/(可以先改成|后续再扩展成|视频号短视频|抖音短视频|公众号长文|小红书图文|朋友圈文案|短视频脚本|平台成品|发布目标)/g, "")
-    .replace(/[，。！？；：、,.!?;:]+$/g, "")
+    .replace(/[，、。！？；：,.!?;:]+$/g, "")
     .trim();
   return clean.length > 18 ? clean.slice(0, 18) : clean || state.businessLine || "这件事";
 }
@@ -3449,40 +3456,7 @@ function isGoodTitleSlot(value = "") {
 }
 
 function buildTitleChoices(topic, titleAssets = state.titleAssets) {
-  if (!topic) return [];
-  const seed = buildTitleSeed(topic);
-  const assetChoices = buildAssetBackedTitleChoices(topic, titleAssets);
-  const topicChoices = buildTopicDrivenTitleChoices(topic);
-  if (state.publishTarget === "wechat-article") {
-    return dedupeTitleChoices([
-      ...topicChoices,
-      ...assetChoices,
-      titleChoice(`为什么${seed.problem}，不是换工具就能解决的？`, "认知冲突型：适合长文展开问题本质。"),
-      titleChoice(`${seed.asset}这件事，我建议内容创作者早点补上`, "行动建议型：适合公众号方法论。"),
-      titleChoice(`从${seed.scene}到稳定发文，中间差的是一套素材系统`, "路径拆解型：适合讲完整框架。"),
-      titleChoice(`${seed.audience}最容易忽略的内容资产问题`, "人群代入型：降低阅读门槛。"),
-      titleChoice(`写不出内容时，先别急着问 AI`, "反常识型：制造继续阅读理由。"),
-      titleChoice(`我重新理解了${seed.core}：它不是资料夹`, "观点升级型：适合沉淀方法论。"),
-    ]);
-  }
-  if (state.publishTarget === "douyin" || state.publishTarget === "video-account") {
-    return dedupeTitleChoices([
-      ...topicChoices,
-      ...assetChoices,
-      titleChoice(`你不是缺选题，是缺${seed.asset}`, "短视频钩子：一句话打断旧认知。"),
-      titleChoice(`${seed.scene}？先做这 3 个动作`, "清单型：适合口播脚本。"),
-      titleChoice(`别再让 AI 直接写了，先把素材喂对`, "避坑型：适合前 3 秒停留。"),
-      titleChoice(`${seed.audience}每天发什么？答案不在工具里`, "痛点型：适合引发共鸣。"),
-      titleChoice(`内容越写越像 AI，多半少了这一步`, "反差型：适合短视频开场。"),
-      titleChoice(`一分钟讲清楚${seed.core}怎么用`, "效率型：适合教程口播。"),
-    ]);
-  }
-  const pool = xhsTitlePoolForSeed(seed);
-  return dedupeTitleChoices([
-    ...topicChoices,
-    ...assetChoices,
-    ...pool.map((item) => titleChoice(item.title, item.reason)),
-  ]);
+  return buildCleanTitleChoices(topic, titleAssets);
 }
 
 function buildTitleSeed(topic = {}) {
@@ -3509,46 +3483,14 @@ function buildTitleSeed(topic = {}) {
 }
 
 function xhsTitlePoolForSeed(seed) {
-  const pools = {
-    asset: [
-      { title: `内容资产库怎么搭？先存这 5 类素材`, reason: "资产库专属：直接给可收藏动作。" },
-      { title: `每天不知道发什么，多半不是缺灵感`, reason: "痛点反转：击中选题焦虑。" },
-      { title: `我现在写内容，先翻素材库再问 AI`, reason: "流程展示：把方法变成场景。" },
-      { title: `别把爆款只存在收藏夹里`, reason: "认知提醒：从收藏转向复用。" },
-      { title: `内容越做越稳的人，都在偷偷存素材`, reason: "好奇缺口：强调长期积累。" },
-    ],
-    agent: [
-      { title: `Agent 总跑偏？先检查任务拆法`, reason: "问题诊断：贴合 Agent 源头。" },
-      { title: `想搭 Agent，别一上来就堆工具`, reason: "避坑型：阻止错误动作。" },
-      { title: `你的 Agent 缺的可能不是模型`, reason: "认知冲突：从模型转向流程。" },
-      { title: `Agent 工作流卡壳，通常卡在这一步`, reason: "悬念型：制造点击理由。" },
-      { title: `普通人搭 Agent，先做这个小闭环`, reason: "行动型：降低门槛。" },
-    ],
-    humanize: [
-      { title: `AI 味太重？先别急着润色`, reason: "去 AI 味专属：反常识切入。" },
-      { title: `文案像 AI，不是因为词不够口语`, reason: "认知冲突：避免表层改词。" },
-      { title: `写得太完整，反而更像 AI`, reason: "人味诊断：抓住具体症状。" },
-      { title: `去 AI 味，我最先删这几类句子`, reason: "清单型：适合收藏。" },
-      { title: `别再让 AI 写得像说明书了`, reason: "痛点型：画面感强。" },
-    ],
-    longform: [
-      { title: `公众号长文写不动，先别怪选题`, reason: "长文专属：从写作阻力切入。" },
-      { title: `写了 3 年长文，我越来越少硬憋`, reason: "经验复盘：适合真实经历类。" },
-      { title: `长文真正难的，不是开头`, reason: "反差型：引出结构问题。" },
-      { title: `小红书和公众号，不能用同一套写法`, reason: "平台差异：适合一鱼多吃。" },
-      { title: `长文素材不够时，别直接开写`, reason: "避坑型：回到素材积累。" },
-    ],
-    general: [
-      { title: `${seed.problem}？先看这一步`, reason: "通用避坑：保底但绑定问题。" },
-      { title: `${seed.audience}最容易忽略的内容动作`, reason: "人群代入：降低门槛。" },
-      { title: `${seed.core}不是照搬爆款`, reason: "观点型：适合二创解释。" },
-      { title: `为什么你做${seed.core}总是没结果？`, reason: "问题型：引出诊断。" },
-      { title: `想做好${seed.core}，先存这张清单`, reason: "收藏型：适合图文。" },
-    ],
-  };
-  return pools[seed.sourceType] || pools.general;
+  return [
+    { title: `${seed.problem}？先看这一步`, reason: "通用避坑：保底但绑定问题。" },
+    { title: `${seed.audience}最容易忽略的内容动作`, reason: "人群代入：降低门槛。" },
+    { title: `${seed.core}不是照抄爆款`, reason: "观点型：适合二创解释。" },
+    { title: `为什么你做${seed.core}总是没结果？`, reason: "问题型：引出诊断。" },
+    { title: `想做好${seed.core}，先存这张清单`, reason: "收藏型：适合图文。" },
+  ];
 }
-
 function titleChoice(title, reason) {
   return { title: clampTitle(title), reason };
 }
@@ -3577,7 +3519,7 @@ function dedupeTitleChoices(items = []) {
   const seen = new Set();
   const result = [];
   for (const item of items) {
-    const key = item.title.replace(/[，。！？?！、\s]/g, "");
+    const key = item.title.replace(/[，。！？、\s]/g, "");
     if (!item.title || seen.has(key)) continue;
     seen.add(key);
     result.push(item);
@@ -3611,8 +3553,8 @@ function isCompleteShortTitle(title = "", target = state.publishTarget) {
   if (!clean) return false;
   const length = titleCharLength(clean);
   if (length < 10 || length > titleMaxLengthForTarget(target)) return false;
-  if (/[，、：；,;:]$/.test(clean)) return false;
-  if (/(别|先|这份|这点|这步|这条|这个|的是|而是|不是|因为|如果|到底)$/.test(clean)) return false;
+  if (/[，、：；;:]$/.test(clean)) return false;
+  if (/(别|关于|这份|这点|这步|这条|这个|的是|而是|不是|因为|如果|到底)$/.test(clean)) return false;
   return true;
 }
 
@@ -3675,7 +3617,7 @@ function pickCompactTitleSubject(text = "", fallback = "") {
     [/私校申请|申请季|择校/, "私校申请"],
     [/夏校|夏令营/, "夏校申请"],
     [/标化|SSAT|托福|雅思|AP/, "标化备考"],
-    [/AI\s*Native|AI原生/, "AI原生项目"],
+    [/AI\s*Native|AI原生/, "AI Native项目"],
     [/Agent|工作流/, "Agent工作流"],
     [/内容资产库|素材库|知识库/, "内容资产库"],
     [/小红书|图文/, "小红书图文"],
@@ -3690,7 +3632,7 @@ function pickCompactTitleSubject(text = "", fallback = "") {
 function shortTitlePhrase(value = "", max = 8) {
   const clean = readableCn(value)
     .replace(/^(关于|如果|为什么|怎么|如何)/, "")
-    .replace(/[，。！？；：、,.!?;:].*$/, "")
+    .replace(/[，、。！？；：,.!?;:].*$/, "")
     .trim();
   const chars = Array.from(clean);
   return chars.length > max ? chars.slice(0, max).join("") : clean;
@@ -3706,7 +3648,7 @@ function readableCn(value = "") {
 }
 
 function firstReadableSentence(text = "") {
-  return readableCn(text).split(/[，。！？；：,.!?\n]/).map((item) => item.trim()).find((item) => item.length >= 4) || "";
+  return readableCn(text).split(/[，、。！？；：,.!?\n]/).map((item) => item.trim()).find((item) => item.length >= 4) || "";
 }
 
 function pickSubjectPhrase(value = "") {
@@ -3714,7 +3656,6 @@ function pickSubjectPhrase(value = "") {
   const phrase = firstReadableSentence(text) || text;
   return clampTitlePart(phrase, 18) || "这个选题";
 }
-
 function pickAudiencePhrase(text = "") {
   if (/家长|妈妈|爸爸|父母|孩子|娃/.test(text)) return "家长";
   if (/学生|孩子|小孩|初中|高中|申请者/.test(text)) return "学生";
@@ -3752,31 +3693,24 @@ function pickResultPhrase(text = "") {
 }
 
 function clampTitlePart(value = "", max = 18) {
-  const clean = readableCn(value).replace(/[，。！？；：,.!?].*$/, "").trim();
+  const clean = readableCn(value).replace(/[，、。！？；：,.!?].*$/, "").trim();
   return clean.length > max ? clean.slice(0, max) : clean;
 }
-
 function topicBoundTemplatesForTarget(target) {
   if (target === "xhs") {
     return [
       { reason: "小红书痛点型", render: (s) => `${s.shortSubject}别急着报名` },
       { reason: "小红书避坑型", render: (s) => `${s.shortSubject}先看这3点` },
-      { reason: "小红书收藏型", render: (s) => `${s.shortSubject}高分准备清单` },
-      { reason: "小红书判断型", render: (s) => `${s.shortSubject}到底值不值得` },
+      { reason: "小红书收藏型", render: (s) => `${s.shortSubject}准备清单` },
+      { reason: "小红书判断型", render: (s) => `${s.shortSubject}值不值得做` },
       { reason: "小红书方法型", render: (s) => `${s.shortSubject}这样准备更稳` },
-      { reason: "小红书家长代入型", render: (s) => `家长看${s.shortSubject}先看这篇` },
-      { reason: "小红书结果型", render: (s) => `${s.shortSubject}想出结果先避坑` },
-      { reason: "小红书信号型", render: (s) => `${s.shortSubject}这3个信号很关键` },
-      { reason: "小红书反差型", render: (s) => `${s.shortSubject}不是越早越好` },
-      { reason: "小红书决策型", render: (s) => `${s.shortSubject}适不适合孩子` },
     ];
   }
   if (target === "wechat-article") {
     return [
       { reason: "公众号深度型", render: (s) => `为什么${s.subject}真正难的不是信息，而是${s.problem}` },
-      { reason: "公众号方法型", render: (s) => `从${s.problem}到${s.result}：${s.subject}的完整准备路径` },
+      { reason: "公众号方法型", render: (s) => `从${s.problem}到${s.result}：${s.subject}的完整路径` },
       { reason: "公众号复盘型", render: (s) => `拆完${s.subject}后，我发现关键在${s.action}` },
-      { reason: "公众号避坑型", render: (s) => `${s.audience}做${s.subject}，最容易忽略这一点` },
       { reason: "公众号系统型", render: (s) => `${s.subject}不能只靠经验，要靠一套判断标准` },
     ];
   }
@@ -3786,24 +3720,20 @@ function topicBoundTemplatesForTarget(target) {
       { reason: "朋友圈提醒型", render: (s) => `${s.subject}这件事，别只看表面` },
       { reason: "朋友圈经验型", render: (s) => `${s.problem}，很多人一开始都会忽略` },
       { reason: "朋友圈行动型", render: (s) => `如果你也在看${s.subject}，先做这一步` },
-      { reason: "朋友圈结论型", render: (s) => `${s.subject}真正重要的是${s.action}` },
     ];
   }
   if (target === "douyin" || target === "video-account") {
     return [
       { reason: "短视频钩子型", render: (s) => `别再乱准备${s.subject}了，先看这一点` },
-      { reason: "短视频痛点型", render: (s) => `${s.problem}，问题通常出在这一步` },
-      { reason: "短视频清单型", render: (s) => `${s.audience}看${s.subject}，先抓这3个信号` },
+      { reason: "短视频痛点型", render: (s) => `${s.problem}，通常卡在这一步` },
+      { reason: "短视频清单型", render: (s) => `${s.audience}看${s.subject}，先抓3个信号` },
       { reason: "短视频结果型", render: (s) => `${s.subject}想要${s.result}，关键不是死记硬背` },
-      { reason: "短视频避坑型", render: (s) => `${s.subject}最容易踩的坑，我给你讲清楚` },
     ];
   }
   return [
-    { reason: "小红书痛点型", render: (s) => `${s.subject}别硬准备，先搞懂${s.problem}` },
-    { reason: "小红书方法型", render: (s) => `${s.subject}想出效果，先把这一步做好` },
-    { reason: "小红书收藏型", render: (s) => `${s.audience}看${s.subject}，这份准备清单建议收藏` },
-    { reason: "小红书反差型", render: (s) => `${s.subject}的重点不是技巧，是${s.action}` },
-    { reason: "小红书结果型", render: (s) => `${s.subject}想拿到${s.result}，关键是这3点` },
+    { reason: "通用痛点型", render: (s) => `${s.audience}做${s.subject}，别先死磕工具` },
+    { reason: "通用方法型", render: (s) => `${s.subject}想出效果，先把这步做好` },
+    { reason: "通用收藏型", render: (s) => `${s.pain}？这套${s.subject}流程建议收藏` },
   ];
 }
 
@@ -3812,24 +3742,24 @@ function buildTopicBoundAssetTitle(signal, assets = []) {
   if (!matched) return null;
   const example = readableCn(matched.title);
   if (state.publishTarget === "xhs") {
-    if (/\d/.test(example)) return titleChoiceForTarget(`${signal.shortSubject}先看这3个信号`, `标题库参考：${example}`, "xhs");
-    if (/[？?]/.test(example)) return titleChoiceForTarget(`${signal.shortSubject}怎么判断才稳`, `标题库参考：${example}`, "xhs");
+    if (/\d/.test(example)) return titleChoiceForTarget(`${signal.shortSubject}先看3个信号`, `标题库参考：${example}`, "xhs");
+    if (/[，、：]/.test(example)) return titleChoiceForTarget(`${signal.shortSubject}怎么判断才稳`, `标题库参考：${example}`, "xhs");
     return titleChoiceForTarget(`${signal.shortSubject}别踩这个坑`, `标题库参考：${example}`, "xhs");
   }
   if (/\d/.test(example)) return titleChoice(`${signal.audience}看${signal.subject}，先记住这3个判断`, `标题库参考：${example}`);
-  if (/[？?]/.test(example)) return titleChoice(`${signal.subject}为什么总卡在${signal.problem}？`, `标题库参考：${example}`);
+  if (/[，、：]/.test(example)) return titleChoice(`${signal.subject}为什么总卡在${signal.problem}？`, `标题库参考：${example}`);
   return titleChoice(`${signal.subject}想出结果，别忽略${signal.action}`, `标题库参考：${example}`);
 }
 
 function dedupeTopicBoundTitleChoices(items = []) {
-  const banned = /AI自媒体|内容资产库|内容创作|大城市流量|素材库|标题库|工具|拆爆款|平台成品/;
+  const bannedTerms = ["AI自媒体", "内容资产库", "内容创作", "大城市流量", "素材库", "标题库", "工具", "拆分", "平台成品"];
   const seen = new Set();
   const result = [];
   for (const item of items) {
     if (!item) continue;
     const title = clampTitle(readableCn(item.title));
     const key = title.replace(/[，。！？\s]/g, "");
-    if (!title || !isCompleteShortTitle(title) || seen.has(key) || banned.test(title)) continue;
+    if (!title || !isCompleteShortTitle(title) || seen.has(key) || bannedTerms.some((term) => title.includes(term))) continue;
     seen.add(key);
     result.push({ title, reason: readableCn(item.reason || "绑定当前选题生成") });
   }
@@ -3840,7 +3770,7 @@ function extractCleanTitleSignal(topic = {}) {
   const rawTitle = cleanReadableText(topic.title || topic.theme || "");
   const rawBody = cleanReadableText(topic.body || topic.content || topic.summary || topic.reason || "");
   const text = cleanReadableText([rawTitle, rawBody, state.keywords, state.businessLine].filter(Boolean).join(" "));
-  const sourceTitle = rawTitle || firstMeaningfulPhrase(text) || state.businessLine || "这个选题";
+  const sourceTitle = rawTitle || firstMeaningfulPhrase(text) || state.businessLine || "杩欎釜閫夐";
   return {
     text,
     sourceTitle,
@@ -3882,7 +3812,6 @@ function extractSubject(text = "", fallback = "") {
   }
   return fallback;
 }
-
 function extractAudience(text = "") {
   if (/女生|姐妹|宝妈|女性/.test(text)) return "想做自媒体的女生";
   if (/新手|小白|0基础|零基础/.test(text)) return "新手";
@@ -3892,35 +3821,30 @@ function extractAudience(text = "") {
 }
 
 function extractAction(text = "") {
-  if (/Plog|做图|出图|作图|图片|构图/.test(text)) return "把图片和文案做成流程";
-  if (/标题|爆款/.test(text)) return "先拆标题和爆点";
   if (/素材|资产|知识库|收藏/.test(text)) return "先建可复用素材库";
-  if (/Agent|工作流|自动化/.test(text)) return "先跑通一个小闭环";
-  if (/公众号|长文/.test(text)) return "先拆成长文结构";
-  return "先把方法拆成步骤";
+  if (/Agent|工作流|自动化/.test(text)) return "先拆清任务流程";
+  if (/标题|选题|爆款/.test(text)) return "先拆用户问题";
+  if (/AI味|不像人|同质化/.test(text)) return "先补真实经验";
+  return "先做一次判断";
 }
 
-function extractPain(text = "", subject = "") {
-  if (/不会构图|道具不够|缺少一张图片|不出片/.test(text)) return "不会构图、素材不够";
+function extractPain(text = "", fallback = "") {
   if (/没方向|不知道.*发|没选题|缺.*素材/.test(text)) return "每天不知道发什么";
   if (/AI味|像AI|同质化|模板/.test(text)) return "写出来太像模板";
-  if (/没流量|不涨粉|没结果/.test(text)) return "发了也没结果";
-  if (/太慢|效率|批量/.test(text)) return "效率太低";
-  return subject ? `${subject}做不出稳定效果` : "不知道第一步怎么做";
+  if (/没流量|没人看|不涨粉|没结果/.test(text)) return "发了也没结果";
+  if (/卡住|跑偏|不稳定/.test(text)) return "流程总是卡住";
+  return shortenTitlePart(fallback || "问题没被拆清楚");
 }
 
 function extractResult(text = "") {
-  const metric = text.match(/(\d+(?:\.\d+)?\s*[万千百kK]?\+?)\s*(曝光|阅读|播放|点赞|收藏|涨粉|收益|收入|成交)/);
-  if (metric) return `${metric[1]}${metric[2]}`;
-  if (/起号|涨粉/.test(text)) return "更容易起号";
-  if (/变现|赚钱|收益|副业/.test(text)) return "更容易变现";
-  if (/效率|批量|半小时|三小时/.test(text)) return "效率翻倍";
-  if (/出片|好看|治愈/.test(text)) return "稳定出片";
-  return "稳定产出";
+  if (/出图|作图|图片|插画/.test(text)) return "配图能直接用";
+  if (/发布|发文|日更/.test(text)) return "稳定发出去";
+  if (/资产|复用|一鱼多吃/.test(text)) return "后续能复用";
+  if (/涨粉|流量|阅读/.test(text)) return "更容易拿反馈";
+  return "跑出结果";
 }
-
 function shortenTitlePart(value = "") {
-  const clean = cleanReadableText(value).replace(/[，。！？；：,.!?].*$/, "").trim();
+  const clean = cleanReadableText(value).replace(/[，。！？；:：,.!?].*$/, "").trim();
   return clean.length > 18 ? clean.slice(0, 18) : clean || "这个方法";
 }
 
@@ -3930,8 +3854,7 @@ function titleTemplatesForTarget(target) {
       { reason: "朋友圈观察型", render: (s) => `我最近重新理解了${s.subject}` },
       { reason: "朋友圈反差型", render: (s) => `以前以为难在${s.subject}，后来发现是${s.action}` },
       { reason: "朋友圈经验型", render: (s) => `${s.pain}这事，真的不能只靠感觉` },
-      { reason: "朋友圈提醒型", render: (s) => `如果你也在做${s.subject}，先别急着照搬` },
-      { reason: "朋友圈结论型", render: (s) => `${s.subject}真正值钱的是能复用` },
+      { reason: "朋友圈提醒型", render: (s) => `如果你也在做${s.subject}，先别急着照抄` },
     ];
   }
   if (target === "wechat-article") {
@@ -3939,7 +3862,6 @@ function titleTemplatesForTarget(target) {
       { reason: "公众号深度型", render: (s) => `${s.subject}真正难的不是工具，而是${s.action}` },
       { reason: "公众号问题型", render: (s) => `为什么很多人做${s.subject}，最后都卡在${s.pain}` },
       { reason: "公众号方法型", render: (s) => `从${s.pain}到${s.result}：一套可复用的${s.subject}方法` },
-      { reason: "公众号复盘型", render: (s) => `我拆完这条${s.subject}爆款后，发现关键在${s.action}` },
       { reason: "公众号系统型", render: (s) => `${s.subject}不能只靠灵感，要靠一套内容系统` },
     ];
   }
@@ -3948,24 +3870,22 @@ function titleTemplatesForTarget(target) {
       { reason: "短视频钩子型", render: (s) => `别再乱做${s.subject}了，先看这一步` },
       { reason: "短视频反差型", render: (s) => `${s.subject}没效果，问题通常不是工具` },
       { reason: "短视频清单型", render: (s) => `${s.audience}做${s.subject}，先抓这3个信号` },
-      { reason: "短视频结果型", render: (s) => `我是怎么用${s.subject}做到${s.result}的` },
       { reason: "短视频避坑型", render: (s) => `${s.pain}，多半是少了这套流程` },
     ];
   }
   return [
     { reason: "小红书痛点型", render: (s) => `${s.audience}做${s.subject}，别先死磕工具` },
-    { reason: "小红书方法型", render: (s) => `${s.subject}想出效果，先把这一步做好` },
+    { reason: "小红书方法型", render: (s) => `${s.subject}想出效果，先把这步做好` },
     { reason: "小红书收藏型", render: (s) => `${s.pain}？这套${s.subject}流程建议收藏` },
     { reason: "小红书反差型", render: (s) => `${s.subject}的重点不是技巧，是${s.action}` },
-    { reason: "小红书结果型", render: (s) => `我用${s.subject}跑通了${s.result}，关键是这3点` },
   ];
 }
 
 function buildCleanAssetTitleChoice(signal, assets = []) {
   const matched = (assets || []).find((item) => item?.title && cleanReadableText(item.title).length >= 6);
   if (!matched) return null;
-  const title = cleanReadableText(matched.title);
-  const style = /[？?]/.test(title) ? "问题式" : /\d/.test(title) ? "数字清单式" : "爆款参考式";
+  const example = cleanReadableText(matched.title);
+  const style = /[，、：？?]/.test(example) ? "问题式" : /\d/.test(example) ? "数字清单式" : "爆款参考式";
   const rendered = style === "数字清单式"
     ? `${signal.audience}做${signal.subject}，先记住这3个动作`
     : style === "问题式"
@@ -3979,9 +3899,9 @@ function dedupeCleanTitleChoices(items = []) {
   const result = [];
   for (const item of items) {
     const title = clampTitle(cleanReadableText(item.title));
-    const key = title.replace(/[，。！？、\s]/g, "");
+    const key = title.replace(/[，、。！？\s]/g, "");
     if (!title || seen.has(key)) continue;
-    if (/大城市流量|跑出结果|真正香|当前选题|绑定当前选题|公式/.test(title)) continue;
+    if (/大城市流量|跑出结果|当前选题|绑定当前选题|公式/.test(title)) continue;
     seen.add(key);
     result.push({ title, reason: cleanReadableText(item.reason || "绑定当前选题生成") });
   }
@@ -4130,17 +4050,17 @@ function buildSopDraftPayload() {
 function platformStyleInstruction() {
   if (state.publishTarget === "moments") {
     return [
-      "朋友圈文案不是文章，不要标题、不要标签、不要配图建议、不要“正文：”。",
-      "只输出一条真人朋友圈动态，控制在 120-260 字。",
+      "朋友圈文案不是文章，不要标题、标签、配图建议，也不要输出“正文：”。",
+      "只输出一条像真人随手发的朋友圈动态，控制在 120-260 字。",
       "语气像运营者随手发圈：有最近发生的场景、有一句判断、有一点经验，不要教程腔。",
       "可以分 3-5 个短段，中间允许空行；不要编号清单，不要一二三步骤。",
-      "结尾轻一点，可以是“有需要我把方法发你”这种私聊入口，不要硬广。"
+      "结尾轻一点，可以是私聊入口，不要硬广。"
     ].join("\n");
   }
   if (state.publishTarget === "wechat-article") {
     return [
       "公众号长文不是小红书短正文，不要标签，不要配图建议列表。",
-      "需要有标题、开头问题、正文小标题、论证、案例/场景、方法和结尾。",
+      "需要有标题、开头问题、正文小标题、论证、案例或场景、方法和结尾。",
       "结构可以用 Markdown 标题，但正文要像一篇完整文章，不要写成轮播卡片说明。",
       "允许 900-1800 字，重点是观点展开和信任感，不要每段都短促喊口号。"
     ].join("\n");
@@ -4148,15 +4068,15 @@ function platformStyleInstruction() {
   if (state.publishTarget === "douyin" || state.publishTarget === "video-account") {
     return [
       "短视频脚本不是图文正文，不要标签，不要配图建议，不要公众号式长段落。",
-      "必须按：封面标题、3秒钩子、口播正文、分镜/画面、字幕关键词、结尾互动来写。",
+      "必须按：封面标题、3秒钩子、口播正文、分镜画面、字幕关键词、结尾互动来写。",
       "口播要短句，适合真人说出来；每段控制在 1-3 句。",
       "视频号更偏信任和解释，抖音更偏钩子和节奏。"
     ].join("\n");
   }
   return [
-    "小红书图文要有标题、正文、配图建议和标签。",
+    "小红书图文要有标题、正文和标签；配图建议只进入系统内部图文计划，不要混进最终正文。",
     "正文要口语、有场景、有收藏价值，适合图文笔记，不要写成公众号长文。",
-    "配图建议必须对应轮播页，不要写泛泛的装饰图。"
+    "配图计划必须对应轮播页，不要写泛泛的装饰图。"
   ].join("\n");
 }
 
@@ -4177,7 +4097,7 @@ function formatSopDraft(draft = {}) {
   const tags = Array.isArray(copy.tags) ? copy.tags : Array.isArray(draft.tags) ? draft.tags : [];
   const parts = [`标题：${title}`, "", "正文：", body.trim()];
   if (imagePlan.length) {
-    parts.push("", "配图建议：", ...imagePlan.map((item, index) => `${index + 1}. ${typeof item === "string" ? item : item.title || item.copy || JSON.stringify(item)}`));
+    state.currentImagePlan = imagePlan;
   }
   if (tags.length) parts.push("", `标签：${tags.map((tag) => String(tag).replace(/^#/, "#")).join(" ")}`);
   return parts.filter((item) => item !== undefined && item !== null).join("\n");
@@ -4278,99 +4198,100 @@ function buildXhsDraft(topic, options = {}) {
   const angleLine = options.variant
     ? "这次换一个更像真实复盘的角度讲，把问题说透，不写成教程腔。"
     : insight.angle || "这次不照搬原帖，而是把源头观点改成更适合小红书图文的内容。";
-  return `标题：${state.selectedTitle}
+  const title = state.selectedTitle || topic.theme || sourceTitle || "这个选题值得重新拆一次";
+  const pain = cleanReadableText(topic.pain || insight.pain || "很多人只照搬方法，却没有先判断自己是否适合");
+  const theme = cleanReadableText(topic.theme || sourceTitle || state.businessLine);
+  const tags = compactTags([state.businessLine, state.industry, "内容避坑", "判断标准", "经验分享"]);
+  return `标题：${title}
 
 正文：
-很多人现在用 AI 做内容，最大的问题不是不会生成，而是越写越像同一套模板。
+很多人做「${theme}」的时候，最容易卡住的不是不会找方法，而是太快进入照抄。
 
 ${angleLine}
 
 我这次参考的源头素材是：
-《${sourceTitle || topic.theme}》
+「${sourceTitle || topic.theme || title}」
 
 它真正值得拆的不是原句，而是背后的提醒：
-${topic.pain}
+${pain}
 
-如果你也在做 AI 内容创作，先别急着堆工具，可以先看 3 个地方：
+所以这条内容先不急着给答案，先把判断顺序讲清楚。
 
-1. 你的内容是不是只有“方法步骤”，但没有自己的经历和判断
-2. 你是不是只学了爆款标题，却没拆出用户为什么会停下来
-3. 你是不是每篇都很完整，但读起来没有真实场景和人的味道
+你可以先看 3 个地方：
 
-很多人拆爆款，只拆到标题、开头、结构这一层。
+1. 这个问题是突然出现，还是长期反复出现
+2. 你之前照着别人做的时候，有没有判断前提是否一样
+3. 你现在最缺的是马上行动，还是先把边界想清楚
 
-但真正该拆的是：
-这篇内容解决了谁的焦虑？
-它让读者收藏的理由是什么？
-它有没有给一个低门槛的下一步？
+如果这 3 个问题没弄清楚，先别急着套别人的方法。
 
-所以 AI 内容不是不能用模板，而是不能只剩模板。
+真正稳的顺序是：先判断情况，再选择方法，再观察反馈。
 
-你可以先从一篇对标内容开始，拆出选题、用户问题和行动入口，再改成自己的表达。
-
-配图建议：
-${buildDeliveryPlan().map((item, index) => `${index + 1}. ${item}`).join("\n")}
-
-标签：#${state.businessLine.replace(/\s+/g, "")} #${state.industry.replace(/\s+/g, "")} #内容避坑 #判断标准 #经验分享`;
+标签：${tags}`;
 }
 
 function buildVideoDraft(topic) {
-  return `标题：${state.selectedTitle}
+  const title = state.selectedTitle || topic.theme || "先别急着照抄这个方法";
+  const theme = cleanReadableText(topic.theme || topic.title || state.businessLine);
+  const pain = cleanReadableText(topic.pain || "很多人只看结果，没有先判断前提是否一样");
+  return `封面标题：${title}
 
-0-3 秒｜钩子
-你以为“${topic.theme}”难在工具，其实很多人第一步就错了。
+0-3 秒：钩子
+你以为「${theme}」难在工具，其实很多人第一步就错了。
 
-3-8 秒｜代入
-很多人看到别人有效，就急着照着做，但很少先问：这个方法适不适合我现在的情况？
+3-8 秒：代入
+看到别人做出结果后，最容易犯的错就是直接照抄，但很少先问：这个方法适不适合我现在的情况？
 
-8-35 秒｜主体
+8-35 秒：主体
 先看三个判断：
-第一，问题是突然出现，还是长期累积。
-第二，你之前试过的方法，是不是只看结果，没看前提。
-第三，你现在需要的是马上行动，还是先做一次基础判断。
+第一，问题是突然出现，还是长期反复出现？
+第二，你之前试过的方法，是不是只看结果，没看前提？
+第三，你现在需要的是马上行动，还是先做一次基础判断？
 
-35-48 秒｜源头问题
-这条选题来自一个真实素材：${topic.title}
-它值得参考的地方不是原文表达，而是背后的用户问题：${topic.pain}
+35-48 秒：源头问题
+这条选题来自真实素材：${topic.title || theme}
+它值得参考的地方不是原文表达，而是背后的用户问题：${pain}
 
-48-60 秒｜行动
-所以别急着照搬。先把自己的情况判断清楚，再决定下一步怎么做。
+48-60 秒：行动
+所以别急着照抄。先把自己的情况判断清楚，再决定下一步怎么做。
 
 分镜提示：
-1. 开头大字：先别急着照搬
+1. 开头大字：先别急着照抄
 2. 中段字幕卡：3 个判断问题
 3. 画面：源头素材 / 评论问题打码截图
 4. 结尾：先判断，再行动`;
 }
 
 function buildArticleDraft(topic) {
-  return `# ${state.selectedTitle}
+  const title = state.selectedTitle || topic.theme || "这个选题为什么值得写";
+  const pain = cleanReadableText(topic.pain || "很多内容失败不是没有观点，而是没有把真实问题拆清楚");
+  return `# ${title}
 
 ## 这个选题为什么值得写
-在“${state.industry}”里，很多内容失败不是因为没有观点，而是没有把真实问题拆清楚。
+在「${state.industry}」里，很多内容失败不是因为没有观点，而是没有把真实问题拆清楚。
 
-这次源头素材暴露的问题是：${topic.pain}
+这次源头素材暴露的问题是：${pain}
 
 ## 一、不要先套方法，先判断场景
 同一个方法放在不同人身上，效果可能完全不同。内容创作也是一样，不能只学标题和句式，要先看它解决了什么问题。
 
 ## 二、拆源头素材的三个信号
-1. 标题为什么能让人停下来
-2. 正文提供了什么判断标准
-3. 评论区或用户问题说明了什么需求
+1. 标题为什么能让人停下来？
+2. 正文提供了什么判断标准？
+3. 评论区或用户问题说明了什么需求？
 
 ## 三、改造成自己的内容资产
-我们要复制的是结构和洞察，不是原文表达。围绕“${state.businessLine}”，更适合的写法是：先讲误区，再给判断框架，最后给低门槛行动入口。
+我们要复用的是结构和洞察，不是原文表达。围绕「${state.businessLine}」，更适合的写法是：先讲误区，再给判断框架，最后给低门槛行动入口。
 
 ## 四、一鱼多吃
 这个选题后续可以继续改成小红书图文、短视频脚本和朋友圈文案。`;
 }
 
 function buildMomentsDraft(topic) {
-  const pain = topic.pain || "很多内容不是没价值，就是换个平台以后还沿用同一套写法。";
-  return `最近越来越觉得，内容不能偷懒直接搬。
+  const pain = cleanReadableText(topic.pain || "很多内容不是没价值，是换个平台后还沿用同一套写法");
+  return `最近越来越觉得，内容不能偷懒直接照抄。
 
-比如同一个选题，小红书可以写得像干货清单，但发朋友圈就不一样。朋友圈里大家看的不是“步骤”，而是你最近真的发现了什么、踩过什么坑。
+比如同一个选题，小红书可以写得像干货清单，但发朋友圈就不一样。朋友圈里大家看的不是步骤，而是你最近真的发现了什么、踩过什么坑。
 
 我这两天拆到一个点：${pain}
 
@@ -4441,7 +4362,7 @@ function buildContentCoachReport() {
 
 function scoreTitleHook(title = "", topic = {}) {
   const hasPain = title && topic.pain && textOverlap(title, topic.pain) > 0;
-  const hookWords = ["why", "how", "mistake", "secret", "checklist", "AI", "3", "5", "7", "?", "？"];
+  const hookWords = ["why", "how", "mistake", "secret", "checklist", "AI", "3", "5", "7", "?", "？", "别", "为什么", "原来", "不是", "而是"];
   const hasHook = hookWords.some((word) => String(title || "").includes(word));
   const length = titleCharLength(title);
   const clear = length >= 8 && length <= titleMaxLengthForTarget(state.publishTarget);
@@ -4496,7 +4417,7 @@ function scorePlatformFit(copy = "", platform = "xhs") {
   let ok = true;
   let advice = "";
   if (platform === "moments") {
-    ok = !/(标题[:：]|正文[:：]|配图建议|#)/.test(copy) && copy.length <= 420;
+    ok = !/(标题[:：]|正文[:：]|配图建议|标签[:：]|#)/.test(copy) && copy.length <= 420;
     advice = zh("&#26379;&#21451;&#22280;&#19981;&#35201;&#20687;&#25991;&#31456;&#65292;&#25913;&#25104;&#33258;&#28982;&#30340;&#21475;&#35821;&#20998;&#20139;");
   } else if (platform === "wechat-article") {
     ok = copy.length >= 700 || /^#|^##/m.test(copy);
@@ -4562,7 +4483,6 @@ function scoreDraft() {
   const review = state.draftReview || runLongkaReview(text);
   if (review) {
     const gate = review.gate || {};
-    const dbs = review.dbs || {};
     const ai = review.ai || {};
     const rows = [
       { name: "开头留存", ok: gate.checks?.answers_question !== false, good: "开头围绕当前主问题，没有泛泛铺垫。", bad: "开头还没有咬住当前标题对应的主问题。" },
@@ -4570,7 +4490,7 @@ function scoreDraft() {
       { name: "具体感", ok: gate.checks?.not_encyclopedia !== false, good: "不是百科式堆知识，保留了判断路径。", bad: "表达太像百科说明，需要改成具体判断场景。" },
       { name: "人味表达", ok: ai.ok !== false, good: "没有明显模板腔。", bad: (ai.fixes || ["句式太顺、太完整，需要打散并加入真实口语节奏。"])[0] },
       { name: "行动入口", ok: gate.checks?.has_action !== false, good: "结尾有低压力下一步。", bad: "结尾缺少可执行动作。" },
-      { name: "合规边界", ok: gate.checks?.no_fake_story !== false, good: "没有虚构身份、绝对承诺或高风险表达。", bad: "有虚构经历或承诺感，需要删掉。" },
+      { name: "合规边界", ok: gate.checks?.no_fake_story !== false, good: "没有虚构身份、绝对承诺或高风险表达。", bad: "有虚构经历或承诺感，需要删除。" },
     ];
     return rows.map((item) => ({
       score: item.ok ? 88 : 66,
@@ -4584,7 +4504,7 @@ function scoreDraft() {
   const hasAiSmell = /真正|关键|此外|总之|不是.*而是|首先|其次|最后|希望.*帮助/.test(text);
   const hasRisky = /保证|根治|一定有效|确定收益|100%/.test(text);
   return [
-    { score: text.length > 350 ? 84 : 68, name: "完整度", reason: text.length > 350 ? "已有正文、配图或行动入口。" : "正文偏短，难以完成平台内容交付。", warn: text.length <= 350 },
+    { score: text.length > 350 ? 84 : 68, name: "完整度", reason: text.length > 350 ? "已有正文和行动入口。" : "正文偏短，难以完成平台内容交付。", warn: text.length <= 350 },
     { score: hasSource ? 88 : 60, name: "源头绑定", reason: hasSource ? "绑定了选中素材。" : "缺少选中素材。", warn: !hasSource },
     { score: hasAiSmell ? 64 : 86, name: "人味表达", reason: hasAiSmell ? "有明显 AI 连接词或模板句式。" : "没有明显模板腔。", warn: hasAiSmell },
     { score: hasAction ? 84 : 66, name: "行动入口", reason: hasAction ? "有下一步动作。" : "需要给读者一个低门槛动作。", warn: !hasAction },
@@ -4596,7 +4516,7 @@ function improveDraft(text, again = false) {
   if (!text) return "";
   const review = state.draftReview || runLongkaReview(text);
   const fixes = review?.rewriteBrief?.length ? review.rewriteBrief : [
-    "开头删掉解释腔，直接回答标题里的主问题。",
+    "开头删除解释腔，直接回答标题里的主问题。",
     "保留一个真实场景，不要每段都写成完整道理。",
     "把结尾改成低压力动作：收藏、对照、留言或评估。",
   ];
@@ -4605,7 +4525,7 @@ function improveDraft(text, again = false) {
 
 function rewriteDraftByEditorialRules(text = "", fixes = [], again = false) {
   const clean = stripEditorialNotes(text);
-  const title = extractDraftField(clean, "标题") || state.selectedTitle || selectedTopic()?.theme || "这件事别急着照搬";
+  const title = extractDraftField(clean, "标题") || state.selectedTitle || selectedTopic()?.theme || "这件事别急着照抄";
   const body = extractDraftField(clean, "正文") || clean;
   if (state.publishTarget === "moments") {
     return formatMomentsSopDraft(rewriteBodyWithFocus(body, fixes, again));
@@ -4617,7 +4537,6 @@ function rewriteDraftByEditorialRules(text = "", fixes = [], again = false) {
     return formatVideoSopDraft({ title, body: rewriteBodyWithFocus(body, fixes, again) });
   }
   const tags = extractDraftField(clean, "标签") || "";
-  const imagePlan = extractDraftField(clean, "配图建议");
   const rewrittenTitle = rewriteTitleWithSuspense(title);
   const rewrittenBody = rewriteBodyWithFocus(body, fixes, again);
   const parts = [
@@ -4626,17 +4545,16 @@ function rewriteDraftByEditorialRules(text = "", fixes = [], again = false) {
     "正文：",
     rewrittenBody,
   ];
-  if (imagePlan) parts.push("", "配图建议：", compactImagePlan(imagePlan));
   if (tags) parts.push("", `标签：${compactTags(tags)}`);
   return parts.join("\n");
 }
 
 function stripEditorialNotes(text = "") {
   return String(text || "")
-    .replace(/\n+Longka 文案体检修改方向：[\s\S]*$/g, "")
-    .replace(/\n+第二轮体检修改方向：[\s\S]*$/g, "")
-    .replace(/\n+第\d+轮体检修改方向：[\s\S]*$/g, "")
-    .replace(/\n+优化补充：[\s\S]*$/g, "")
+    .replace(/\n+Longka 文案体检修改方向[:：][\s\S]*$/g, "")
+    .replace(/\n+第二轮体检修改方向[:：][\s\S]*$/g, "")
+    .replace(/\n+第\d+轮体检修改方向[:：][\s\S]*$/g, "")
+    .replace(/\n+优化补充[:：][\s\S]*$/g, "")
     .trim();
 }
 
@@ -4648,7 +4566,7 @@ function extractDraftField(text = "", label = "") {
 
 function rewriteTitleWithSuspense(title = "") {
   const clean = String(title || "").replace(/\s+/g, " ").trim();
-  if (!clean) return state.selectedTitle || "这件事别急着照搬";
+  if (!clean) return state.selectedTitle || "这件事别急着照抄";
   if (/为什么|到底|别急|真正|不是/.test(clean)) return clean;
   if (clean.length > 24) return `${clean.slice(0, 22)}，问题不在工具`;
   return `${clean}，先别急着要答案`;
@@ -4685,8 +4603,8 @@ function stripDraftFieldLabels(text = "") {
 function buildSharperLead(lines = [], question = "", again = false) {
   const useful = lines.find((line) => line.length >= 12 && !/很多人一开始|其实|所以|总结|首先|其次|最后/.test(line));
   const base = useful || question || "这个问题真正麻烦的地方，不是不会用工具。";
-  if (again) return `我会把问题再收窄一点：${base.replace(/[。！？!?.]$/, "")}。`;
-  return `${base.replace(/[。！？!?.]$/, "")}。`;
+  if (again) return `我会把问题再收窄一点：${base.replace(/[。！？?.]$/, "")}。`;
+  return `${base.replace(/[。！？?.]$/, "")}。`;
 }
 
 function buildFocusedPoints(lines = []) {
@@ -4718,7 +4636,7 @@ function buildFocusedPoints(lines = []) {
 
 function buildLowPressureCta(question = "") {
   const topic = question || selectedTopic()?.theme || state.businessLine;
-  return `如果你也卡在“${topic.slice(0, 24)}”这类问题上，先别急着照搬别人的方案。把你现在最卡的一句话写下来，再决定下一步怎么改。`;
+  return `如果你也卡在「${topic.slice(0, 24)}」这类问题上，先别急着照抄别人的方案。把你现在最卡的一句话写下来，再决定下一步怎么改。`;
 }
 
 function compactImagePlan(imagePlan = "") {
@@ -4743,7 +4661,7 @@ function buildDeliveryPlan() {
   if (state.publishTarget === "wechat-article") return ["长文标题", "开头问题", "案例展开", "方法论结构", "结尾转化"];
   if (state.publishTarget === "douyin" || state.publishTarget === "video-account") return ["封面标题", "黄金 3 秒", "口播正文", "分镜字幕", "素材需求"];
   if (state.publishTarget === "moments") return ["自然开头", "真实观察", "判断建议", "私聊入口"];
-  return ["封面：停留标题", "第 2 张：为什么别急着照搬", "第 3 张：3 个自查问题", "第 4 张：源头痛点", "第 5 张：行动入口"];
+  return ["封面：停留标题", "第 2 张：为什么别急着照抄", "第 3 张：3 个自查问题", "第 4 张：源头痛点", "第 5 张：行动入口"];
 }
 
 function renderAssetPage(route) {
@@ -4786,12 +4704,6 @@ async function renderTitleAssets() {
     const groups = groupTitleAssets(titles);
     target.innerHTML = renderTitleAssetWorkbench(result, titles, groups);
     return;
-    target.innerHTML = `
-      <div class="asset-summary">
-        <b>已沉淀 ${titles.length} 条标题资产</b>
-        <span>${escapeHtml(result.filterMiss ? "当前关键词还没沉淀标题，先展示全库高分标题；需要继续采集本方向爆款标题。" : "标题不是一股脑堆在一起。先按公式/心理触发分组，再结合平台、行业和互动数据筛选。")}</span>
-      </div>
-      ${groups.length ? groups.map(renderTitleAssetGroup).join("") : `<article class="empty-state"><b>还没有标题资产</b><span>先采集真实帖子，标题会自动沉淀到这里。</span></article>`}`;
   } catch (error) {
     target.innerHTML = `<div class="empty-state"><b>标题库读取失败</b><span>${escapeHtml(error.message)}</span></div>`;
   }
@@ -4815,8 +4727,8 @@ function renderTitleAssetWorkbench(result = {}, titles = [], groups = []) {
   const formulaCount = groups.length;
   const top = titles[0] || {};
   const status = result.filterMiss
-    ? "当前方向还缺标题资产，下面先展示全库高分标题作为参考。"
-    : "当前方向已有可复用标题资产，可以直接支援第 6 步标题改写。";
+    ? "当前方向还缺标题资产，下面先展示全库高分标题作为参考；需要继续采集本方向爆款标题。"
+    : "当前方向已有可复用标题资产，可以直接支撑第 6 步标题改写。";
   return `
     <div class="asset-summary asset-command">
       <b>标题资产库不是标题列表</b>
@@ -4840,7 +4752,7 @@ function renderTitleAssetWorkbench(result = {}, titles = [], groups = []) {
         </article>
         <article class="asset-item">
           <b>2. 再看哪些公式真的有效</b>
-          <span>同一个话题要覆盖认知冲突、损失规避、数字清单、案例经验等不同触发器。</span>
+          <span>同一话题要覆盖认知冲突、损失规避、数字清单、案例经验等不同触发器。</span>
         </article>
         <article class="asset-item">
           <b>3. 最后回到第 6 步改写标题</b>
@@ -4854,8 +4766,8 @@ function renderTitleAssetWorkbench(result = {}, titles = [], groups = []) {
 
 function inferTitleGroupName(title = "") {
   if (/为什么|不是|而是|真正/.test(title)) return "认知冲突型";
-  if (/别|先|警告|避坑|不要/.test(title)) return "损失提醒型";
-  if (/\d|几|第/.test(title)) return "数字清单型";
+  if (/别|警告|避坑|不要/.test(title)) return "损失提醒型";
+  if (/\d|第|个|条/.test(title)) return "数字清单型";
   if (/如何|怎么|清单|步骤/.test(title)) return "行动方法型";
   if (/我|亲测|经验|复盘/.test(title)) return "经验复盘型";
   return "待拆解";
@@ -4879,9 +4791,9 @@ function renderTitleAssetCard(item) {
     <div class="metric-row">
       <span>${escapeHtml(item.platform || "unknown")}</span>
       <span>分 ${escapeHtml(item.score || 0)}</span>
-      <span>赞${escapeHtml(metrics.likes || 0)}</span>
-      <span>藏${escapeHtml(metrics.saves || 0)}</span>
-      <span>评${escapeHtml(metrics.comments || 0)}</span>
+      <span>赞 ${escapeHtml(metrics.likes || 0)}</span>
+      <span>藏 ${escapeHtml(metrics.saves || 0)}</span>
+      <span>评 ${escapeHtml(metrics.comments || 0)}</span>
     </div>
     <p><strong>公式：</strong>${escapeHtml(item.formula || "待拆解")}</p>
     ${item.url ? `<a class="source-link" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">打开来源</a>` : ""}
@@ -5294,7 +5206,7 @@ function reuseFinalWork(id, target) {
   state.xhsCardManifest = null;
   state.draftMeta = null;
   state.draftReview = null;
-  state.archiveMessage = `已把「${work.title}」作为母题切到 ${currentTarget().title}。请先选新标题，再按该平台重写正文和配图策略。`;
+  state.archiveMessage = `已把《${work.title}》作为母题切到 ${currentTarget().title}。请先选新标题，再按该平台重写正文和配图策略。`;
   setRoute("today");
   setStep(6);
 }
@@ -5302,7 +5214,7 @@ function reuseFinalWork(id, target) {
 function deconstructFinalWork(id) {
   const work = state.finalWorks.find((item) => item.id === id);
   if (!work) return;
-  state.archiveMessage = `已拆解：标题「${work.extractedAssets?.title || work.title}」、结构「${work.extractedAssets?.structure || "未记录"}」、图文风格「${work.extractedAssets?.visualStyle || "未记录"}」。后续会正式写入标题库/结构库。`;
+  state.archiveMessage = `已拆解：标题《${work.extractedAssets?.title || work.title}》、结构《${work.extractedAssets?.structure || "未记录"}》、图文风格《${work.extractedAssets?.visualStyle || "未记录"}》。后续会正式写入标题库和结构库。`;
   renderAssetPage("assets");
 }
 
@@ -5315,18 +5227,7 @@ function sampleAssetItems(label) {
 
 function sampleState() {
   return {
-    contentSamples: [
-      {
-        id: "demo-x-1",
-        title: "普通人做 AI 自媒体，真正卡住的不是工具，而是不知道每天发什么",
-        content: "很多 AI 工具把功能做得很多，但普通用户更需要一个每天能执行的内容流程。",
-        platform: "x",
-        sourceTool: "demo",
-        keyword: "AI自媒体 内容资产库 Agent工作流",
-        metrics: { likes: 328, saves: 91, comments: 28 },
-        collectionStatus: "demo",
-      },
-    ],
+    contentSamples: [],
   };
 }
 
