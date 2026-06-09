@@ -3554,10 +3554,150 @@ function dedupeTitleChoices(items = []) {
 }
 function buildCleanTitleChoices(topic, titleAssets = state.titleAssets) {
   if (!topic) return [];
-  const signal = extractCleanTitleSignal(topic);
-  const choices = titleTemplatesForTarget(state.publishTarget).map((template) => titleChoice(template.render(signal), template.reason));
-  const assetChoice = buildCleanAssetTitleChoice(signal, titleAssets);
-  return dedupeCleanTitleChoices(assetChoice ? [assetChoice, ...choices] : choices).slice(0, 5);
+  const choices = buildTopicBoundTitleChoices(topic, titleAssets);
+  return dedupeTopicBoundTitleChoices(choices).slice(0, 5);
+}
+
+function buildTopicBoundTitleChoices(topic = {}, titleAssets = []) {
+  const signal = extractTopicBoundSignal(topic);
+  const assetChoice = buildTopicBoundAssetTitle(signal, titleAssets);
+  const templates = topicBoundTemplatesForTarget(state.publishTarget);
+  const choices = templates.map((template) => titleChoice(template.render(signal), template.reason));
+  return assetChoice ? [assetChoice, ...choices] : choices;
+}
+
+function extractTopicBoundSignal(topic = {}) {
+  const title = readableCn(topic.title || topic.theme || "");
+  const theme = readableCn(topic.theme || topic.title || "");
+  const body = readableCn(topic.body || topic.content || topic.summary || topic.reason || "");
+  const pain = readableCn(topic.pain || "");
+  const text = [title, theme, body, pain, state.keywords].filter(Boolean).join(" ");
+  const subject = pickSubjectPhrase(title || theme || firstReadableSentence(text) || state.keywords || state.businessLine);
+  const audience = pickAudiencePhrase(text);
+  const problem = pickProblemPhrase(text, pain, subject);
+  const action = pickActionPhrase(text, subject);
+  const result = pickResultPhrase(text);
+  return { title, theme, body, pain, text, subject, audience, problem, action, result };
+}
+
+function readableCn(value = "") {
+  return String(value || "")
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/#([^#\s]+)\[话题\]#/g, "$1")
+    .replace(/[#@]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function firstReadableSentence(text = "") {
+  return readableCn(text).split(/[，。！？；：,.!?\n]/).map((item) => item.trim()).find((item) => item.length >= 4) || "";
+}
+
+function pickSubjectPhrase(value = "") {
+  const text = readableCn(value);
+  const phrase = firstReadableSentence(text) || text;
+  return clampTitlePart(phrase, 18) || "这个选题";
+}
+
+function pickAudiencePhrase(text = "") {
+  if (/家长|妈妈|爸爸|父母|孩子|娃/.test(text)) return "家长";
+  if (/学生|孩子|小孩|初中|高中|申请者/.test(text)) return "学生";
+  if (/老师|机构|顾问|招生官/.test(text)) return "教育从业者";
+  if (/律师|当事人|客户/.test(text)) return "客户";
+  if (/老板|团队|公司|创业者/.test(text)) return "创业者";
+  return "普通人";
+}
+
+function pickProblemPhrase(text = "", pain = "", subject = "") {
+  const source = readableCn(pain) || firstReadableSentence(text);
+  if (/面试/.test(text)) return "不知道招生官真正想听什么";
+  if (/SSAT|托福|雅思|AP|标化|考试/.test(text)) return "备考卡在关键瓶颈";
+  if (/申请|录取|择校|私校/.test(text)) return "申请准备没有抓住重点";
+  if (/退费|避雷|踩坑|投诉/.test(text)) return "选机构怕踩坑";
+  return clampTitlePart(source || `${subject}没有效果`, 18);
+}
+
+function pickActionPhrase(text = "", subject = "") {
+  if (/面试/.test(text)) return "先准备高分回答框架";
+  if (/SSAT|托福|雅思|AP|标化|考试/.test(text)) return "先拆清提分瓶颈";
+  if (/申请|录取|择校|私校/.test(text)) return "先理清申请路径";
+  if (/写作|英文写作|作文/.test(text)) return "先搭好写作结构";
+  if (/避雷|退费|踩坑/.test(text)) return "先看清风险信号";
+  return `先把${clampTitlePart(subject, 10)}拆成步骤`;
+}
+
+function pickResultPhrase(text = "") {
+  const metric = text.match(/(\d+(?:\.\d+)?\s*[万千百Kk]?\+?)\s*(点赞|收藏|评论|阅读|播放|录取|提分|分)/);
+  if (metric) return `${metric[1]}${metric[2]}`;
+  if (/高分|提分|满分/.test(text)) return "更容易拿高分";
+  if (/录取|offer|上岸/.test(text)) return "提升录取把握";
+  if (/避雷|退费|踩坑/.test(text)) return "少花冤枉钱";
+  return "更稳地推进";
+}
+
+function clampTitlePart(value = "", max = 18) {
+  const clean = readableCn(value).replace(/[，。！？；：,.!?].*$/, "").trim();
+  return clean.length > max ? clean.slice(0, max) : clean;
+}
+
+function topicBoundTemplatesForTarget(target) {
+  if (target === "wechat-article") {
+    return [
+      { reason: "公众号深度型", render: (s) => `为什么${s.subject}真正难的不是信息，而是${s.problem}` },
+      { reason: "公众号方法型", render: (s) => `从${s.problem}到${s.result}：${s.subject}的完整准备路径` },
+      { reason: "公众号复盘型", render: (s) => `拆完${s.subject}后，我发现关键在${s.action}` },
+      { reason: "公众号避坑型", render: (s) => `${s.audience}做${s.subject}，最容易忽略这一点` },
+      { reason: "公众号系统型", render: (s) => `${s.subject}不能只靠经验，要靠一套判断标准` },
+    ];
+  }
+  if (target === "moments") {
+    return [
+      { reason: "朋友圈观察型", render: (s) => `最近重新理解了${s.subject}` },
+      { reason: "朋友圈提醒型", render: (s) => `${s.subject}这件事，别只看表面` },
+      { reason: "朋友圈经验型", render: (s) => `${s.problem}，很多人一开始都会忽略` },
+      { reason: "朋友圈行动型", render: (s) => `如果你也在看${s.subject}，先做这一步` },
+      { reason: "朋友圈结论型", render: (s) => `${s.subject}真正重要的是${s.action}` },
+    ];
+  }
+  if (target === "douyin" || target === "video-account") {
+    return [
+      { reason: "短视频钩子型", render: (s) => `别再乱准备${s.subject}了，先看这一点` },
+      { reason: "短视频痛点型", render: (s) => `${s.problem}，问题通常出在这一步` },
+      { reason: "短视频清单型", render: (s) => `${s.audience}看${s.subject}，先抓这3个信号` },
+      { reason: "短视频结果型", render: (s) => `${s.subject}想要${s.result}，关键不是死记硬背` },
+      { reason: "短视频避坑型", render: (s) => `${s.subject}最容易踩的坑，我给你讲清楚` },
+    ];
+  }
+  return [
+    { reason: "小红书痛点型", render: (s) => `${s.subject}别硬准备，先搞懂${s.problem}` },
+    { reason: "小红书方法型", render: (s) => `${s.subject}想出效果，先把这一步做好` },
+    { reason: "小红书收藏型", render: (s) => `${s.audience}看${s.subject}，这份准备清单建议收藏` },
+    { reason: "小红书反差型", render: (s) => `${s.subject}的重点不是技巧，是${s.action}` },
+    { reason: "小红书结果型", render: (s) => `${s.subject}想拿到${s.result}，关键是这3点` },
+  ];
+}
+
+function buildTopicBoundAssetTitle(signal, assets = []) {
+  const matched = (assets || []).find((item) => item?.title && readableCn(item.title).length >= 6);
+  if (!matched) return null;
+  const example = readableCn(matched.title);
+  if (/\d/.test(example)) return titleChoice(`${signal.audience}看${signal.subject}，先记住这3个判断`, `标题库参考：${example}`);
+  if (/[？?]/.test(example)) return titleChoice(`${signal.subject}为什么总卡在${signal.problem}？`, `标题库参考：${example}`);
+  return titleChoice(`${signal.subject}想出结果，别忽略${signal.action}`, `标题库参考：${example}`);
+}
+
+function dedupeTopicBoundTitleChoices(items = []) {
+  const banned = /AI自媒体|内容资产库|内容创作|大城市流量|素材库|标题库|工具|拆爆款|平台成品/;
+  const seen = new Set();
+  const result = [];
+  for (const item of items) {
+    const title = clampTitle(readableCn(item.title));
+    const key = title.replace(/[，。！？\s]/g, "");
+    if (!title || seen.has(key) || banned.test(title)) continue;
+    seen.add(key);
+    result.push({ title, reason: readableCn(item.reason || "绑定当前选题生成") });
+  }
+  return result;
 }
 
 function extractCleanTitleSignal(topic = {}) {
