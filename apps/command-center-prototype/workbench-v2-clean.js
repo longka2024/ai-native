@@ -1114,7 +1114,7 @@ async function generateXiaoheiCards() {
 
 async function pollXiaoheiCards({ jobId, total }) {
   lastPollRenderSignature = "";
-  for (let round = 0; round < 90; round += 1) {
+  for (let round = 0; round < 180; round += 1) {
     const res = await fetch(apiPath(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=${encodeURIComponent(total)}`));
     const result = await res.json().catch(() => ({}));
     if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
@@ -1129,10 +1129,11 @@ async function pollXiaoheiCards({ jobId, total }) {
     }
     state.xhsCardProgress = { done: count, total };
     state.xhsCardExportMessage = `43 后台出图中：已完成 ${count}/${total} 张。你可以停留等待，也可以稍后再点继续查询。`;
-    if (["partial", "error"].includes(result.status) && count > 0) {
+    const failedPages = Array.isArray(result.failed) ? result.failed.map((item) => Number(item.page || 0)).filter(Boolean) : [];
+    if (["partial", "error"].includes(result.status) && count > 0 && count + failedPages.length >= total) {
       state.xhsCardExportStatus = "error";
       state.xhsCardProgress = null;
-      state.xhsCardExportMessage = `43 当前已生成 ${count}/${total} 张。未完成页可再次点击继续补齐。`;
+      state.xhsCardExportMessage = `43 当前已生成 ${count}/${total} 张${failedPages.length ? `，缺 P${failedPages.join("/P")}` : ""}。请再次点击出图按钮补齐缺页，补齐前不能保存为已完成作品。`;
       renderToday();
       return;
     }
@@ -1145,7 +1146,8 @@ async function pollXiaoheiCards({ jobId, total }) {
   }
   state.xhsCardExportStatus = "error";
   state.xhsCardProgress = null;
-  state.xhsCardExportMessage = `轮询等待超时，但后台任务 ${jobId} 可能仍在继续。请稍后再次点击查询/补齐。`;
+  const count = state.xhsCardManifest?.count || 0;
+  state.xhsCardExportMessage = `轮询等待超时，当前已看到 ${count}/${total} 张。后台任务 ${jobId} 可能仍在继续，请先点“查询当前主题已生成图片”，仍不满 ${total} 张再点击出图按钮补齐。`;
 }
 
 async function restoreLatestXiaoheiCards() {
@@ -1776,12 +1778,15 @@ function renderArchiveStep() {
   const reusableImages = getReusableImagesForCurrentTopic();
   const archived = state.finalWorks.some((item) => item.id === currentFinalWorkId());
   const ready = state.copyConfirmed && Boolean(confirmedCopyText());
-  const canSave = ready && (state.publishTarget !== "xhs" || files.length > 0);
+  const expectedImages = expectedImageCountForCurrentWork();
+  const imageComplete = state.publishTarget !== "xhs" || files.length >= expectedImages;
+  const canSave = ready && imageComplete;
   return `<section class="work-card">
     ${cardHead("保存为母题资产", "不是只收藏成品，而是把这次内容沉淀成可复盘、可拆解、可切换平台再生产的母题资产。")}
     ${state.archiveMessage ? `<div class="status-strip success">${escapeHtml(state.archiveMessage)}</div>` : ""}
+    ${state.publishTarget === "xhs" && !imageComplete ? `<div class="status-strip warn">小红书图文需要 ${expectedImages} 张图才算完整成稿。当前只有 ${files.length}/${expectedImages} 张，请回到第 10 步点击出图按钮继续补齐，补齐前不会保存为已完成作品。</div>` : ""}
     <div class="production-grid">
-      <article class="production-card"><b>1. 平台成稿</b><span>${escapeHtml(currentTarget().title)} · ${files.length || reusableImages.length} 张可用图 / ${confirmedCopyText().length} 字正文 / 可回看交付链接。</span></article>
+      <article class="production-card"><b>1. 平台成稿</b><span>${escapeHtml(currentTarget().title)} · ${state.publishTarget === "xhs" ? `${files.length}/${expectedImages}` : (files.length || reusableImages.length)} 张可用图 / ${confirmedCopyText().length} 字正文 / 可回看交付链接。</span></article>
       <article class="production-card"><b>2. 母题复用</b><span>${escapeHtml(selectedTopic()?.theme || "本次选题")} 后续可切换成公众号、视频号、抖音、朋友圈或小红书二版。</span></article>
       <article class="production-card"><b>3. 拆解资产</b><span>沉淀标题、结构、开头、配图策略和表现数据，反哺下一次创作。</span></article>
     </div>
@@ -1800,6 +1805,12 @@ function currentFinalWorkId() {
     state.confirmedCopyVersionId || state.currentCopyVersionId || "copy",
     state.xhsCardManifest?.jobId || state.xhsCardAsyncJobId || "no-images",
   ].join("__");
+}
+
+function expectedImageCountForCurrentWork() {
+  if (state.publishTarget !== "xhs") return 0;
+  const planned = Array.isArray(state.xhsCardPlan) && state.xhsCardPlan.length ? state.xhsCardPlan.length : 5;
+  return Math.max(1, Math.min(5, planned));
 }
 
 function buildFinalWorkAsset() {
@@ -1951,6 +1962,12 @@ async function archiveFinalWork() {
   }
   if (state.publishTarget === "xhs" && !asset.images.length) {
     state.archiveMessage = "小红书图文还没有真实图片，不能保存为可发布图文成稿。";
+    renderToday();
+    return;
+  }
+  const expectedImages = expectedImageCountForCurrentWork();
+  if (state.publishTarget === "xhs" && asset.images.length < expectedImages) {
+    state.archiveMessage = `小红书图文还没完整：当前 ${asset.images.length}/${expectedImages} 张。请先回第 10 步补齐图片，再保存为已完成作品。`;
     renderToday();
     return;
   }
@@ -4959,10 +4976,13 @@ function renderFinalWorkAsset(item) {
   const status = finalWorkStatus(item);
   const publishRecord = item.publishRecord || {};
   const platformId = item.platformId || inferPlatformIdFromTitle(item.platform);
+  const expectedImages = platformId === "xhs" ? 5 : images.length;
+  const imageComplete = platformId !== "xhs" || images.length >= expectedImages;
   const availableTargets = publishTargets.filter((target) => target.id !== "topic-only" && target.id !== platformId);
   const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleString() : zh("&#26410;&#35760;&#24405;&#26102;&#38388;");
   return `<article class="asset-item final-work-asset">
-    <header class="final-work-head"><div><b>${escapeHtml(item.title)}</b><span>${escapeHtml(item.platform)} ${zh("&#29256;&#26412;")} / ${body.length} ${zh("&#23383;&#27491;&#25991;")} / ${images.length} ${zh("&#24352;&#22270;&#29255;")} / ${escapeHtml(createdAt)}</span></div><em class="asset-status-pill ${escapeHtml(status.tone)}">${escapeHtml(status.label)}</em></header>
+    <header class="final-work-head"><div><b>${escapeHtml(item.title)}</b><span>${escapeHtml(item.platform)} ${zh("&#29256;&#26412;")} / ${body.length} ${zh("&#23383;&#27491;&#25991;")} / ${platformId === "xhs" ? `${images.length}/${expectedImages}` : images.length} ${zh("&#24352;&#22270;&#29255;")} / ${escapeHtml(createdAt)}</span></div><em class="asset-status-pill ${escapeHtml(imageComplete ? status.tone : "warn")}">${escapeHtml(imageComplete ? status.label : "图片未齐")}</em></header>
+    ${!imageComplete ? `<div class="status-strip warn">这条小红书图文只保存了 ${images.length}/${expectedImages} 张图片，不是完整可发布成稿。请回今日工作台用同一个 jobId 补齐后再保存覆盖。</div>` : ""}
     <p><strong>${zh("&#22797;&#29992;&#27597;&#39064;&#65306;")}</strong>${escapeHtml(item.topic || zh("&#26410;&#35760;&#24405;"))}</p>
     <p><strong>${zh("&#25286;&#35299;&#36164;&#20135;&#65306;")}</strong>${escapeHtml(item.extractedAssets?.structure || zh("&#24453;&#25286;&#35299;"))}</p>
     <details class="asset-delivery-panel"><summary><b>${zh("&#24179;&#21488;&#21457;&#24067;&#25104;&#31295;")}</b><span>${zh("&#23637;&#24320;&#26597;&#30475;&#27491;&#25991;&#65292;&#25353;&#38062;&#21487;&#30452;&#25509;&#22797;&#21046;&#12290;")}</span></summary><pre>${escapeHtml(bodyPreview || zh("&#36825;&#26465;&#20316;&#21697;&#27809;&#26377;&#20445;&#23384;&#21040;&#27491;&#25991;&#12290;"))}</pre><div class="asset-action-row"><button class="primary" type="button" data-copy-final-body="${escapeHtml(item.id)}">${zh("&#22797;&#21046;&#23436;&#25972;&#25991;&#26696;")}</button><button class="secondary" type="button" data-copy-final-images="${escapeHtml(item.id)}" ${images.length ? "" : "disabled"}>${zh("&#22797;&#21046;&#22270;&#29255;&#38142;&#25509;")}</button></div></details>
