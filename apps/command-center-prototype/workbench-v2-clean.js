@@ -3577,8 +3577,25 @@ function buildTopicBoundTitleChoices(topic = {}, titleAssets = []) {
   const signal = extractTopicBoundSignal(topic);
   const assetChoice = buildTopicBoundAssetTitle(signal, titleAssets);
   const templates = topicBoundTemplatesForTarget(state.publishTarget);
-  const choices = templates.map((template) => titleChoice(template.render(signal), template.reason));
+  const choices = templates.map((template) => titleChoiceForTarget(template.render(signal), template.reason, state.publishTarget));
   return assetChoice ? [assetChoice, ...choices] : choices;
+}
+
+function titleChoiceForTarget(title, reason, target = state.publishTarget) {
+  if (target !== "xhs") return titleChoice(title, reason);
+  const clean = trimTitleForTarget(title, target);
+  if (!isCompleteShortTitle(clean, target)) return null;
+  return { title: clean, reason };
+}
+
+function isCompleteShortTitle(title = "", target = state.publishTarget) {
+  const clean = readableCn(title);
+  if (!clean) return false;
+  const length = titleCharLength(clean);
+  if (length < 6 || length > titleMaxLengthForTarget(target)) return false;
+  if (/[，、：；,;:]$/.test(clean)) return false;
+  if (/(别|先|这份|这点|这步|这条|这个|的是|而是|不是|因为|如果|到底)$/.test(clean)) return false;
+  return true;
 }
 
 function extractTopicBoundSignal(topic = {}) {
@@ -3592,7 +3609,20 @@ function extractTopicBoundSignal(topic = {}) {
   const problem = pickProblemPhrase(text, pain, subject);
   const action = pickActionPhrase(text, subject);
   const result = pickResultPhrase(text);
-  return { title, theme, body, pain, text, subject, audience, problem, action, result };
+  const shortSubject = shortTitlePhrase(subject, 8);
+  const shortProblem = shortTitlePhrase(problem, 8);
+  const shortAction = shortTitlePhrase(action, 8);
+  const shortResult = shortTitlePhrase(result, 7);
+  return { title, theme, body, pain, text, subject, audience, problem, action, result, shortSubject, shortProblem, shortAction, shortResult };
+}
+
+function shortTitlePhrase(value = "", max = 8) {
+  const clean = readableCn(value)
+    .replace(/^(关于|如果|为什么|怎么|如何)/, "")
+    .replace(/[，。！？；：、,.!?;:].*$/, "")
+    .trim();
+  const chars = Array.from(clean);
+  return chars.length > max ? chars.slice(0, max).join("") : clean;
 }
 
 function readableCn(value = "") {
@@ -3656,6 +3686,15 @@ function clampTitlePart(value = "", max = 18) {
 }
 
 function topicBoundTemplatesForTarget(target) {
+  if (target === "xhs") {
+    return [
+      { reason: "小红书痛点型", render: (s) => `${s.shortSubject}别急着冲` },
+      { reason: "小红书避坑型", render: (s) => `${s.shortSubject}先避这坑` },
+      { reason: "小红书收藏型", render: (s) => `${s.shortSubject}准备清单` },
+      { reason: "小红书判断型", render: (s) => `${s.shortSubject}值不值得做` },
+      { reason: "小红书方法型", render: (s) => `${s.shortSubject}这样准备更稳` },
+    ];
+  }
   if (target === "wechat-article") {
     return [
       { reason: "公众号深度型", render: (s) => `为什么${s.subject}真正难的不是信息，而是${s.problem}` },
@@ -3696,6 +3735,11 @@ function buildTopicBoundAssetTitle(signal, assets = []) {
   const matched = (assets || []).find((item) => item?.title && readableCn(item.title).length >= 6);
   if (!matched) return null;
   const example = readableCn(matched.title);
+  if (state.publishTarget === "xhs") {
+    if (/\d/.test(example)) return titleChoiceForTarget(`${signal.shortSubject}看这3点`, `标题库参考：${example}`, "xhs");
+    if (/[？?]/.test(example)) return titleChoiceForTarget(`${signal.shortSubject}怎么判断`, `标题库参考：${example}`, "xhs");
+    return titleChoiceForTarget(`${signal.shortSubject}别踩这个坑`, `标题库参考：${example}`, "xhs");
+  }
   if (/\d/.test(example)) return titleChoice(`${signal.audience}看${signal.subject}，先记住这3个判断`, `标题库参考：${example}`);
   if (/[？?]/.test(example)) return titleChoice(`${signal.subject}为什么总卡在${signal.problem}？`, `标题库参考：${example}`);
   return titleChoice(`${signal.subject}想出结果，别忽略${signal.action}`, `标题库参考：${example}`);
@@ -3706,9 +3750,10 @@ function dedupeTopicBoundTitleChoices(items = []) {
   const seen = new Set();
   const result = [];
   for (const item of items) {
+    if (!item) continue;
     const title = clampTitle(readableCn(item.title));
     const key = title.replace(/[，。！？\s]/g, "");
-    if (!title || seen.has(key) || banned.test(title)) continue;
+    if (!title || !isCompleteShortTitle(title) || seen.has(key) || banned.test(title)) continue;
     seen.add(key);
     result.push({ title, reason: readableCn(item.reason || "绑定当前选题生成") });
   }
