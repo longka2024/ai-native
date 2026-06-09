@@ -3536,9 +3536,24 @@ function titleChoice(title, reason) {
   return { title: clampTitle(title), reason };
 }
 
-function clampTitle(title = "") {
+function titleMaxLengthForTarget(target = state.publishTarget) {
+  return target === "xhs" ? 20 : 32;
+}
+
+function titleCharLength(title = "") {
+  return Array.from(String(title || "").trim()).length;
+}
+
+function trimTitleForTarget(title = "", target = state.publishTarget) {
+  const max = titleMaxLengthForTarget(target);
   const clean = String(title || "").replace(/\s+/g, " ").trim();
-  return clean.length > 32 ? `${clean.slice(0, 31)}…` : clean;
+  const chars = Array.from(clean);
+  if (chars.length <= max) return clean;
+  return chars.slice(0, max).join("").replace(/[，。！？；：、,.!?;:]$/g, "").trim();
+}
+
+function clampTitle(title = "") {
+  return trimTitleForTarget(title, state.publishTarget);
 }
 
 function dedupeTitleChoices(items = []) {
@@ -4307,7 +4322,8 @@ function scoreTitleHook(title = "", topic = {}) {
   const hasPain = title && topic.pain && textOverlap(title, topic.pain) > 0;
   const hookWords = ["why", "how", "mistake", "secret", "checklist", "AI", "3", "5", "7", "?", "？"];
   const hasHook = hookWords.some((word) => String(title || "").includes(word));
-  const clear = title.length >= 8 && title.length <= 32;
+  const length = titleCharLength(title);
+  const clear = length >= 8 && length <= titleMaxLengthForTarget(state.publishTarget);
   const score = (clear ? 28 : 18) + (hasHook ? 36 : 22) + (hasPain ? 26 : 16);
   return coachDim(zh("&#26631;&#39064;&#38057;&#23376;"), Math.min(92, score), clear && hasHook ? zh("&#26631;&#39064;&#26377;&#25235;&#20154;&#30340;&#21028;&#26029;&#25110;&#24748;&#24565;") : zh("&#26631;&#39064;&#36824;&#20687;&#35828;&#26126;&#25991;&#65292;&#19981;&#22815;&#25235;&#20154;"), clear && hasHook ? "" : zh("&#29992;&#12298;&#24773;&#22659; + &#20914;&#31361;/&#32467;&#26524; + &#21028;&#26029;&#12299;&#37325;&#20889;&#26631;&#39064;"));
 }
