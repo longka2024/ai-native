@@ -282,6 +282,53 @@ p { margin: 0; color: var(--muted); line-height: 1.65; }
 .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .form-grid label { display: grid; gap: 7px; color: #405049; font-weight: 800; }
 .form-grid .wide { grid-column: 1 / -1; }
+.form-grid.compact { grid-template-columns: minmax(0, 1fr) 160px; }
+
+.filter-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fffdf7;
+}
+.title-group-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+.title-group-head b { color: var(--ink); }
+.title-group-head span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.segmented-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.segmented-control button {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--green);
+  background: #f7fbf8;
+  font-weight: 900;
+}
+.segmented-control button.active {
+  color: #fff;
+  border-color: var(--green);
+  background: var(--green);
+}
+.muted-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
 
 .choice-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .choice-card, .topic-card, .title-card, .production-card, .asset-item {

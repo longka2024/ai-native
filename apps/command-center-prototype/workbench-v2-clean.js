@@ -7,6 +7,9 @@ const state = {
   businessLine: "AI 内容创作",
   goal: "获客和建立专业感",
   keywords: "AI自媒体, 内容资产库, Agent工作流",
+  materialScope: "all",
+  materialAuthor: "",
+  materialLatestRuns: 3,
   topics: [],
   selectedTopicId: "",
   titleChoices: [],
@@ -252,6 +255,9 @@ function compactSnapshot() {
     businessLine: state.businessLine,
     goal: state.goal,
     keywords: state.keywords,
+    materialScope: state.materialScope,
+    materialAuthor: state.materialAuthor,
+    materialLatestRuns: state.materialLatestRuns,
     topics: capList(state.topics, 40),
     selectedTopicId: state.selectedTopicId,
     titleChoices: capList(state.titleChoices, 20),
@@ -1405,6 +1411,7 @@ function renderCollectStep() {
   return `<section class="work-card">
     ${cardHead(state.sourceChannel === "x-live" ? "第 4 步：先把今天可写的素材找出来" : "第 4 步：读取真实素材并生成选题", state.sourceChannel === "x-live" ? "你只需要二选一：抓一批新帖子，或者直接用以前保存过的素材。系统会筛出候选选题，然后自动进入第 5 步。" : "如果当前来源没有匹配素材，系统会明确提示，不会跨业务线乱推荐。")}
     ${state.sourceChannel === "x-live" ? renderXCollectControls() : ""}
+    ${renderMaterialFilterControls()}
     <div class="console">
       <div class="console-head"><b>${escapeHtml(sourceTitleForTarget())} 工作窗口</b><span>${escapeHtml(state.assetStatus)}</span></div>
       <div class="progress"><i id="progressBar" style="width:${progress}"></i></div>
@@ -1417,6 +1424,27 @@ function renderCollectStep() {
       <button class="secondary" data-route-target="assets">查看内容资产库</button>
     </div>
   </section>`;
+}
+
+function renderMaterialFilterControls() {
+  if (state.sourceChannel === "x-live") return "";
+  const isXhsLike = platformWanted() === "xiaohongshu" || state.sourceChannel === "xhs" || state.sourceChannel === "same-platform";
+  if (!isXhsLike && state.sourceChannel !== "all-assets") return "";
+  return `<div class="filter-panel">
+    <div class="title-group-head"><b>${zh("&#32032;&#26448;&#31579;&#36873;")}</b><span>${zh("&#29992;&#26469;&#38450;&#27490;&#19981;&#21516;&#36187;&#36947;&#12289;&#19981;&#21516;&#25209;&#27425;&#12289;&#19981;&#21516;&#21338;&#20027;&#28151;&#22312;&#19968;&#36215;&#12290;")}</span></div>
+    <div class="segmented-control">
+      ${[
+        ["all", zh("&#20840;&#36187;&#36947;")],
+        ["latest", zh("&#26368;&#26032;&#25209;&#27425;")],
+        ["author", zh("&#25351;&#23450;&#21338;&#20027;")]
+      ].map(([id, label]) => `<button type="button" class="${state.materialScope === id ? "active" : ""}" data-material-scope="${id}">${label}</button>`).join("")}
+    </div>
+    <div class="form-grid compact">
+      <label>${zh("&#25351;&#23450;&#21338;&#20027;")}<input id="materialAuthorInput" value="${escapeHtml(state.materialAuthor || "")}" placeholder="EDinsight&#33521;&#38160;&#25945;&#32946;" /></label>
+      <label>${zh("&#26368;&#26032;&#25209;&#27425;&#25968;")}<input id="materialLatestRunsInput" type="number" min="1" max="10" value="${Number(state.materialLatestRuns || 3)}" /></label>
+    </div>
+    <p class="muted-text">${zh("&#40664;&#35748;&#20840;&#36187;&#36947;&#65307;&#24819;&#21482;&#30475;&#21018;&#23548;&#20837;&#30340;&#36164;&#26009;&#65292;&#36873;&#26368;&#26032;&#25209;&#27425;&#65307;&#24819;&#21482;&#30475;&#26576;&#20010;&#21338;&#20027;&#65292;&#36873;&#25351;&#23450;&#21338;&#20027;&#24182;&#22635;&#21517;&#23383;&#12290;")}</p>
+  </div>`;
 }
 
 function renderXCollectControls() {
@@ -2278,6 +2306,21 @@ function bindWorkAreaActions() {
   });
   byId("workArea")?.querySelector("[data-collect-x]")?.addEventListener("click", () => collectXAccounts());
   byId("workArea")?.querySelector("[data-read-materials]")?.addEventListener("click", () => readMaterials());
+  byId("workArea")?.querySelectorAll("[data-material-scope]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.materialScope = button.dataset.materialScope || "all";
+      saveMaterialFilterInputs();
+      renderToday();
+    });
+  });
+  byId("materialAuthorInput")?.addEventListener("input", (event) => {
+    state.materialAuthor = event.target.value;
+    scheduleWorkbenchSnapshotSave();
+  });
+  byId("materialLatestRunsInput")?.addEventListener("input", (event) => {
+    state.materialLatestRuns = Math.max(1, Math.min(10, Number(event.target.value || 3)));
+    scheduleWorkbenchSnapshotSave();
+  });
   byId("workArea")?.querySelector("[data-demo-materials]")?.addEventListener("click", () => readDemoMaterials());
   $$("#workArea [data-topic-id]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -2385,7 +2428,21 @@ function saveBusinessInputs() {
   state.keywords = byId("keywordsInput")?.value.trim() || state.keywords;
 }
 
+function saveMaterialFilterInputs() {
+  const authorInput = byId("materialAuthorInput");
+  const latestRunsInput = byId("materialLatestRunsInput");
+  if (authorInput) state.materialAuthor = authorInput.value.trim();
+  if (latestRunsInput) state.materialLatestRuns = Math.max(1, Math.min(10, Number(latestRunsInput.value || 3)));
+}
+
+function materialScopeLabel() {
+  if (state.materialScope === "latest") return zh("&#26368;&#26032;&#25209;&#27425;");
+  if (state.materialScope === "author") return `${zh("&#25351;&#23450;&#21338;&#20027;")}${state.materialAuthor ? `: ${state.materialAuthor}` : ""}`;
+  return zh("&#20840;&#36187;&#36947;");
+}
+
 async function readMaterials() {
+  saveMaterialFilterInputs();
   state.logs = [];
   if (state.sourceChannel === "x-history" || state.sourceChannel === "x-live") {
     state.useLatestXRunOnly = false;
@@ -2645,9 +2702,15 @@ async function loadState() {
       params.set("creationOnly", "1");
     }
     if (state.sourceChannel === "xhs" || (state.sourceChannel === "same-platform" && wanted === "xiaohongshu")) {
-      params.set("latestRunCount", "3");
+      if (state.materialScope === "latest") params.set("latestRunCount", String(Math.max(1, Math.min(10, Number(state.materialLatestRuns || 3)))));
+      else params.set("latestRunCount", "0");
       params.set("unusedOnly", "1");
       params.set("creationOnly", "1");
+    }
+    if (wanted === "xiaohongshu" && state.materialScope === "author" && state.materialAuthor) {
+      const existingKeywords = String(state.keywords || "").trim();
+      params.set("keywords", `${existingKeywords} ${state.materialAuthor}`.trim());
+      params.set("latestRunCount", "0");
     }
     if (state.sourceChannel === "x-live" && state.useLatestXRunOnly && state.lastXRunIds.length) {
       params.set("runIds", state.lastXRunIds.join(","));
@@ -2659,8 +2722,15 @@ async function loadState() {
     const result = await res.json();
     state.assetStatus = "已读取统一内容资产库";
     log(`统一内容资产库：读取 ${result.totalSourceSamples || 0} 条，匹配 ${result.matchedCount || 0} 条。`);
+    let contentSamples = Array.isArray(result.assets) ? result.assets : [];
+    if (wanted === "xiaohongshu" && state.materialScope === "author" && state.materialAuthor) {
+      const authorNeedle = String(state.materialAuthor || "").toLowerCase().replace(/\s+/g, "");
+      contentSamples = contentSamples.filter((item) => String(item.authorName || item.author || "").toLowerCase().replace(/\s+/g, "").includes(authorNeedle));
+      result.assets = contentSamples;
+      result.matchedCount = contentSamples.length;
+    }
     return {
-      contentSamples: Array.isArray(result.assets) ? result.assets : [],
+      contentSamples,
       rawMaterials: [],
       candidates: [],
       assets: [],
