@@ -41,3 +41,16 @@ apps/command-center-prototype/test-artifacts/
 apps/command-center-prototype/data/customer-assets/
 apps/command-center-prototype/data/*.backup*.json
 apps/command-center-prototype/data/*.empty-before-restore*.json
+
+# Runtime data lives outside git (back up separately, see tools/backup-data.mjs)
+apps/command-center-prototype/data/command-center.json
+
+# Manual local backups of source files (use git branches instead)
+*.local-bad-backup*.js
+*backup-2026*.js
+*backup-2026*.html
+*backup-2026*.css
+
+# Independent git clones vendored for reference only
+external/cheat-on-content/
+external/juju-content-illustrations/
