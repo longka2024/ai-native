@@ -659,8 +659,87 @@ function buildLongkaIllustrationDirectorPlan({ copy = "", topic = {}, visual = c
     { type: "method", role: "Method path", placement: platform === "wechat-article" ? "inside method section" : "P4", job: "turn the idea into an executable path", focus: signal.methodSteps.join(" -> ") },
     { type: "action", role: "Next action", placement: platform === "wechat-article" ? "before the ending CTA" : "P5", job: "tell the operator/reader the next concrete step", focus: signal.action },
   ];
-  const slots = allSlots.filter((slot) => density.types.includes(slot.type));
-  return { style, styleReason, platformMode, signal, qa, slots, imageCount: slots.length, countReason: density.reason };
+  const jujuWorld = style === "juju-organizing" ? inferJujuParallelWorld({ copy, topic, signal, platform }) : "";
+  const slots = allSlots
+    .filter((slot) => density.types.includes(slot.type))
+    .map((slot, index) => style === "juju-organizing" ? enrichJujuDirectorSlot(slot, index, signal, jujuWorld) : slot);
+  return { style, styleReason, platformMode, signal, qa, slots, imageCount: slots.length, countReason: density.reason, jujuWorld };
+}
+
+function inferJujuParallelWorld({ copy = "", topic = {}, signal = {}, platform = "xhs" } = {}) {
+  const text = [copy, topic.theme, topic.title, topic.pain, signal.subject, signal.pain].filter(Boolean).join(" ");
+  if (/复盘|增长|数据|曝光|粉丝|阅读|播放/.test(text)) return "paper retrospective repair shop with pinned metric cards and small evidence photos";
+  if (/面试|表达|孩子|家长|私校|教育/.test(text)) return "paper interview practice room with answer cards, expression path, and teacher question notes";
+  if (/工具|AI|MVP|工作流|系统|流程/.test(text)) return "paper method desk with tool cards, route strips, and a small workflow board";
+  if (/律师|案件|法条|客户|专业/.test(text)) return "paper case translation room with law-note cards and client question tabs";
+  if (platform === "wechat-article") return "paper article reading desk with section cards and insertion markers";
+  return "paper practice field with notes, tape, route cards, and small working props";
+}
+
+function enrichJujuDirectorSlot(slot, index, signal, parallelWorld) {
+  const map = {
+    cover: {
+      cognitiveAction: "enter the topic through one concrete paper-world scene",
+      jujuAction: "Juju pins the main topic note onto the practice field entrance and points to the result card",
+      metaphorProps: "main note card, paper gate, tape, tiny flag, one result card",
+      composition: "3:4 cover, large handwritten title on top, Juju in lower third, paper-world scene visible behind",
+      colorMood: "near-white paper, black linework, muted green, small orange scarf accent",
+    },
+    problem: {
+      cognitiveAction: "see the hidden reader problem instead of the surface topic",
+      jujuAction: "Juju uses a magnifying glass to inspect a problem note and separates wrong path from real issue",
+      metaphorProps: "magnifying glass, warning tab, two note cards, small red correction mark",
+      composition: "subject on left third, problem note on right third, arrow connects Juju action to the note",
+      colorMood: "near-white paper, muted orange warning, low-saturation blue secondary path",
+    },
+    case: {
+      cognitiveAction: "deconstruct the source case into reusable pieces",
+      jujuAction: "Juju sorts three paper cards into who, action, result",
+      metaphorProps: "archive cards, clips, divider tabs, tiny evidence photo, pencil marks",
+      composition: "small archive desk, repeated cards create rhythm, Juju actively sorting one card",
+      colorMood: "near-white paper, muted green dividers, small yellow tape accents",
+    },
+    method: {
+      cognitiveAction: "turn the idea into an executable path",
+      jujuAction: "Juju draws a route map with a pencil and marks the next station",
+      metaphorProps: "route strip, dotted line, four small stations, pencil, arrow labels",
+      composition: "leading-line composition, road/path guides the eye from Juju to the key step",
+      colorMood: "near-white paper, muted blue route, orange main path",
+    },
+    action: {
+      cognitiveAction: "know the next concrete step",
+      jujuAction: "Juju stamps a checklist and places the first action card into an envelope",
+      metaphorProps: "checklist, stamp, envelope, done mark, tiny paper tab",
+      composition: "clean ending card, checklist centered, Juju action clear, plenty of whitespace",
+      colorMood: "near-white paper, muted green success mark, small orange stamp",
+    },
+  };
+  const base = map[slot.type] || map.cover;
+  return {
+    ...slot,
+    cognitiveAction: base.cognitiveAction,
+    jujuAction: base.jujuAction,
+    parallelWorld,
+    metaphorProps: base.metaphorProps,
+    colorMood: base.colorMood,
+    composition: base.composition,
+    allowedText: jujuAllowedTextForSlot(slot, signal, index),
+  };
+}
+
+function jujuAllowedTextForSlot(slot, signal, index) {
+  const textByType = {
+    cover: [signal.subject, signal.result].filter(Boolean),
+    problem: [signal.problemTitle || "问题", String(signal.pain || "").slice(0, 16)].filter(Boolean),
+    case: signal.casePoints || [],
+    method: signal.methodSteps || [],
+    action: [signal.actionTitle || "下一步", String(signal.action || "").slice(0, 18)].filter(Boolean),
+  };
+  return (textByType[slot.type] || [signal.subject])
+    .map((item) => String(item || "").replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .slice(0, slot.type === "method" ? 4 : 3)
+    .join("; ");
 }
 
 function estimateIllustrationDensity({ copy = "", lines = [], platform = "xhs" } = {}) {
@@ -711,6 +790,22 @@ function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVis
     const spec = cardSpecs[slot.type] || cardSpecs.cover;
     const actionBrief = actionBriefs[slot.type] || "";
     const role = `${slot.placement || ""} ${slot.role || slot.type}`.trim();
+    const jujuPromptBlock = juju ? [
+      "Original JUJU visual language.",
+      "Target ratio and size: 3:4, 1200 x 1600.",
+      "Juju must look like a white bichon dog: black eyes, black nose, clear eye-nose triangle, drooping ears, short legs, small dog proportions, optional orange scarf.",
+      "Juju must look like a white bichon dog, not a sheep or wool ball.",
+      `Cognitive action: ${slot.cognitiveAction || slot.job || ""}.`,
+      `Juju action: ${slot.jujuAction || ""}. Juju must physically perform this action, not stand idle.`,
+      `Parallel world: ${slot.parallelWorld || "paper practice field"}.`,
+      `Metaphor props: ${slot.metaphorProps || "note cards, tape, route marks, paper tabs"}.`,
+      `Color mood: ${slot.colorMood || "near-white paper, light black linework, low-saturation accents"}.`,
+      `Composition: ${slot.composition || "paper-world scene with generous whitespace and one clear focal action"}.`,
+      `Allowed text only: ${slot.allowedText || `${String(spec.title || "").slice(0, 18)}; ${String(spec.text || "").split("\n").slice(0, 2).join("; ").slice(0, 36)}`}.`,
+      "Chinese labels must be handwritten and attached to paper objects such as note cards, tabs, arrows, tape, frames, tools, or props.",
+      "No copied example composition; use the example set only to calibrate feel.",
+      "No photo, no realistic human, no slide template, no dashboard, no dense paragraph, no pasted subtitle, no watermark."
+    ].join(" ") : "";
     return {
       type: slot.type,
       role,
@@ -720,7 +815,7 @@ function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVis
       carouselJob: role,
       visualBrief: `${contract.styleBrief} Director placement: ${slot.placement || "current page"}. Reader job: ${slot.job || ""}. Visual focus: ${slot.focus || ""}. ${actionBrief} ${spec.extra}`,
       readerTakeaway: slot.job || signal.takeaway,
-      imagePrompt: `${promptBase} Placement: ${slot.placement || ""}. Reader job: ${slot.job || ""}. Visual focus: ${slot.focus || ""}. Title: ${spec.title}. Allowed text only: ${String(spec.title || "").slice(0, 18)}; ${String(spec.text || "").split("\n").slice(0, 3).join("; ").slice(0, 48)}. ${spec.prompt} ${actionBrief} ${juju ? "Juju must look like a white bichon dog, not a sheep or wool ball. Text must be attached to paper objects, never pasted as a giant subtitle." : ""}`,
+      imagePrompt: `${promptBase} Placement: ${slot.placement || ""}. Reader job: ${slot.job || ""}. Visual focus: ${slot.focus || ""}. Title: ${spec.title}. Allowed text only: ${String(spec.title || "").slice(0, 18)}; ${String(spec.text || "").split("\n").slice(0, 3).join("; ").slice(0, 48)}. ${spec.prompt} ${actionBrief} ${jujuPromptBlock}`,
     };
   });
 }
@@ -796,6 +891,7 @@ function renderIllustrationDirectorPanel() {
         <b>${escapeHtml(slot.role)}</b>
         <span>${escapeHtml(slot.job)}</span>
         <small>${escapeHtml(String(slot.focus || "").slice(0, 90))}</small>
+        ${plan.style === "juju-organizing" ? `<small>${escapeHtml(`Juju: ${slot.jujuAction || ""}`)}</small><small>${escapeHtml(`认知动作: ${slot.cognitiveAction || ""}`)}</small>` : ""}
       </article>`).join("")}
     </div>
     <div class="director-qa"><b>出图验收</b>${plan.qa.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
