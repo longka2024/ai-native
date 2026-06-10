@@ -2347,13 +2347,7 @@ function bindWorkAreaActions() {
   });
   byId("workArea")?.querySelector("[data-demo-materials]")?.addEventListener("click", () => readDemoMaterials());
   $$("#workArea [data-topic-id]").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.selectedTopicId = button.dataset.topicId;
-      clearAfter(5);
-      state.titleChoices = buildCleanTitleChoices(selectedTopic());
-      state.titleChoiceKey = currentTitleChoiceKey(selectedTopic());
-      setStep(6);
-    });
+    button.addEventListener("click", () => selectTopicForCreation(button.dataset.topicId));
   });
   $$("#workArea [data-title-choice]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -2674,6 +2668,28 @@ function inferLiveXTopicPain(title = "", body = "") {
     return "用户想用 AI 做内容和自媒体，但缺少可复用素材、判断标准和稳定流程。";
   }
   return "这条素材有可复用观点，需要结合目标平台重新找到用户痛点。";
+}
+
+function selectTopicForCreation(topicId = "") {
+  const topic = state.topics.find((item) => String(item.id) === String(topicId));
+  if (!topic) {
+    log(`选题不存在或已过期：${topicId}`);
+    return;
+  }
+  state.selectedTopicId = topic.id;
+  clearAfter(5);
+  state.titleChoices = buildCleanTitleChoices(topic);
+  state.titleChoiceKey = currentTitleChoiceKey(topic);
+  state.selectedTitle = "";
+  state.draft = "";
+  state.improvedDraft = "";
+  state.copyConfirmed = false;
+  state.copyVersions = [];
+  state.currentCopyVersionId = "";
+  state.confirmedCopyVersionId = "";
+  state.draftReview = null;
+  state.draftMeta = null;
+  setStep(6);
 }
 
 function buildLiveXReason(sample = {}, heat = 0) {
@@ -3492,23 +3508,46 @@ function xhsTitlePoolForSeed(seed) {
   ];
 }
 function titleChoice(title, reason) {
-  return { title: clampTitle(title), reason };
+  return { title: trimTitleForTarget(title, state.publishTarget), reason };
 }
 
 function titleMaxLengthForTarget(target = state.publishTarget) {
-  return target === "xhs" ? 20 : 32;
+  if (target === "xhs") return 20;
+  if (target === "moments") return 32;
+  if (target === "douyin" || target === "video-account") return 30;
+  return 60;
 }
 
 function titleCharLength(title = "") {
   return Array.from(String(title || "").trim()).length;
 }
 
+function normalizeTitleText(value = "") {
+  return String(value || "")
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/#([^#\s]+)\[.*?\]#/g, "$1")
+    .replace(/[#@]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function polishTitleText(title = "") {
+  return normalizeTitleText(title)
+    .replace(/MVP\u771f\u6b63/g, "MVP \u771f\u6b63")
+    .replace(/MVP\u4e4b/g, "MVP \u4e4b")
+    .replace(/MVP\u60f3/g, "MVP \u60f3")
+    .replace(/AI\u5de5\u5177/g, "AI \u5de5\u5177")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function trimTitleForTarget(title = "", target = state.publishTarget) {
+  const clean = polishTitleText(title);
+  if (target === "wechat-article") return clean;
   const max = titleMaxLengthForTarget(target);
-  const clean = String(title || "").replace(/\s+/g, " ").trim();
   const chars = Array.from(clean);
   if (chars.length <= max) return clean;
-  return chars.slice(0, max).join("").replace(/[，。！？；：、,.!?;:]$/g, "").trim();
+  return chars.slice(0, max).join("").replace(/[\uFF0C\u3002\uFF01\uFF1F\uFF1B\uFF1A,.!?;:]$/g, "").trim();
 }
 
 function clampTitle(title = "") {
@@ -3519,94 +3558,278 @@ function dedupeTitleChoices(items = []) {
   const seen = new Set();
   const result = [];
   for (const item of items) {
-    const key = item.title.replace(/[，。！？、\s]/g, "");
-    if (!item.title || seen.has(key)) continue;
+    if (!item?.title) continue;
+    const key = normalizeTitleText(item.title).replace(/[\uFF0C\u3002\uFF01\uFF1F\uFF1B\uFF1A,.!?;:\s]/g, "");
+    if (!key || seen.has(key)) continue;
     seen.add(key);
     result.push(item);
   }
   return result.slice(0, 5);
 }
+
 function buildCleanTitleChoices(topic, titleAssets = state.titleAssets) {
   if (!topic) return [];
-  const choices = buildTopicBoundTitleChoices(topic, titleAssets);
-  return dedupeTopicBoundTitleChoices(choices).slice(0, 5);
-}
-
-function buildTopicBoundTitleChoices(topic = {}, titleAssets = []) {
   const signal = extractTopicBoundSignal(topic);
-  const assetChoice = buildTopicBoundAssetTitle(signal, titleAssets);
-  const templates = topicBoundTemplatesForTarget(state.publishTarget);
-  const choices = templates.map((template) => titleChoiceForTarget(template.render(signal), template.reason, state.publishTarget));
-  const allChoices = assetChoice ? [assetChoice, ...choices] : choices;
-  return rankTitleChoicesForTarget(allChoices, signal, state.publishTarget);
-}
-
-function titleChoiceForTarget(title, reason, target = state.publishTarget) {
-  if (target !== "xhs") return titleChoice(title, reason);
-  const clean = trimTitleForTarget(title, target);
-  if (!isCompleteShortTitle(clean, target)) return null;
-  return { title: clean, reason };
-}
-
-function isCompleteShortTitle(title = "", target = state.publishTarget) {
-  const clean = readableCn(title);
-  if (!clean) return false;
-  const length = titleCharLength(clean);
-  if (length < 10 || length > titleMaxLengthForTarget(target)) return false;
-  if (/[，、：；;:]$/.test(clean)) return false;
-  if (/(别|关于|这份|这点|这步|这条|这个|的是|而是|不是|因为|如果|到底)$/.test(clean)) return false;
-  return true;
-}
-
-function rankTitleChoicesForTarget(items = [], signal = {}, target = state.publishTarget) {
-  const ranked = (items || [])
-    .filter(Boolean)
-    .map((item) => ({
-      ...item,
-      title: trimTitleForTarget(item.title, target),
-      score: scoreTitleChoiceForTarget(item.title, signal, target),
-    }))
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score);
-  return ranked.map(({ score, ...item }) => item);
-}
-
-function scoreTitleChoiceForTarget(title = "", signal = {}, target = state.publishTarget) {
-  const clean = readableCn(trimTitleForTarget(title, target));
-  if (!isCompleteShortTitle(clean, target)) return 0;
-  const length = titleCharLength(clean);
-  let score = 40;
-  if (target === "xhs") {
-    if (length >= 14 && length <= 20) score += 26;
-    else if (length >= 12) score += 16;
-    else score -= 10;
+  const candidates = [
+    ...buildAssetTitleCandidates(signal, titleAssets),
+    ...buildPlatformTitleCandidates(signal, state.publishTarget),
+  ];
+  const ranked = rankTitleChoicesForTarget(candidates, signal, state.publishTarget);
+  if (ranked.length >= 5) return ranked.slice(0, 5);
+  const seen = new Set(ranked.map((item) => normalizeTitleText(item.title).replace(/[\uFF0C\u3002\uFF01\uFF1F\uFF1B\uFF1A,.!?;:\s]/g, "")));
+  for (const item of candidates) {
+    const title = trimTitleForTarget(item.title, state.publishTarget);
+    const key = normalizeTitleText(title).replace(/[\uFF0C\u3002\uFF01\uFF1F\uFF1B\uFF1A,.!?;:\s]/g, "");
+    if (!key || seen.has(key) || !isCompleteTitleForTarget(title, state.publishTarget)) continue;
+    seen.add(key);
+    ranked.push({ title, reason: item.reason });
+    if (ranked.length >= 5) break;
   }
-  const signalWords = [signal.shortSubject, signal.shortProblem, signal.shortAction, signal.shortResult]
-    .filter(Boolean)
-    .map((item) => readableCn(item));
-  if (signalWords.some((word) => word && clean.includes(word.slice(0, Math.min(4, word.length))))) score += 18;
-  if (/[0-9一二三四五六七八九十]/.test(clean)) score += 6;
-  if (/清单|避坑|判断|准备|高分|信号|报名|值得|稳|关键/.test(clean)) score += 10;
-  if (/当前|标题|生成|平台|成品|素材库|工具/.test(clean)) score -= 30;
+  return ranked.slice(0, 5);
+}
+
+function buildAssetTitleCandidates(signal, titleAssets = []) {
+  const example = (titleAssets || []).find((item) => normalizeTitleText(item?.title).length >= 6);
+  if (!example) return [];
+  const title = normalizeTitleText(example.title);
+  if (state.publishTarget === "xhs") {
+    if (/\d/.test(title)) return [titleChoice(`${signal.shortSubject}\u5148\u770b\u8fd93\u70b9`, `\u53c2\u8003\u6807\u9898\u5e93\u6570\u5b57\u578b\uff1a${title}`)];
+    if (/\u522b|\u4e0d\u8981|\u907f\u5751|\u9519|\u5751/.test(title)) return [titleChoice(`${signal.shortSubject}\u522b\u518d\u4e71\u8ddf\u98ce`, `\u53c2\u8003\u6807\u9898\u5e93\u907f\u5751\u578b\uff1a${title}`)];
+    return [titleChoice(`${signal.shortSubject}\u8fd9\u6837\u7528\u624d\u6709\u6548`, `\u53c2\u8003\u6807\u9898\u5e93\u65b9\u6cd5\u578b\uff1a${title}`)];
+  }
+  if (state.publishTarget === "wechat-article") {
+    if (/\u4e3a\u4ec0\u4e48|\u4e0d\u662f|\u800c\u662f/.test(title)) return [titleChoice(`${signal.subject}\u771f\u6b63\u96be\u7684\u4e0d\u662f\u5de5\u5177\uff0c\u800c\u662f${signal.action}`, `\u53c2\u8003\u6807\u9898\u5e93\u89c2\u70b9\u578b\uff1a${title}`)];
+    if (/\d/.test(title)) return [titleChoice(`${signal.audience}\u505a${signal.subject}\uff0c\u5148\u60f3\u6e05\u695a\u8fd9\u51e0\u4e2a\u95ee\u9898`, `\u53c2\u8003\u6807\u9898\u5e93\u6e05\u5355\u578b\uff1a${title}`)];
+    return [titleChoice(`\u4ece${signal.subject}\u5230${signal.result}\uff1a${signal.audience}\u771f\u6b63\u8981\u8865\u7684\u4e00\u8bfe`, `\u53c2\u8003\u6807\u9898\u5e93\u590d\u76d8\u578b\uff1a${title}`)];
+  }
+  return [titleChoice(`${signal.subject}\u8fd9\u4ef6\u4e8b\uff0c\u522b\u53ea\u770b\u8868\u9762`, `\u53c2\u8003\u6807\u9898\u5e93\uff1a${title}`)];
+}
+
+function buildPlatformTitleCandidates(signal, target = state.publishTarget) {
+  return buildFormulaTitleCandidates(signal, target);
+}
+
+const TITLE_FORMULAS = [
+  { id: "counter", style: "\u53cd\u5e38\u8bc6\u578b", tags: ["contrast"], render: (s) => `\u522b\u5148\u8ff7\u4fe1${s.subject}` },
+  { id: "pain-root", style: "\u75db\u70b9\u578b", tags: ["pain"], render: (s) => `${s.problem}\u95ee\u9898\u51fa\u5728\u54ea` },
+  { id: "subject-pain", style: "\u4e3b\u9898\u75db\u70b9\u578b", tags: ["pain", "subject"], render: (s) => `${s.shortSubject}\u522b\u518d${s.badAction}` },
+  { id: "subject-list", style: "\u4e3b\u9898\u6e05\u5355\u578b", tags: ["list", "subject"], render: (s) => `${s.audience}\u5148\u770b${s.number}\u4e2a${s.shortSubject}` },
+  { id: "result", style: "\u7ed3\u679c\u578b", tags: ["result"], render: (s) => `${s.shortSubject}\u60f3\u8981${s.result}` },
+  { id: "truth", style: "\u771f\u76f8\u578b", tags: ["truth"], render: (s) => `${s.shortSubject}\u522b\u53ea\u770b\u8868\u9762` },
+  { id: "compare", style: "\u5bf9\u6bd4\u578b", tags: ["contrast"], render: (s) => `${s.shortSubject}\u6709\u7528\u548c\u6ca1\u7528\u7684\u5dee\u522b` },
+  { id: "list", style: "\u6e05\u5355\u578b", tags: ["list"], render: (s) => `${s.audience}\u5148\u770b\u8fd9${s.number}\u4e2a\u4fe1\u53f7` },
+  { id: "avoid", style: "\u907f\u5751\u578b", tags: ["loss"], render: (s) => `${s.shortSubject}\u522b\u4e71\u8ddf\u98ce` },
+  { id: "action", style: "\u52a8\u4f5c\u578b", tags: ["action"], render: (s) => `${s.problem}\u5148\u62c6\u6e05\u518d\u884c\u52a8` },
+  { id: "question", style: "\u95ee\u9898\u578b", tags: ["question"], render: (s) => `${s.audience}\u4e3a\u4ec0\u4e48\u5361\u5728${s.problem}` },
+  { id: "stop", style: "\u884c\u52a8\u53f7\u53ec\u578b", tags: ["action"], render: (s) => `\u522b\u518d${s.badAction}\uff0c\u5148${s.action}` },
+  { id: "root-cause", style: "\u6839\u56e0\u578b", tags: ["pain", "truth"], render: (s) => `${s.problem}\u7684\u6839\u672c\u539f\u56e0` },
+  { id: "before-after", style: "\u8f6c\u53d8\u578b", tags: ["result", "contrast"], render: (s) => `\u4ece${s.problem}\u5230${s.result}` },
+  { id: "late-lesson", style: "\u6559\u8bad\u578b", tags: ["loss", "list"], render: (s) => `${s.audience}\u592a\u665a\u77e5\u9053\u7684${s.number}\u4e2a\u6559\u8bad` },
+  { id: "worth", style: "\u5224\u65ad\u578b", tags: ["question"], render: (s) => `${s.shortSubject}\u503c\u4e0d\u503c\u5f97\u505a` },
+];
+
+function buildFormulaTitleCandidates(signal, target = state.publishTarget) {
+  const s = normalizeTitleFormulaSignal(signal);
+  const formulas = rankTitleFormulasForSignal(s, target);
+  return formulas.map((formula) => titleChoice(renderFormulaTitleForTarget(formula, s, target), `${formula.style}\uff1a${formula.id}`));
+}
+
+function renderFormulaTitleForTarget(formula, signal, target = state.publishTarget) {
+  const short = formula.render(signal);
+  if (target !== "wechat-article") return short;
+  const expansions = {
+    "pain-root": `${signal.problem}\u95ee\u9898\u51fa\u5728\u54ea\uff1f${signal.audience}\u9700\u8981\u5148\u770b\u61c2\u8fd9\u4e2a\u5224\u65ad`,
+    "root-cause": `${signal.problem}\u7684\u6839\u672c\u539f\u56e0\uff0c\u5f80\u5f80\u4e0d\u5728${signal.shortSubject}\u672c\u8eab`,
+    truth: `${signal.shortSubject}\u522b\u53ea\u770b\u8868\u9762\uff0c\u771f\u6b63\u5173\u952e\u5728${signal.action}`,
+    compare: `${signal.shortSubject}\u6709\u7528\u548c\u6ca1\u7528\u7684\u5dee\u522b\uff0c\u5c31\u5728\u8fd9\u4e2a\u5224\u65ad\u4e0a`,
+    list: `${signal.audience}\u5148\u522b\u6025\u7740\u7167\u6284\uff1a${signal.subject}\u7684${signal.number}\u4e2a\u5224\u65ad\u4fe1\u53f7`,
+    result: `\u4ece${signal.problem}\u5230${signal.result}\uff1a${signal.subject}\u7684\u5b8c\u6574\u8def\u5f84`,
+    stop: `\u522b\u518d${signal.badAction}\uff0c${signal.audience}\u771f\u6b63\u8981\u5148\u505a\u7684\u662f${signal.action}`,
+    counter: `${signal.audience}\u522b\u5148\u8ff7\u4fe1${signal.subject}\uff0c\u5148\u60f3\u6e05\u695a\u5b83\u89e3\u51b3\u4ec0\u4e48\u95ee\u9898`,
+  };
+  return expansions[formula.id] || `${short}\uff1a${signal.audience}\u5e94\u8be5\u5148\u770b\u61c2\u7684\u5224\u65ad`;
+}
+
+function normalizeTitleFormulaSignal(signal = {}) {
+  const sourceNumber = String(signal.sourceTitle || "").match(/(\d+)\s*(\u4e2a|\u6761|\u70b9|\u4ef6|\u5929|\u5c0f\u65f6)?/);
+  return {
+    ...signal,
+    subject: shortTitlePhrase(signal.subject || signal.sourceTitle || "\u8fd9\u4ef6\u4e8b", 12),
+    shortSubject: shortTitlePhrase(signal.shortSubject || signal.subject || "\u8fd9\u4ef6\u4e8b", 8),
+    audience: shortTitlePhrase(signal.audience || "\u666e\u901a\u4eba", 8),
+    problem: shortTitlePhrase(signal.problem || "\u95ee\u9898\u6ca1\u62c6\u6e05", 10),
+    action: shortTitlePhrase(signal.action || "\u5148\u505a\u5224\u65ad", 10),
+    result: shortTitlePhrase(signal.result || "\u62ff\u5230\u7ed3\u679c", 8),
+    badAction: shortTitlePhrase(signal.badAction || inferBadTitleAction(signal), 8),
+    number: sourceNumber?.[1] || "3",
+  };
+}
+
+function rankTitleFormulasForSignal(signal, target = state.publishTarget) {
+  return TITLE_FORMULAS
+    .map((formula, index) => ({ formula, score: scoreTitleFormula(formula, signal, target, index) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, target === "wechat-article" ? 12 : 10)
+    .map((item) => item.formula);
+}
+
+function scoreTitleFormula(formula, signal, target, index) {
+  let score = 100 - index;
+  const text = signal.text || "";
+  if (formula.tags.includes("pain") && /痛|怕|担心|卡|难|没|低质|模板|焦虑|问题/.test(text)) score += 28;
+  if (formula.tags.includes("subject") && /AI|工具|Skill|skills|MVP|私校|面试|律师|教育|公众号|小红书/.test(signal.subject + text)) score += 30;
+  if (formula.tags.includes("list") && /\d+|清单|方法|步骤|工具|案例|信号/.test(text)) score += 24;
+  if (formula.tags.includes("loss") && /别|不要|坑|错|风险|低质|浪费|后果/.test(text)) score += 22;
+  if (formula.tags.includes("result") && /结果|提升|增长|收藏|点赞|转发|阅读|省|效率|MVP/.test(text)) score += 20;
+  if (formula.tags.includes("contrast") && /不是|而是|对比|差别|误区|反常识|真相/.test(text)) score += 18;
+  if (target === "wechat-article" && ["question", "truth", "compare"].includes(formula.id)) score += 12;
+  if (target === "xhs" && ["pain-root", "list", "avoid", "action"].includes(formula.id)) score += 12;
   return score;
 }
 
+function inferBadTitleAction(signal = {}) {
+  const text = [signal.sourceTitle, signal.problem, signal.action, signal.subject, signal.text].filter(Boolean).join(" ");
+  if (/背答案|标准答案|表达.*僵|硬背/.test(text)) return "硬背答案";
+  if (/模板|同质化|AI味|像模板/.test(text)) return "套模板";
+  if (/收藏|清单|工具/.test(text)) return "只收藏清单";
+  if (/跟风|热点/.test(text)) return "乱跟风";
+  if (/报名|申请|择校/.test(text)) return "盲目报名";
+  return "照抄方法";
+}
+function rankTitleChoicesForTarget(items = [], signal = {}, target = state.publishTarget) {
+  const seen = new Set();
+  return (items || [])
+    .filter(Boolean)
+    .map((item) => {
+      const title = trimTitleForTarget(item.title, target);
+      return { ...item, title, score: scoreTitleChoiceForTarget(title, signal, target) };
+    })
+    .filter((item) => {
+      const key = normalizeTitleText(item.title).replace(/[\uFF0C\u3002\uFF01\uFF1F\uFF1B\uFF1A,.!?;:\s]/g, "");
+      if (!key || seen.has(key) || item.score <= 0) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => b.score - a.score)
+    .map(({ score, ...item }) => item);
+}
+
+function scoreTitleChoiceForTarget(title = "", signal = {}, target = state.publishTarget) {
+  const clean = trimTitleForTarget(title, target);
+  const length = titleCharLength(clean);
+  if (!isCompleteTitleForTarget(clean, target)) return 0;
+  let score = 50;
+  const signalWords = [signal.subject, signal.shortSubject, signal.problem, signal.action, signal.result]
+    .filter(Boolean)
+    .flatMap((item) => String(item).split(/\s+/))
+    .filter((word) => word.length >= 2);
+  if (signalWords.some((word) => clean.includes(word.slice(0, 4)))) score += 18;
+  if (/[0-9\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341]/.test(clean)) score += 6;
+  if (/\u6e05\u5355|\u907f\u5751|\u5224\u65ad|\u4fe1\u53f7|\u5173\u952e|\u5de5\u4f5c\u6d41|\u95ee\u9898|\u7ed3\u679c|\u522b\u53ea|\u4e3a\u4ec0\u4e48|\u771f\u6b63/.test(clean)) score += 12;
+  if (target === "xhs") {
+    if (length >= 14 && length <= 20) score += 18;
+    if (length < 10 || length > 20) return 0;
+    if (signal.topicType === "ai-tool-list") {
+      if (/\u6a21\u677f|\u4f4e\u8d28|\u5199\u5e9f|5\u4e2a|\u522b\u4e71\u88c5|\u8ddf\u98ce/.test(clean)) score += 35;
+      if (/\u771f\u80fd\u7701\u4e8b|\u597d\u7528\u4f46|\u5fc5\u88c5/.test(clean)) score += 18;
+      if (/\u522b\u5148\u8ff7\u4fe1|\u60f3\u8981\u62ff\u5230\u771f\u5b9e\u53cd\u9988|\u771f\u76f8\u4e0d\u662f\u6e05\u5355/.test(clean)) score -= 24;
+    }
+  }
+  if (target === "wechat-article" && length >= 18 && length <= 48) score += 16;
+  if (/\u5f53\u524d|\u6807\u9898|\u751f\u6210|\u5e73\u53f0|\u6210\u54c1|\u7d20\u6750\u5e93|\u70b9\u51fb|\u6b65\u9aa4|\u7b2c\d\u6b65/.test(clean)) score -= 80;
+  if (/(\u8fd9\u70b9|\u8fd9\u4e2a|\u56e0\u4e3a|\u5982\u679c|\u800c\u662f|\u4e0d\u662f|\uff0c|\uff1a)$/.test(clean)) score -= 60;
+  return score;
+}
+
+function isCompleteTitleForTarget(title = "", target = state.publishTarget) {
+  const clean = normalizeTitleText(title);
+  const length = titleCharLength(clean);
+  if (!clean || /\uFFFD/.test(clean)) return false;
+  if (/[\uFF0C\u3001\uFF1A\uFF1B,;:]$/.test(clean)) return false;
+  if (target === "xhs") return length >= 8 && length <= 20;
+  if (target === "moments") return length >= 8 && length <= 36;
+  if (target === "douyin" || target === "video-account") return length >= 8 && length <= 34;
+  return length >= 12 && length <= 70;
+}
+
 function extractTopicBoundSignal(topic = {}) {
-  const title = readableCn(topic.title || topic.theme || "");
-  const theme = readableCn(topic.theme || topic.title || "");
-  const body = readableCn(topic.body || topic.content || topic.summary || topic.reason || "");
-  const pain = readableCn(topic.pain || "");
-  const text = [title, theme, body, pain, state.keywords].filter(Boolean).join(" ");
-  const subject = pickSubjectPhrase(title || theme || firstReadableSentence(text) || state.keywords || state.businessLine);
-  const audience = pickAudiencePhrase(text);
-  const problem = pickProblemPhrase(text, pain, subject);
-  const action = pickActionPhrase(text, subject);
-  const result = pickResultPhrase(text);
-  const shortSubject = pickCompactTitleSubject(text, subject);
-  const shortProblem = shortTitlePhrase(problem, 8);
-  const shortAction = shortTitlePhrase(action, 8);
-  const shortResult = shortTitlePhrase(result, 7);
-  return { title, theme, body, pain, text, subject, audience, problem, action, result, shortSubject, shortProblem, shortAction, shortResult };
+  const topicText = normalizeTitleText([
+    topic.theme, topic.title, topic.pain, topic.reason, topic.reuse,
+    topic.content, topic.body, topic.summary,
+    topic.raw?.title, topic.raw?.description, topic.raw?.content, topic.raw?.text,
+    topic.raw?.note, topic.raw?.analysis, topic.raw?.pain,
+  ].filter(Boolean).join(" "));
+  const contextText = normalizeTitleText([state.keywords, state.businessLine].filter(Boolean).join(" "));
+  const hasStrongTopicText = topicText.replace(/\s/g, "").length >= 8;
+  const text = hasStrongTopicText ? topicText : normalizeTitleText([topicText, contextText].filter(Boolean).join(" "));
+  const sentences = text.split(/[，。！？；：,.!?;:\n]/).map((item) => item.trim()).filter((item) => item.length >= 2);
+  const sourceTitle = normalizeTitleText(topic.title || topic.theme || sentences[0] || state.businessLine || "当前选题");
+  const hasAiToolSignal = /AI|Claude|Codex|DeepSeek|Cursor|Lovable|Replit|Base44|Skill|skills|工具/i.test(topicText);
+  const hasCreatorSignal = /内容|创作|自媒体|博主|账号|写作|模板|低质|同质/i.test(topicText);
+  const isAiToolList = hasAiToolSignal && hasCreatorSignal;
+  const subject = pickTitleSignal(text, [
+    [/必装.*(Skill|skills|工具)|速码|Skill|skills|Claude|Codex|DeepSeek|Cursor|Lovable|Replit|Base44|工具/i, isAiToolList ? "AI 内容工具" : "AI 工具"],
+    [/模板|同质化|低质|内容创作|自媒体/i, isAiToolList ? "AI 写作工具" : "内容创作"],
+    [/AI\s*Native/i, "AI Native 项目"],
+    [/MVP|最小可行产品/i, "AI 工具做 MVP"],
+    [/Agent|智能体|工作流/i, "Agent 工作流"],
+    [/小红书|图文笔记/i, "小红书图文"],
+    [/公众号|长文/i, "公众号长文"],
+    [/私校|择校|升学|面试/i, "私校教育"],
+    [/律师|法律|案件/i, "律师内容账号"],
+  ], shortTitlePhrase(sourceTitle, 16) || "当前选题");
+  const audience = pickTitleSignal(text, [
+    [/自媒体人|自媒体|博主|内容创作者|账号|小红书/i, "内容创作者"],
+    [/不会写代码|零代码|不懂代码|普通人/i, "普通人"],
+    [/老板|创业者|团队|公司/i, "创业者"],
+    [/家长|妈妈|孩子|学生/i, "家长"],
+    [/律师|医生|老师|顾问/i, "专业服务者"],
+  ], "普通人");
+  const problem = pickTitleSignal(text, [
+    [/硬背标准答案|背标准答案|硬背|表达很僵|表达逻辑/i, "孩子面试表达很僵"],
+    [/内容越来越像模板|像模板|模板化|同质化/i, "内容越来越像模板"],
+    [/判低质|低质|没流量|流量/i, "担心被判低质"],
+    [/只看清单|只收藏|收藏.*工具|工具清单/i, "只收藏工具清单"],
+    [/不会写代码|不懂代码/i, "不会写代码"],
+    [/提前下班|提效|省.*小时|效率/i, "把效率真正提起来"],
+    [/没结果|不出结果|卡住/i, "做了却没结果"],
+    [/不知道.*发什么|选题/i, "不知道写什么"],
+  ], shortTitlePhrase(topic.pain || sentences[1] || "没有抓住关键问题", 18));
+  const action = pickTitleSignal(text, [
+    [/硬背标准答案|背标准答案|表达很僵|表达逻辑/i, "先练表达逻辑"],
+    [/模板|同质化|低质|没流量/i, "先把工具放进内容系统"],
+    [/必装|清单|Skill|skills|工具/i, "先选对工具和用法"],
+    [/工作流|流程|系统/i, "放进工作流"],
+    [/MVP|产品|项目/i, "做出一个 MVP"],
+    [/拆解|复盘|二创/i, "拆成可复用结构"],
+    [/采集|入库|素材库|知识库/i, "沉淀进素材库"],
+  ], "先判断要解决的问题");
+  const result = pickTitleResult(text);
+  return {
+    text, sourceTitle,
+    subject: shortTitlePhrase(subject, 18),
+    shortSubject: shortTitlePhrase(subject, 10),
+    audience,
+    problem: shortTitlePhrase(problem, 18),
+    action: shortTitlePhrase(action, 18),
+    result: shortTitlePhrase(result, 12),
+    topicType: isAiToolList ? "ai-tool-list" : "general",
+  };
+}
+function pickTitleSignal(text = "", rules = [], fallback = "") {
+  for (const [pattern, value] of rules) {
+    if (pattern.test(text)) return value;
+  }
+  return fallback;
+}
+
+function pickTitleResult(text = "") {
+  const hour = text.match(/(\u63d0\u524d\u4e0b\u73ed|\u7701\u4e0b|\u8282\u7701).{0,6}(\d+)\s*(\u5c0f\u65f6|h)/i);
+  if (hour) return `${hour[2]}\u5c0f\u65f6`;
+  const metric = text.match(/(\d+(?:\.\d+)?\s*[\u4e07\u5343\u767ekK]?\+?)\s*(\u70b9\u8d5e|\u6536\u85cf|\u8bc4\u8bba|\u8f6c\u53d1|\u9605\u8bfb|\u64ad\u653e)/);
+  if (metric) return "\u62ff\u5230\u771f\u5b9e\u53cd\u9988";
+  if (/MVP|\u6700\u5c0f\u53ef\u884c\u4ea7\u54c1/i.test(text)) return "\u505a\u51fa MVP";
+  return "\u62ff\u5230\u7ed3\u679c";
 }
 
 function pickCompactTitleSubject(text = "", fallback = "") {
@@ -5257,6 +5480,11 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  const topicButton = event.target.closest("[data-topic-id]");
+  if (topicButton) {
+    selectTopicForCreation(topicButton.dataset.topicId);
+    return;
+  }
   const editMetrics = event.target.closest("[data-edit-metrics]");
   if (editMetrics) {
     toggleMetricsEditor(editMetrics.dataset.editMetrics);
@@ -5308,6 +5536,264 @@ document.addEventListener("click", (event) => {
     deconstructFinalWork(deconstruct.dataset.deconstructWork);
   }
 });
+
+// LongkaTitleEngineV2: source-bound title engine.
+// Overrides the older title helpers above while keeping the UI entry function.
+const LONGKA_TITLE_FORMULAS_V2 = [
+  { id: "loss", style: "避坑型", tags: ["pain", "loss"], render: (s) => `${s.shortSubject}别再${s.badAction}` },
+  { id: "root", style: "真相型", tags: ["pain", "truth"], render: (s) => `${s.problem}问题出在哪` },
+  { id: "list", style: "清单型", tags: ["list"], render: (s) => `${s.audience}先看${s.number}个${s.xhsSubject}` },
+  { id: "result", style: "结果型", tags: ["result"], render: (s) => `${s.shortSubject}怎么拿到${s.result}` },
+  { id: "contrast", style: "对比型", tags: ["contrast"], render: (s) => `${s.shortSubject}有用和没用的差别` },
+  { id: "truth", style: "反常识型", tags: ["truth"], render: (s) => `${s.shortSubject}别只看表面` },
+  { id: "action", style: "行动型", tags: ["action"], render: (s) => `${s.problem}先做这一步` },
+  { id: "question", style: "痛点型", tags: ["question", "pain"], render: (s) => `${s.audience}为什么卡在${s.problem}` },
+  { id: "compare", style: "判断型", tags: ["contrast"], render: (s) => `${s.shortSubject}到底该怎么判断` },
+  { id: "lesson", style: "教训型", tags: ["loss", "list"], render: (s) => `${s.audience}太晚知道的${s.number}个教训` },
+  { id: "stop", style: "纠偏型", tags: ["action", "loss"], render: (s) => `别再${s.badAction}，先${s.action}` },
+  { id: "why", style: "解释型", tags: ["truth"], render: (s) => `为什么${s.shortSubject}总是没效果` },
+];
+
+buildCleanTitleChoices = function buildCleanTitleChoicesV2(topic, titleAssets = state.titleAssets) {
+  const signal = extractLongkaTitleSignalV2(topic);
+  const target = state.publishTarget || "xhs";
+  const assetItems = buildLongkaAssetFormulaTitlesV2(signal, titleAssets, target);
+  const formulaItems = LONGKA_TITLE_FORMULAS_V2
+    .map((formula, index) => ({ formula, score: scoreLongkaTitleFormulaV2(formula, signal, target, index) }))
+    .sort((a, b) => b.score - a.score)
+    .map((item) => ({
+      title: renderLongkaTitleForTargetV2(item.formula, signal, target),
+      reason: `${item.formula.style}：根据当前选题原始标题、痛点和内容方向生成`,
+    }));
+  return rankLongkaTitlesV2([...assetItems, ...formulaItems], signal, target).slice(0, 5);
+};
+
+function extractLongkaTitleSignalV2(topic = {}) {
+  const rawTitle = cleanLongkaTitleTextV2(topic.title || topic.theme || topic.raw?.title || "");
+  const rawText = cleanLongkaTitleTextV2([
+    topic.theme, topic.title, topic.pain, topic.reason, topic.reuse, topic.content, topic.body, topic.summary,
+    topic.raw?.title, topic.raw?.description, topic.raw?.content, topic.raw?.text, topic.raw?.analysis, topic.raw?.pain,
+  ].filter(Boolean).join(" "));
+  const text = rawText || cleanLongkaTitleTextV2([state.keywords, state.businessLine].filter(Boolean).join(" "));
+  const domain = inferLongkaTitleDomainV2(text);
+  const subject = pickLongkaSubjectV2(text, rawTitle, domain);
+  return {
+    text,
+    sourceTitle: rawTitle,
+    domain,
+    number: extractLongkaSourceNumberV2(rawTitle),
+    subject: limitLongkaPhraseV2(subject, 18),
+    shortSubject: limitLongkaPhraseV2(subject, 8),
+    xhsSubject: compactLongkaXhsSubjectV2(subject),
+    audience: limitLongkaPhraseV2(pickLongkaAudienceV2(text, domain), 8),
+    problem: limitLongkaPhraseV2(pickLongkaProblemV2(text, domain), 10),
+    action: limitLongkaPhraseV2(pickLongkaActionV2(text, domain), 10),
+    result: limitLongkaPhraseV2(pickLongkaResultV2(text, domain), 8),
+    badAction: limitLongkaPhraseV2(pickLongkaBadActionV2(text, domain), 8),
+  };
+}
+
+function cleanLongkaTitleTextV2(value = "") {
+  return String(value || "")
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/#([^#\s]+)\[.*?\]#/g, "$1")
+    .replace(/[#@]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function inferLongkaTitleDomainV2(text = "") {
+  if (/私校|面试|择校|升学|孩子|家长|夏校|教育/.test(text)) return "education";
+  if (/律师|法律|法条|案件|客户/.test(text)) return "lawyer";
+  if (/AI|Cursor|Claude|Codex|DeepSeek|Lovable|Replit|Base44|skills?|工具|MVP|自媒体|内容创作|模板|低质/i.test(text)) return "ai-content";
+  if (/公众号|小红书|短视频|朋友圈|图文|账号|爆款|选题/.test(text)) return "content";
+  return "general";
+}
+
+function extractLongkaSourceNumberV2(text = "") {
+  const matched = String(text || "").match(/(\d+)\s*(个|条|点|件|种|步|招)?/);
+  if (!matched) return "3";
+  return matched[1];
+}
+
+function pickLongkaSubjectV2(text = "", title = "", domain = "general") {
+  const source = `${title} ${text}`;
+  if (domain === "education") {
+    if (/私校.*面试|面试.*私校/.test(source)) return "私校面试";
+    if (/夏校/.test(source)) return "夏校申请";
+    if (/择校|申请/.test(source)) return "私校申请";
+    return "私校教育";
+  }
+  if (domain === "lawyer") return "律师短视频";
+  if (/MVP|最小可行产品/i.test(source)) return "AI工具做MVP";
+  if (/自媒体|内容创作|创作者|博主/.test(source) && /AI|工具|skills?/i.test(source)) return "AI内容工具";
+  if (/Cursor|Lovable|Replit|Base44|工具/.test(source)) return "AI工具";
+  if (/公众号/.test(source)) return "公众号内容";
+  if (/小红书/.test(source)) return "小红书图文";
+  return limitLongkaPhraseV2(title || firstLongkaSentenceV2(source) || "当前选题", 12);
+}
+
+function pickLongkaAudienceV2(text = "", domain = "general") {
+  if (domain === "education") return "家长";
+  if (domain === "lawyer") return "律师";
+  if (/自媒体|内容创作|创作者|博主|账号/.test(text)) return "内容创作者";
+  if (/不懂代码|普通人|新手|小白/.test(text)) return "普通人";
+  if (/创业|老板|团队|公司/.test(text)) return "创业者";
+  return "普通人";
+}
+
+function pickLongkaProblemV2(text = "", domain = "general") {
+  if (domain === "education") return /背|标准答案|表达|僵/.test(text) ? "孩子表达太僵" : "面试准备跑偏";
+  if (domain === "lawyer") return /法条|看不懂|太专业/.test(text) ? "用户听不懂" : "内容太专业";
+  if (/模板|同质|像模板|AI 味|AI味/.test(text)) return "内容越来越像模板";
+  if (/低质|没流量|流量/.test(text)) return "担心被判低质";
+  if (/只收藏|清单|工具清单/.test(text)) return "只收藏工具清单";
+  if (/不懂代码|不会代码/.test(text)) return "不懂代码";
+  if (/效率|下班|提效/.test(text)) return "效率没真正提起来";
+  if (/没结果|卡住|做不出来/.test(text)) return "做了却没结果";
+  return "关键问题没拆清";
+}
+
+function pickLongkaActionV2(text = "", domain = "general") {
+  if (domain === "education") return "练表达逻辑";
+  if (domain === "lawyer") return "讲解决路径";
+  if (/MVP|产品/.test(text)) return "先做MVP";
+  if (/工作流|系统|流程/.test(text)) return "放进工作流";
+  if (/清单|工具|skills?/i.test(text)) return "选对工具用法";
+  if (/拆解|复盘|二创/.test(text)) return "拆成可复用结构";
+  return "先判断再行动";
+}
+
+function pickLongkaResultV2(text = "", domain = "general") {
+  if (domain === "education") return "真实表达";
+  if (domain === "lawyer") return "客户信任";
+  if (/MVP|产品/.test(text)) return "做出MVP";
+  if (/下班|效率|提效/.test(text)) return "提高效率";
+  if (/流量|低质|模板/.test(text)) return "内容不写废";
+  return "拿到结果";
+}
+
+function pickLongkaBadActionV2(text = "", domain = "general") {
+  if (domain === "education") return "硬背答案";
+  if (domain === "lawyer") return "只讲法条";
+  if (/模板|同质|AI 味|AI味/.test(text)) return "套模板";
+  if (/只收藏|清单|工具清单/.test(text)) return "只收藏清单";
+  if (/跟风|热门/.test(text)) return "乱跟风";
+  if (/工具|skills?/i.test(text)) return "乱装工具";
+  return "照抄方法";
+}
+
+function scoreLongkaTitleFormulaV2(formula, signal, target, index) {
+  let score = 100 - index;
+  const text = signal.text || "";
+  if (formula.tags.includes("pain") && /别|不要|痛点|担心|低质|模板|背|僵|看不懂|没结果|问题/.test(text)) score += 28;
+  if (formula.tags.includes("list") && /清单|\d+\s*(个|条|点|件|种|步|招)|工具|skills?|方法/i.test(signal.sourceTitle + text)) score += 22;
+  if (formula.tags.includes("loss") && /别|不要|坑|风险|低质|浪费|硬背|只讲|只收藏/.test(text)) score += 20;
+  if (formula.tags.includes("result") && /结果|效率|MVP|信任|流量|表达|客户/.test(text)) score += 16;
+  if (formula.tags.includes("contrast") && /不是|而是|只|别|对比|真正/.test(text)) score += 14;
+  if (target === "xhs" && ["loss", "root", "list", "stop", "action"].includes(formula.id)) score += 10;
+  if (target === "wechat-article" && ["root", "truth", "contrast", "question"].includes(formula.id)) score += 18;
+  return score;
+}
+
+function renderLongkaTitleForTargetV2(formula, signal, target = state.publishTarget) {
+  if (target !== "wechat-article") return formula.render(signal);
+  const longTitles = {
+    loss: `${signal.audience}别再${signal.badAction}：${signal.subject}真正要先解决的是${signal.problem}`,
+    root: `${signal.problem}问题出在哪？${signal.audience}做${signal.subject}前要先看懂这个判断`,
+    list: `${signal.audience}做${signal.subject}，先想清楚这${signal.number}个关键问题`,
+    result: `从${signal.problem}到${signal.result}：${signal.subject}真正有效的做法`,
+    contrast: `${signal.subject}有用和没用的差别，往往藏在${signal.action}这一步`,
+    truth: `${signal.subject}别只看表面，真正关键的是${signal.action}`,
+    action: `${signal.problem}时，${signal.audience}应该先做${signal.action}`,
+    question: `${signal.audience}为什么总是卡在${signal.problem}？答案不只在${signal.subject}`,
+    compare: `${signal.subject}到底该怎么判断？先看${signal.problem}背后的真实需求`,
+    lesson: `${signal.audience}太晚知道的${signal.number}个教训：别让${signal.problem}拖垮结果`,
+    stop: `别再${signal.badAction}，${signal.audience}做${signal.subject}要先${signal.action}`,
+    why: `为什么${signal.subject}总是没效果？因为你可能忽略了${signal.problem}`,
+  };
+  return longTitles[formula.id] || formula.render(signal);
+}
+
+function buildLongkaAssetFormulaTitlesV2(signal, titleAssets = [], target = "xhs") {
+  const sample = (titleAssets || []).find((item) => cleanLongkaTitleTextV2(item?.title).length >= 6);
+  if (!sample) return [];
+  const title = cleanLongkaTitleTextV2(sample.title);
+  if (target === "wechat-article") return [{ title: `${signal.audience}做${signal.subject}，不要只套标题公式，要先抓住${signal.problem}`, reason: `参考标题库结构：${title}` }];
+  if (/\d/.test(title)) return [{ title: `${signal.audience}先看${signal.number}个${signal.shortSubject}`, reason: `参考标题库数字型：${title}` }];
+  if (/别|不要|避坑|错|坑/.test(title)) return [{ title: `${signal.shortSubject}别再${signal.badAction}`, reason: `参考标题库避坑型：${title}` }];
+  return [{ title: `${signal.shortSubject}先解决${signal.problem}`, reason: `参考标题库方法型：${title}` }];
+}
+
+function rankLongkaTitlesV2(items = [], signal = {}, target = "xhs") {
+  const seen = new Set();
+  return items
+    .map((item) => ({ ...item, title: trimLongkaTitleForTargetV2(item.title, target) }))
+    .map((item) => ({ ...item, score: scoreLongkaTitleChoiceV2(item.title, signal, target) }))
+    .filter((item) => {
+      const key = item.title.replace(/[，。！？；：,.!?;:\s]/g, "");
+      if (!key || seen.has(key) || item.score <= 0) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => b.score - a.score)
+    .map(({ score, ...item }) => item);
+}
+
+function scoreLongkaTitleChoiceV2(title = "", signal = {}, target = "xhs") {
+  const clean = cleanLongkaTitleTextV2(title);
+  const length = Array.from(clean).length;
+  if (!clean || /�|閸|鐏|閿|缁|锟/.test(clean)) return 0;
+  if (/[，、：；,;:]$/.test(clean)) return 0;
+  if (target === "xhs" && (length < 8 || length > 20)) return 0;
+  if (target === "wechat-article" && (length < 16 || length > 70)) return 0;
+  if (signal.domain === "education" && /AI|工具|模板|低质|Agent|工作流/.test(clean)) return 0;
+  if (signal.domain === "lawyer" && /AI|工具|模板|私校|面试/.test(clean)) return 0;
+  if (signal.domain === "ai-content" && /私校|面试|孩子|家长|法条|律师/.test(clean)) return 0;
+  let score = 50;
+  const anchors = [signal.subject, signal.shortSubject, signal.problem, signal.action, signal.result, signal.badAction]
+    .filter(Boolean)
+    .map((item) => String(item).replace(/\s/g, ""));
+  if (anchors.some((word) => clean.replace(/\s/g, "").includes(word.slice(0, Math.min(4, word.length))))) score += 28;
+  if (/[0-9一二三四五六七八九十]/.test(clean)) score += 6;
+  if (/别|问题|为什么|差别|判断|真正|先|清单|教训|结果/.test(clean)) score += 12;
+  if (target === "xhs" && length >= 12 && length <= 20) score += 16;
+  if (target === "wechat-article" && length > 20) score += 14;
+  if (/当前|标题|生成|平台|点击|步骤|第\d步|素材库|brief/i.test(clean)) return 0;
+  return score;
+}
+
+function trimLongkaTitleForTargetV2(title = "", target = "xhs") {
+  const clean = cleanLongkaTitleTextV2(title);
+  if (target === "wechat-article") return clean;
+  const max = target === "xhs" ? 20 : target === "moments" ? 32 : 30;
+  const chars = Array.from(clean);
+  if (chars.length <= max) return clean;
+  return chars.slice(0, max).join("").replace(/[，。！？；：,.!?;:]$/g, "").trim();
+}
+
+function limitLongkaPhraseV2(value = "", max = 8) {
+  const clean = cleanLongkaTitleTextV2(value)
+    .replace(/^(关于|如果|为什么|怎么|如何)/, "")
+    .replace(/[，、。！？；：,.!?;:].*$/, "")
+    .trim();
+  const chars = Array.from(clean);
+  return chars.length > max ? chars.slice(0, max).join("") : clean;
+}
+
+function compactLongkaXhsSubjectV2(value = "") {
+  const clean = cleanLongkaTitleTextV2(value).replace(/\s+/g, "");
+  if (/AI工具做MVP/i.test(clean)) return "AI工具MVP";
+  if (/AI内容工具/i.test(clean)) return "AI内容工具";
+  if (/AI工具/i.test(clean)) return "AI工具";
+  if (/私校面试/.test(clean)) return "私校面试";
+  if (/律师短视频/.test(clean)) return "律师短视频";
+  return limitLongkaPhraseV2(clean, 7);
+}
+
+function firstLongkaSentenceV2(text = "") {
+  return cleanLongkaTitleTextV2(text).split(/[，。！？；：,.!?;:\n]/).find((item) => item.trim().length >= 2) || "";
+}
 
 restoreWorkbenchSnapshot();
 renderToday();
