@@ -1815,8 +1815,18 @@ function currentFinalWorkId() {
 
 function expectedImageCountForCurrentWork() {
   if (state.publishTarget !== "xhs") return 0;
-  const planned = Array.isArray(state.xhsCardPlan) && state.xhsCardPlan.length ? state.xhsCardPlan.length : 5;
+  const planned = plannedVisualCardCount();
   return Math.max(1, Math.min(5, planned));
+}
+
+function plannedVisualCardCount() {
+  const plan = Array.isArray(state.xhsCardPlan) ? state.xhsCardPlan : [];
+  if (plan.length) return Math.max(1, Math.min(5, plan.length));
+  if (state.copyConfirmed) {
+    const nextPlan = ensureXhsCardPlan();
+    if (Array.isArray(nextPlan) && nextPlan.length) return Math.max(1, Math.min(5, nextPlan.length));
+  }
+  return 0;
 }
 
 function buildFinalWorkAsset() {
@@ -2140,10 +2150,12 @@ function visualProductionCopy(styleId) {
 }
 
 function primaryVisualActionLabel(styleId) {
-  if (styleId === "xiaohei-metaphor") return "生成 5 张小黑漫画图";
-  if (styleId === "juju-organizing") return "生成 5 张卷卷整理图";
-  if (styleId === "guizang-editorial") return "生成 5 张归藏杂志图";
-  return "生成 5 张宝玉知识卡";
+  const count = plannedVisualCardCount();
+  const prefix = count ? `生成 ${count} 张` : "生成";
+  if (styleId === "xiaohei-metaphor") return `${prefix}小黑漫画图`;
+  if (styleId === "juju-organizing") return `${prefix}卷卷整理图`;
+  if (styleId === "guizang-editorial") return `${prefix}归藏杂志图`;
+  return `${prefix}宝玉知识卡`;
 }
 
 function zh(entity) {
@@ -2183,10 +2195,12 @@ function visualProductionCopyClean(styleId) {
 }
 
 function primaryVisualActionLabelClean(styleId) {
-  if (styleId === "xiaohei-metaphor") return zh("&#29983;&#25104; 5 &#24352;&#23567;&#40657;&#28459;&#30011;&#22270;");
-  if (styleId === "juju-organizing") return zh("&#29983;&#25104; 5 &#24352;&#21367;&#21367;&#25972;&#29702;&#22270;");
-  if (styleId === "guizang-editorial") return zh("&#29983;&#25104; 5 &#24352;&#24402;&#34255;&#26434;&#24535;&#22270;");
-  return zh("&#29983;&#25104; 5 &#24352;&#23453;&#29577;&#30693;&#35782;&#21345;");
+  const count = plannedVisualCardCount();
+  const prefix = count ? `生成 ${count} 张` : "生成";
+  if (styleId === "xiaohei-metaphor") return `${prefix}小黑漫画图`;
+  if (styleId === "juju-organizing") return `${prefix}卷卷整理图`;
+  if (styleId === "guizang-editorial") return `${prefix}归藏杂志图`;
+  return `${prefix}宝玉知识卡`;
 }
 
 function visualPlatformForCurrentTarget() {
