@@ -16,6 +16,9 @@ Required behavior:
    - 122 server handles API, users, orders, payments, admin, and job state.
    - 43 server handles image/report generation and sends generated asset state back to 122.
    - Visual prompt/template assets may live in Codex skills, but production generation must still follow the verified 43 route.
+   - Remote debugging for 122/43 should use the previously verified Paramiko password-auth scripts/patterns in `E:\Codex` (for example `remote_exec.py`, `upload_122_patch.py`, `tmp-upload-43-patch.py`). Do not assume plain BatchMode SSH key auth works.
+   - When using remote credentials, keep them in local scripts/memory only. Do not paste passwords or API secrets into final user-facing summaries.
+   - 2026-06-04 color mini program image generation check: 43 live `/home/ubuntu/personal-image-report-demo/server.js` already contains the portrait prompt uplift rules from the portrait optimization article (`Portrait quality baseline`, short high-signal prompt, natural soft lighting, realistic skin texture, avoid 8k/masterpiece stacking). The missing part was intake QC strictness. It was changed on 43 and local `E:\Codex\personal-image-report-product\server\personal-report-skill-server.js` to soft-pass common customer lifestyle front photos. Hard reject only no recognizable human face, unrelated animal/object/landscape/cartoon/document/food/screenshot, multiple unclear people, mostly covered face, severe blur, or unsafe/private content. Verified with `node --check server.js`, grep markers, and PM2 `personal-image-report-demo` online.
 9. When packaging operator tools, prefer a portable zip/folder with launcher `.bat`, README, assets, and clear first-run instructions.
 10. Final responses must include what changed, exact paths, verification result, and next required user action if any.
 

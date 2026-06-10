@@ -148,11 +148,31 @@ Use for:
 - Low-cost multi-platform discovery.
 - Early tests where stability is acceptable.
 - Sources that do not justify a dedicated adapter yet.
+- Fast external research before choosing a paid or production collector.
+- Verifying whether a URL/account/topic has useful public signal before spending API credits or crawler time.
+- Reading public posts, pages, GitHub repos, videos, and social discussions as operator evidence.
 
 Do not use as:
 
 - A high-trust production crawler.
 - The only path for daily customer workflows.
+- A bulk training corpus collector.
+- A silent replacement when MediaCrawlerPro, Bazhuayu, or XCrawl fails.
+
+Operational rule:
+
+```text
+Agent-Reach result
+-> operator reviews source and usefulness
+-> if worth keeping, convert to manual_import or adapter-specific content_sample
+-> store sourceTool=agent-reach, collectionStatus=manual|partial, evidenceUrl required
+```
+
+Why:
+
+- Agent-Reach is excellent for giving the agent broad internet visibility.
+- It is not the best default for long-running commercial collection, because channel stability, cookies, and reverse-engineering risk vary by platform.
+- It should reduce blind spots and guide what to collect next, not pollute the training sample database with unverified data.
 
 ### 5. xhs-cli
 
