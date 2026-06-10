@@ -1,4 +1,4 @@
-const taskLabels = {
+﻿const taskLabels = {
   imageText: "做一篇图文",
   video: "做一条视频",
   moments: "写朋友圈",
@@ -79,6 +79,8 @@ let latestAiDraft = null;
 let activeQualityFeedback = null;
 let activeRevisionRound = 0;
 let copyDraftVersions = [];
+let currentCopyVersionId = "";
+let confirmedCopyVersionId = "";
 let copyProgressTimer = null;
 
 const $ = (selector) => document.querySelector(selector);
@@ -2204,6 +2206,432 @@ buildMultiPlatformContentPack = function buildMultiPlatformContentPackAudienceDe
 
 renderContentPack();
 
+// ABSOLUTE FINAL OVERRIDE FOR ONECLICK PACKAGE.
+// This block intentionally sits after all previous overrides.
+collectRealTopics = async function collectRealTopicsUseLocalAssetsOnlyAbsoluteFinal() {
+  const keyword = formValue("#topic");
+  if (!keyword) return { ok: false, topics: [], message: "请先输入关键词。" };
+  appendTerminalLine(`> 复用本地资产库：${keyword}`);
+  appendTerminalLine("> 这里只查客户自己的素材库，不调用 CDP；需要新素材请点“采集新素材”。");
+  const state = await fetch("/api/state").then((res) => res.json());
+  const topics = longkaBuildLocalAssetTopics(state);
+  if (!topics.length) {
+    appendTerminalLine("> 本地资产库 0 条匹配素材。请点击“采集新素材”。");
+    return { ok: false, topics: [], message: "本地资产库没有匹配素材。请点击“采集新素材”真实抓取小红书帖子。" };
+  }
+  appendTerminalLine(`> 本地资产库命中 ${topics.length} 条源头帖。`);
+  return { ok: true, topics, source: "local-assets" };
+};
+
+if ($("#collectNewMaterial")) $("#collectNewMaterial").onclick = longkaCollectFreshMaterialWithCdp;
+if ($("#importMaterial")) $("#importMaterial").onclick = () => setRoute("materials", { scroll: true });
+
+// Customer-facing collection UX: when local assets are empty, keep the user in the
+// monitor window and offer the next action there. Do not make them hunt in side menus.
+function longkaShowNeedFreshCollection(message) {
+  const grid = $("#topicGrid");
+  const hint = $("#topicHint");
+  if (hint) hint.textContent = "本地资产库没有匹配素材，需要采集新素材。";
+  if (!grid) return;
+  grid.innerHTML = `<article class="empty-card longka-sample-empty">
+    <b>本地没有可用素材</b>
+    <p>${escapeHtml(message || "需要打开小红书 CDP 窗口，按当前关键词采集真实源头帖。")}</p>
+    <button class="primary" type="button" id="collectFreshFromEmpty">立即采集新素材</button>
+  </article>`;
+  $("#collectFreshFromEmpty")?.addEventListener("click", longkaCollectFreshMaterialWithCdp);
+}
+
+longkaCollectFreshMaterialWithCdp = async function longkaCollectFreshMaterialWithCdpLocalOnly() {
+  const keyword = formValue("#topic");
+  const industry = formValue("#industry");
+  if (!keyword) {
+    longkaShowNeedFreshCollection("请先输入关键词。");
+    return;
+  }
+  activeTopic = null;
+  candidateTopics = [];
+  hasSearched = true;
+  setWorkflowStep(4);
+  setRoute("collect", { scroll: false });
+  $("#crawlPanel").hidden = false;
+  $("#crawlPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  renderWorkConsole("running");
+  renderCrawlStatus("running");
+  renderEmptyTopics("正在采集新素材。请观察小红书 Chrome 窗口是否跳转搜索。");
+  appendTerminalLine(`> PREPARE_CDP_COLLECTION: ${industry || "未填行业"} / ${keyword}`);
+  appendTerminalLine("> 1/5 检查 CDP Chrome 登录窗口。");
+  await sleep(400);
+  appendTerminalLine("> 2/5 打开小红书搜索页并输入关键词。");
+  await sleep(400);
+  appendTerminalLine("> 3/5 快扫搜索结果：抓标题、赞、藏、评、转和原帖链接。");
+  await sleep(400);
+  appendTerminalLine("> 4/5 自动挑选高互动帖子深挖正文、图片和评论区。");
+  await sleep(400);
+  appendTerminalLine("> 5/5 生成源头帖列表和客户问题库。");
+  try {
+    const data = await longkaFetchJson("/api/sources/mediacrawler/xhs-collect", {
+      industry,
+      keywords: keyword,
+      platform: activePublish || "xhs",
+      cdpLimit: 20,
+      deepLimit: 5,
+    });
+    const samples = Array.isArray(data.samples) ? data.samples : [];
+    if (!samples.length) throw new Error("本次真实采集返回 0 条。");
+    candidateTopics = samples.map((sample) => mapRealSampleToCandidate(sample));
+    appendTerminalLine(`> DONE: 本次采集 ${samples.length} 条源头帖；快扫 ${data.quickScanCount || samples.length} 条；深挖 ${data.deepDiveCount || 0} 条；客户问题 ${data.questionCount || 0} 条。`);
+    appendTerminalLine(`> RUN_ID: ${data.collectionRunId || "未返回"}`);
+    renderWorkConsole("done");
+    renderCrawlStatus("done");
+    longkaRenderCandidateTopicsOnly(`本次真实采集到 ${candidateTopics.length} 条源头帖。请选择一条进入文案二创。`);
+    setRoute("topics", { scroll: false });
+    $("#topicsPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) {
+    const message = error?.data?.stage ? `阶段：${error.data.stage}；${error.message}` : error.message;
+    appendTerminalLine(`> FAILED: ${message}`);
+    renderWorkConsole("failed", message);
+    renderCrawlStatus("failed", message);
+    longkaShowNeedFreshCollection(message);
+  }
+};
+
+collectRealTopics = async function collectRealTopicsUseLocalAssetsWithVisibleNextStep() {
+  const keyword = formValue("#topic");
+  if (!keyword) return { ok: false, topics: [], message: "请先输入关键词。" };
+  appendTerminalLine(`> LOCAL_ASSET_REUSE: ${keyword}`);
+  appendTerminalLine("> 先查客户自己的素材库；如果没有，系统会在这里给出采集新素材按钮。");
+  const state = await fetch("/api/state").then((res) => res.json());
+  const topics = longkaBuildLocalAssetTopics(state);
+  if (!topics.length) {
+    const message = "本地资产库没有匹配素材。请点击监控窗口里的“立即采集新素材”。";
+    appendTerminalLine("> LOCAL_ASSET_MATCHES: 0. SHOW_COLLECT_BUTTON.");
+    window.setTimeout(() => longkaShowNeedFreshCollection(message), 0);
+    return { ok: false, topics: [], message };
+  }
+  appendTerminalLine(`> LOCAL_ASSET_MATCHES: ${topics.length}.`);
+  return { ok: true, topics, source: "local-assets" };
+};
+
+if ($("#collectNewMaterial")) $("#collectNewMaterial").onclick = longkaCollectFreshMaterialWithCdp;
+if ($("#importMaterial")) $("#importMaterial").onclick = () => setRoute("materials", { scroll: true });
+
+// FINAL OVERRIDE - keep this at the very end.
+// Business rule:
+// - Find topics = reuse local customer asset library only.
+// - Collect new material = call CDP/MediaCrawler.
+// - Empty local library is not success.
+collectRealTopics = async function collectRealTopicsUseLocalAssetsOnlyFinal() {
+  const keyword = formValue("#topic");
+  if (!keyword) return { ok: false, topics: [], message: "请先输入关键词。" };
+  appendTerminalLine(`> 复用本地资产库：${keyword}`);
+  appendTerminalLine("> 这里只查客户自己的素材库，不调用 CDP，不把旧模板冒充新采集。");
+  const state = await fetch("/api/state").then((res) => res.json());
+  const topics = longkaBuildLocalAssetTopics(state);
+  if (!topics.length) {
+    appendTerminalLine("> 本地资产库 0 条匹配素材。请点击“采集新素材”。");
+    return { ok: false, topics: [], message: "本地资产库没有匹配素材。请点击“采集新素材”真实抓取小红书帖子。" };
+  }
+  appendTerminalLine(`> 本地资产库命中 ${topics.length} 条源头帖。`);
+  return { ok: true, topics, source: "local-assets" };
+};
+
+if ($("#collectNewMaterial")) {
+  $("#collectNewMaterial").onclick = longkaCollectFreshMaterialWithCdp;
+}
+
+if ($("#importMaterial")) {
+  $("#importMaterial").onclick = () => setRoute("materials", { scroll: true });
+}
+
+// Final package behavior:
+// 1. "帮我找选题" reuses the local customer asset library only.
+// 2. "采集新素材" is the only action that calls CDP/MediaCrawler.
+// 3. Empty local result is not success and never shows old/template topics as fresh material.
+function longkaCurrentWords() {
+  return String(formValue("#topic") || "").split(/[\s,，、/]+/).map((word) => word.trim()).filter(Boolean);
+}
+
+function longkaSampleMatchesCurrentTask(sample, words = longkaCurrentWords()) {
+  if (!words.length) return true;
+  const haystack = `${sample.keyword || ""} ${sample.title || ""} ${sample.content || ""} ${(sample.tags || []).join(" ")} ${(sample.comments || []).slice(0, 8).join(" ")}`;
+  return words.some((word) => haystack.includes(word));
+}
+
+function longkaBuildLocalAssetTopics(state = {}) {
+  const words = longkaCurrentWords();
+  const samples = (Array.isArray(state.contentSamples) ? state.contentSamples : [])
+    .filter((sample) => {
+      const status = longkaSampleStatus(sample);
+      return status === "real" || status === "partial" || status === "manual";
+    })
+    .filter((sample) => longkaSampleMatchesCurrentTask(sample, words))
+    .sort((a, b) => longkaSamplePoolScore(b) - longkaSamplePoolScore(a))
+    .slice(0, 10);
+  return samples.map((sample) => mapRealSampleToCandidate(sample));
+}
+
+function longkaRenderCandidateTopicsOnly(message = "") {
+  const grid = $("#topicGrid");
+  const hint = $("#topicHint");
+  if (!grid) return;
+  if (hint) hint.textContent = message || `已找到 ${candidateTopics.length} 条可选源头帖。请选择一条，再进入文案二创。`;
+  if (!candidateTopics.length) {
+    grid.innerHTML = `<article class="empty-card longka-sample-empty">
+      <b>本地资产库没有匹配素材</b>
+      <p>这不是采集成功。请点击“采集新素材”，让 CDP 窗口真实搜索小红书关键词。</p>
+    </article>`;
+    return;
+  }
+  grid.innerHTML = candidateTopics.map((topic, index) => {
+    const post = topic?.evidence?.sourcePosts?.[0] || {};
+    const metrics = post.metrics || {};
+    const active = activeTopic?.evidence?.traceId === topic?.evidence?.traceId;
+    return `<article class="topic-card longka-sample-card ${active ? "active" : ""}" data-topic-card="${index}" tabindex="0">
+      <span>${escapeHtml(post.collectionRunId ? "本次采集" : "本地资产库")}</span>
+      <h3>${escapeHtml(topic.title || post.title || "未命名源帖")}</h3>
+      <p>${escapeHtml(post.summary || topic.reason || "这条素材有真实来源，请打开原帖核验后再二创。")}</p>
+      <div class="sample-contract-grid">
+        <div><b>关键词</b><span>${escapeHtml(post.keyword || formValue("#topic") || "未记录")}</span></div>
+        <div><b>互动</b><span>赞 ${escapeHtml(metrics.likes || 0)} / 藏 ${escapeHtml(metrics.saves || 0)} / 评 ${escapeHtml(metrics.comments || 0)} / 转 ${escapeHtml(metrics.shares || 0)}</span></div>
+        <div><b>评论</b><span>${escapeHtml((topic.evidence?.comments || []).length ? `已有 ${(topic.evidence.comments || []).length} 条` : "未补抓评论")}</span></div>
+        <div><b>来源</b><span>${post.url ? `<a href="${escapeHtml(post.url)}" target="_blank" rel="noreferrer">打开原帖</a>` : "缺少原帖链接"}</span></div>
+      </div>
+      <button class="secondary" data-topic-index="${index}">${active ? "已选择这条源头" : "选择这条源头做拆解"}</button>
+    </article>`;
+  }).join("");
+  $$("#topicGrid [data-topic-card]").forEach((card) => {
+    card.addEventListener("click", () => {
+      const topic = candidateTopics[Number(card.dataset.topicCard)];
+      if (!topic) return;
+      if (typeof selectCandidateTopic === "function") selectCandidateTopic(topic);
+      else activeTopic = topic;
+      longkaRenderCandidateTopicsOnly();
+    });
+  });
+}
+
+collectRealTopics = async function collectRealTopicsUseLocalAssetsOnly() {
+  const keyword = formValue("#topic");
+  if (!keyword) return { ok: false, topics: [], message: "请先输入关键词。" };
+  appendTerminalLine(`> 复用本地资产库：${keyword}`);
+  appendTerminalLine("> 这里只查客户自己的素材库，不调用 CDP，不把旧模板冒充新采集。");
+  const state = await fetch("/api/state").then((res) => res.json());
+  const topics = longkaBuildLocalAssetTopics(state);
+  if (!topics.length) {
+    appendTerminalLine("> 本地资产库 0 条匹配素材。请点击“采集新素材”。");
+    return { ok: false, topics: [], message: "本地资产库没有匹配素材。请点击“采集新素材”真实抓取小红书帖子。" };
+  }
+  appendTerminalLine(`> 本地资产库命中 ${topics.length} 条源头帖。`);
+  return { ok: true, topics, source: "local-assets" };
+};
+
+async function longkaCollectFreshMaterialWithCdp() {
+  const keyword = formValue("#topic");
+  const industry = formValue("#industry");
+  if (!keyword) {
+    renderEmptyTopics("请先输入关键词。");
+    return;
+  }
+  activeTopic = null;
+  candidateTopics = [];
+  hasSearched = true;
+  setWorkflowStep(4);
+  $("#crawlPanel").hidden = false;
+  renderWorkConsole("running");
+  renderCrawlStatus("running");
+  renderEmptyTopics("正在调用 CDP 真实采集。请观察小红书 Chrome 窗口是否跳转搜索。");
+  appendTerminalLine(`> 采集新素材：${industry || "未填行业"} / ${keyword}`);
+  appendTerminalLine("> 正在调用 /api/sources/mediacrawler/xhs-collect。");
+  try {
+    const data = await longkaFetchJson("/api/sources/mediacrawler/xhs-collect", {
+      industry,
+      keywords: keyword,
+      platform: activePublish || "xhs",
+      cdpLimit: 20,
+      deepLimit: 5,
+    });
+    const samples = Array.isArray(data.samples) ? data.samples : [];
+    if (!samples.length) throw new Error("本次真实采集返回 0 条。");
+    candidateTopics = samples.map((sample) => mapRealSampleToCandidate(sample));
+    appendTerminalLine(`> 本次采集完成：${samples.length} 条源头帖，RunId：${data.collectionRunId || "未返回"}`);
+    renderWorkConsole("done");
+    renderCrawlStatus("done");
+    longkaRenderCandidateTopicsOnly(`本次真实采集到 ${candidateTopics.length} 条源头帖。请选择一条进入文案二创。`);
+    setRoute("topics", { scroll: false });
+    $("#topicsPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) {
+    const message = error?.data?.stage ? `阶段：${error.data.stage}；${error.message}` : error.message;
+    appendTerminalLine(`> 采集新素材失败：${message}`);
+    renderWorkConsole("failed", message);
+    renderCrawlStatus("failed", message);
+    renderEmptyTopics(message);
+  }
+}
+
+const collectNewButton = $("#collectNewMaterial");
+if (collectNewButton) {
+  collectNewButton.onclick = longkaCollectFreshMaterialWithCdp;
+}
+
+const importMaterialButton = $("#importMaterial");
+if (importMaterialButton) {
+  importMaterialButton.onclick = () => setRoute("materials", { scroll: true });
+}
+
+// Final guard for the one-click package: "find topics" must trigger real CDP collection.
+// Do not let earlier cache/SQLite sample-pool overrides turn a failed collection into a fake success.
+async function longkaFetchJson(path, body) {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.ok === false) {
+    const err = new Error(data.message || data.error || `HTTP ${res.status}`);
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
+function longkaSamplesToTopics(samples) {
+  return (Array.isArray(samples) ? samples : []).map((sample) => mapRealSampleToCandidate(sample));
+}
+
+collectRealTopics = async function collectRealTopicsMustUseCdp() {
+  const keyword = formValue("#topic");
+  const industry = formValue("#industry");
+  const platform = activePublish || "xhs";
+  if (!keyword) return { ok: false, topics: [], message: "请先输入关键词。" };
+  appendTerminalLine(`> 强制真实采集：${industry || "未填行业"} / ${keyword} / ${platform}`);
+  appendTerminalLine("> 正在调用 CDP 小红书采集接口，不读取旧素材库，不用 SQLite 缓存冒充。");
+  try {
+    const data = await longkaFetchJson("/api/sources/mediacrawler/xhs-collect", {
+      industry,
+      keywords: keyword,
+      platform,
+      cdpLimit: 20,
+      deepLimit: 5,
+    });
+    const samples = Array.isArray(data.samples) ? data.samples : [];
+    if (!samples.length) {
+      appendTerminalLine("> 本次真实采集返回 0 条，停止。");
+      return { ok: false, topics: [], message: "本次真实采集返回 0 条。请确认 CDP Chrome 窗口是否真的跳转搜索、账号是否登录、关键词是否可搜索。" };
+    }
+    appendTerminalLine(`> 本次采集 RunId：${data.collectionRunId || "未返回"}`);
+    appendTerminalLine(`> 第一层快扫：${data.quickScanCount || samples.length} 条；第二层深挖：${data.deepDiveCount || 0} 条；问题库：${data.questionCount || 0} 条。`);
+    appendTerminalLine("> 只展示本次采集源帖，不展示历史素材。");
+    return { ok: true, topics: longkaSamplesToTopics(samples), collectionRunId: data.collectionRunId, samples };
+  } catch (error) {
+    const detail = error?.data?.stage ? `阶段：${error.data.stage}；` : "";
+    appendTerminalLine(`> 真实采集失败：${detail}${error.message}`);
+    return { ok: false, topics: [], message: `${detail}${error.message}` };
+  }
+};
+
+// Longka anti-fake-collection guard.
+// The fourth step must show the current CDP collection run only. Old samples may stay
+// in the asset database, but they cannot be rendered as if they were just collected.
+longkaBuildSamplePoolFromState = function longkaBuildCurrentRunSamplePool(state = {}, keywords = "") {
+  const lastRunId = state.lastCollectionRunId || "";
+  const words = String(keywords || "").split(/[\s,，、/]+/).map((word) => word.trim()).filter(Boolean);
+  const all = Array.isArray(state.contentSamples) ? state.contentSamples : [];
+  const currentRunSamples = lastRunId ? all.filter((sample) => sample.collectionRunId === lastRunId) : [];
+  const base = currentRunSamples.length ? currentRunSamples : [];
+  const samples = base
+    .filter((sample) => {
+      const status = longkaSampleStatus(sample);
+      return status === "real" || status === "partial";
+    })
+    .filter((sample) => {
+      if (!words.length) return true;
+      const haystack = `${sample.keyword || ""} ${sample.title || ""} ${sample.content || ""} ${(sample.tags || []).join(" ")} ${(sample.comments || []).slice(0, 5).join(" ")}`;
+      return words.some((word) => haystack.includes(word));
+    })
+    .map((sample) => {
+      const metrics = longkaMetricsOfSample(sample);
+      const commentStatus = longkaCommentStatus(sample);
+      return {
+        id: sample.id || sample.url || sample.title,
+        sample,
+        status: longkaSampleStatus(sample),
+        title: sample.title || sample.content || "未命名真实样本",
+        platform: sample.platform || "xiaohongshu",
+        url: sample.url || "",
+        traceId: sample.id || sample.url || sample.title || "sample",
+        keyword: sample.keyword || keywords,
+        metrics,
+        metricLabel: longkaMetricLabel(metrics),
+        commentStatus,
+        score: longkaSamplePoolScore(sample),
+        whySelected: longkaWhySelected(sample),
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, LONGKA_SAMPLE_POOL_MAX);
+  return {
+    samples,
+    ready: samples.length >= LONGKA_SAMPLE_POOL_MIN,
+    min: LONGKA_SAMPLE_POOL_MIN,
+    max: LONGKA_SAMPLE_POOL_MAX,
+    lastRunId,
+    totalStoredSamples: all.length,
+  };
+};
+
+longkaRenderSamplePool = function longkaRenderCurrentRunSamplePool(pool) {
+  const grid = $("#topicGrid");
+  if (!grid) return;
+  const hint = $("#topicHint");
+  if (hint) {
+    hint.textContent = pool.samples.length
+      ? `本次真实采集到 ${pool.samples.length} 条源头帖。先选择一条源头帖，下一步再做标题和文案。`
+      : "没有本次真实采集结果。系统不会用旧素材库或固定模板冒充新采集。";
+  }
+  if (!pool.samples.length) {
+    grid.innerHTML = `<article class="empty-card longka-sample-empty">
+      <b>没有本次采集结果</b>
+      <p>请确认 CDP 小红书窗口已经打开并登录，再重新采集。没有看到 Chrome 跳转搜索，就不要继续生成选题。</p>
+    </article>`;
+    return;
+  }
+  grid.innerHTML = pool.samples.map((item, index) => {
+    const commentClass = item.commentStatus.key === "deep" ? "good" : item.commentStatus.key === "partial" ? "warn" : "muted";
+    const content = String(item.sample.content || "").replace(/\s+/g, " ").slice(0, 110);
+    const collectedAt = item.sample.collectedAt ? new Date(item.sample.collectedAt).toLocaleString("zh-CN") : "";
+    const active = activeTopic?.evidence?.traceId === item.traceId;
+    return `<article class="topic-card longka-sample-card ${active ? "active" : ""}" data-topic-card="${index}" tabindex="0">
+      <span>本次真实采集 · ${escapeHtml(item.status)}</span>
+      <h3>${escapeHtml(item.title)}</h3>
+      <p>${escapeHtml(content || "这条源帖暂未抓到正文摘要，请先打开原帖核验，或补抓评论区。")}</p>
+      <div class="sample-contract-grid">
+        <div><b>平台</b><span>${escapeHtml(item.platform)}</span></div>
+        <div><b>关键词</b><span>${escapeHtml(item.keyword || "未记录")}</span></div>
+        <div><b>互动指标</b><span>${escapeHtml(item.metricLabel)}</span></div>
+        <div><b>评论状态</b><span class="sample-status ${commentClass}">${escapeHtml(item.commentStatus.label)}</span></div>
+        <div><b>采集时间</b><span>${escapeHtml(collectedAt || "本次未记录")}</span></div>
+        <div><b>原帖核验</b><span>${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">打开原帖</a>` : escapeHtml(item.traceId)}</span></div>
+        <div><b>推荐理由</b><span>${escapeHtml(item.whySelected)}</span></div>
+        <div><b>下一步</b><span>${item.commentStatus.key === "none" ? "建议先补抓评论区" : "可进入样本拆解"}</span></div>
+      </div>
+      <button class="secondary" data-topic-index="${index}">${active ? "已选择这条源头" : "选择这条源头做拆解"}</button>
+    </article>`;
+  }).join("");
+  $$("#topicGrid [data-topic-card]").forEach((card) => {
+    card.addEventListener("click", () => {
+      const item = pool.samples[Number(card.dataset.topicCard)];
+      if (!item) return;
+      selectCandidateTopic(mapRealSampleToCandidate(item.sample));
+    });
+    card.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      card.click();
+    });
+  });
+};
+
 // Longka step-1 physical EOF override.
 // Keep this block after every legacy renderContentPack/buildOutputCopy definition.
 renderTopics = function renderTopicsStep1OnlyEof() {
@@ -2816,6 +3244,8 @@ function selectedTopicPayload(topic) {
   const comments = Array.isArray(topic?.evidence?.comments)
     ? topic.evidence.comments.filter(Boolean).slice(0, 5).map((item) => compactForAi(item, 180))
     : [];
+  const currentCopy = cleanText(activeQualityFeedback?.currentDraft?.copy || $("#resultCopy")?.value || "");
+  const currentVersion = copyDraftVersions.find((item) => item.id === currentCopyVersionId) || copyDraftVersions[copyDraftVersions.length - 1] || null;
   return {
     industry: formValue("#industry"),
     businessGoal: formValue("#businessGoal"),
@@ -2839,6 +3269,14 @@ function selectedTopicPayload(topic) {
       fit: topic?.fit || "",
     },
     comments,
+    currentDraft: currentCopy ? {
+      title: activeTitleChoice || currentVersion?.title || "",
+      copy: compactForAi(currentCopy, 2200),
+      versionId: currentVersion?.id || "",
+      round: currentVersion?.round || copyDraftVersions.length || 0,
+      score: currentVersion?.score || null,
+      label: currentVersion?.label || "",
+    } : null,
     qualityFeedback: activeQualityFeedback ? {
       score: activeQualityFeedback.score,
       level: activeQualityFeedback.level,
@@ -3133,11 +3571,17 @@ function renderCopyQualityPanel(copy, title = "") {
     </div>
     ${versions.length ? `<div class="copy-version-list">
       <b>版本记录</b>
-      ${versions.map((item) => `<button type="button" data-copy-version="${item.id}">
-        <span>第 ${item.round} 版${best?.id === item.id ? " · 当前最佳" : ""}</span>
+      ${versions.map((item) => `<div class="copy-version-item ${item.id === currentCopyVersionId ? "active" : ""} ${item.id === confirmedCopyVersionId ? "confirmed" : ""}">
+        <button type="button" data-copy-version="${item.id}">
+        <span>第 ${item.round} 版${best?.id === item.id ? " · 当前最佳" : ""}${item.id === currentCopyVersionId ? " · 当前查看" : ""}${item.id === confirmedCopyVersionId ? " · 已确认" : ""}</span>
         <strong>${item.score}/100 ${item.delta > 0 ? `+${item.delta}` : item.delta < 0 ? item.delta : ""}</strong>
         <small>${escapeHtml(item.label)}${item.improved?.length ? `｜提升：${item.improved.join("、")}` : ""}${item.declined?.length ? `｜退步：${item.declined.join("、")}` : ""}</small>
-      </button>`).join("")}
+        </button>
+        <div class="copy-version-actions">
+          <button class="secondary" type="button" data-copy-restore="${item.id}">恢复此版</button>
+          <button class="primary" type="button" data-copy-confirm="${item.id}">确认此版</button>
+        </div>
+      </div>`).join("")}
     </div>` : ""}
   </div>`;
 }
@@ -3146,7 +3590,10 @@ function rememberCopyVersion(copy, title, label = "初稿") {
   if (!copy || !String(copy).trim()) return;
   const quality = evaluateCopyQuality(copy, title);
   const last = copyDraftVersions[copyDraftVersions.length - 1];
-  if (last && last.copy === copy && last.title === title) return;
+  if (last && last.copy === copy && last.title === title) {
+    currentCopyVersionId = last.id;
+    return last;
+  }
   const previous = last?.quality;
   const improved = previous
     ? quality.dimensions.filter((item) => item.score > (previous.dimensions.find((old) => old.key === item.key)?.score || 0)).map((item) => item.name)
@@ -3154,7 +3601,7 @@ function rememberCopyVersion(copy, title, label = "初稿") {
   const declined = previous
     ? quality.dimensions.filter((item) => item.score < (previous.dimensions.find((old) => old.key === item.key)?.score || 0)).map((item) => item.name)
     : [];
-  copyDraftVersions.push({
+  const version = {
     id: `v${Date.now()}-${copyDraftVersions.length}`,
     round: copyDraftVersions.length + 1,
     title,
@@ -3167,8 +3614,52 @@ function rememberCopyVersion(copy, title, label = "初稿") {
     declined,
     feedback: quality.feedback,
     label,
-  });
+    createdAt: new Date().toISOString(),
+    confirmed: false,
+  };
+  copyDraftVersions.push(version);
   copyDraftVersions = copyDraftVersions.slice(-8);
+  currentCopyVersionId = version.id;
+  return version;
+}
+
+function currentCopySnapshot(label = "") {
+  const title = activeTitleChoice || $("#resultTitle")?.textContent || "";
+  const copy = $("#resultCopy")?.value || "";
+  if (!cleanText(copy)) return null;
+  const existing = copyDraftVersions.find((item) => item.id === currentCopyVersionId);
+  return {
+    id: existing?.id || "",
+    round: existing?.round || copyDraftVersions.length || 0,
+    title,
+    copy,
+    score: existing?.score || evaluateCopyQuality(copy, title).total,
+    label: label || existing?.label || "当前版本",
+  };
+}
+
+function restoreCopyVersion(version, { approve = false } = {}) {
+  if (!version) return;
+  activeTitleChoice = version.title;
+  currentCopyVersionId = version.id;
+  if (approve) {
+    confirmedCopyVersionId = version.id;
+    copyDraftVersions = copyDraftVersions.map((item) => ({ ...item, confirmed: item.id === version.id }));
+  }
+  $("#resultTitle").textContent = version.title;
+  $("#resultCopy").value = version.copy;
+  isCopyDraftReady = cleanText(version.copy).length >= 180;
+  const qualitySlot = $("#copyQualitySlot");
+  if (qualitySlot) {
+    qualitySlot.innerHTML = renderCopyQualityPanel(version.copy, version.title);
+    qualitySlot.hidden = !isCopyDraftReady;
+  }
+  if (approve) {
+    webCopyApproved = true;
+  } else {
+    resetWebCopyApproval?.();
+  }
+  applyHarnessGate?.();
 }
 
 function evolutionInstruction(mode, quality) {
@@ -3252,6 +3743,7 @@ function stopCopyProgress() {
 function renderAiDraft(draft = {}) {
   stopCopyProgress();
   latestAiDraft = draft;
+  const versionLabel = activeQualityFeedback ? `优化第 ${activeRevisionRound} 版` : "初稿";
   const choices = Array.isArray(draft.titleChoices) ? draft.titleChoices.filter(Boolean).slice(0, 8) : [];
   if (!activeTitleChoice) activeTitleChoice = draft.selectedTitle || choices[0] || "";
   const selectedTitle = activeTitleChoice || draft.selectedTitle || choices[0] || "";
@@ -3272,7 +3764,8 @@ function renderAiDraft(draft = {}) {
       "请点击“生成文案草稿”重试，或换一个候选标题再生成。",
     ].join("\n");
   }
-  rememberCopyVersion($("#resultCopy").value, selectedTitle, activeQualityFeedback ? `优化第 ${activeRevisionRound} 版` : "初稿");
+  rememberCopyVersion($("#resultCopy").value, selectedTitle, versionLabel);
+  activeQualityFeedback = null;
   const qualitySlot = $("#copyQualitySlot");
   if (qualitySlot) {
     qualitySlot.innerHTML = isCopyDraftReady ? renderCopyQualityPanel($("#resultCopy").value, selectedTitle) : "";
@@ -3306,6 +3799,8 @@ function renderAiDraft(draft = {}) {
       activeQualityFeedback = null;
       activeRevisionRound = 0;
       copyDraftVersions = [];
+      currentCopyVersionId = "";
+      confirmedCopyVersionId = "";
       box.querySelectorAll("[data-ai-title-choice]").forEach((item) => {
         item.classList.toggle("active", item === button);
         item.setAttribute("aria-pressed", item === button ? "true" : "false");
@@ -3324,16 +3819,19 @@ function renderAiDraft(draft = {}) {
   document.querySelectorAll("[data-copy-evolve]").forEach((button) => {
     button.addEventListener("click", () => {
       const mode = button.dataset.copyEvolve || "score";
-      const quality = evaluateCopyQuality($("#resultCopy")?.value || "", selectedTitle);
+      const snapshot = currentCopySnapshot("优化前版本");
+      const quality = evaluateCopyQuality(snapshot?.copy || $("#resultCopy")?.value || "", selectedTitle);
       activeQualityFeedback = {
         score: quality.total,
         level: quality.level,
         mode,
         instructions: evolutionInstruction(mode, quality),
         currentTitle: selectedTitle,
+        currentDraft: snapshot,
         required: "保留当前选中标题和源头帖绑定关系，按选择的进化方向重写正文。不要只改标题，不要照搬原帖，不要承诺效果。",
       };
       activeRevisionRound += 1;
+      confirmedCopyVersionId = "";
       resetWebCopyApproval?.();
       $("#resultTitle").textContent = selectedTitle;
       $("#resultCopy").value = `正在进行第 ${activeRevisionRound} 次文案进化：${activeQualityFeedback.instructions.join("；")}`;
@@ -3349,27 +3847,34 @@ function renderAiDraft(draft = {}) {
     button.addEventListener("click", () => {
       const version = copyDraftVersions.find((item) => item.id === button.dataset.copyVersion);
       if (!version) return;
-      activeTitleChoice = version.title;
-      $("#resultTitle").textContent = version.title;
-      $("#resultCopy").value = version.copy;
-      const qualitySlot = $("#copyQualitySlot");
-      if (qualitySlot) {
-        qualitySlot.innerHTML = renderCopyQualityPanel(version.copy, version.title);
-        qualitySlot.hidden = false;
-      }
-      resetWebCopyApproval?.();
+      restoreCopyVersion(version);
+    });
+  });
+  document.querySelectorAll("[data-copy-restore]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const version = copyDraftVersions.find((item) => item.id === button.dataset.copyRestore);
+      restoreCopyVersion(version);
+    });
+  });
+  document.querySelectorAll("[data-copy-confirm]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const version = copyDraftVersions.find((item) => item.id === button.dataset.copyConfirm);
+      restoreCopyVersion(version, { approve: true });
     });
   });
   box.querySelector("#improveCopyDraft")?.addEventListener("click", () => {
-    const quality = evaluateCopyQuality($("#resultCopy")?.value || "", selectedTitle);
+    const snapshot = currentCopySnapshot("体检优化前版本");
+    const quality = evaluateCopyQuality(snapshot?.copy || $("#resultCopy")?.value || "", selectedTitle);
     activeQualityFeedback = {
       score: quality.total,
       level: quality.level,
       instructions: quality.feedback,
       currentTitle: selectedTitle,
+      currentDraft: snapshot,
       required: "保留当前选中标题和源头帖绑定关系，按体检意见重写正文。不要只改标题，不要照搬原帖，不要承诺效果。",
     };
     activeRevisionRound += 1;
+    confirmedCopyVersionId = "";
     resetWebCopyApproval?.();
     $("#resultTitle").textContent = selectedTitle;
     $("#resultCopy").value = `正在按 Longka 文案体检意见优化第 ${activeRevisionRound} 版：${quality.feedback.join("；") || "增强表达和转化入口"}`;
@@ -3545,6 +4050,8 @@ let webCopyApproved = false;
 
 function resetWebCopyApproval() {
   webCopyApproved = false;
+  confirmedCopyVersionId = "";
+  copyDraftVersions = copyDraftVersions.map((item) => ({ ...item, confirmed: false }));
   applyHarnessGate();
 }
 
@@ -3578,6 +4085,11 @@ function ensureHarnessGateUi() {
     if (!isCopyDraftReady) {
       alert("文案还没有生成完成，不能确认。请先等左侧出现完整文案。");
       return;
+    }
+    const version = copyDraftVersions.find((item) => item.id === currentCopyVersionId) || copyDraftVersions[copyDraftVersions.length - 1];
+    if (version) {
+      confirmedCopyVersionId = version.id;
+      copyDraftVersions = copyDraftVersions.map((item) => ({ ...item, confirmed: item.id === version.id }));
     }
     webCopyApproved = true;
     setWorkflowStep(6);
@@ -4194,3 +4706,203 @@ function renderContentPack() {
 }
 
 renderContentPack();
+
+// ABSOLUTE FINAL OVERRIDE FOR ONECLICK PACKAGE - appended at physical EOF.
+collectRealTopics = async function collectRealTopicsUseLocalAssetsOnlyAbsoluteFinal() {
+  const keyword = formValue("#topic");
+  if (!keyword) return { ok: false, topics: [], message: "Please enter a keyword first." };
+  appendTerminalLine(`> LOCAL_ASSET_REUSE: ${keyword}`);
+  appendTerminalLine("> Find topics only reads the local customer asset library. Use Collect New Material for CDP.");
+  const state = await fetch("/api/state").then((res) => res.json());
+  const topics = longkaBuildLocalAssetTopics(state);
+  if (!topics.length) {
+    appendTerminalLine("> LOCAL_ASSET_MATCHES: 0. Use Collect New Material.");
+    return { ok: false, topics: [], message: "Local asset library has no matching material. Click Collect New Material to run real XHS CDP collection." };
+  }
+  appendTerminalLine(`> LOCAL_ASSET_MATCHES: ${topics.length}.`);
+  return { ok: true, topics, source: "local-assets" };
+};
+
+if ($("#collectNewMaterial")) $("#collectNewMaterial").onclick = longkaCollectFreshMaterialWithCdp;
+if ($("#importMaterial")) $("#importMaterial").onclick = () => setRoute("materials", { scroll: true });
+// Longka v9 material workflow entry.
+// Final customer-facing entry for material discovery.
+(() => {
+  const needCollectText = "当前关键词还没有可复用素材，需要采集一批新的小红书源头帖。";
+
+  function cleanWordsV9() {
+    return String(formValue("#topic") || "")
+      .split(/[\s,，、]+/)
+      .map((word) => word.trim())
+      .filter(Boolean);
+  }
+
+  function setV9Monitor(status, title, subtitle, width = "36%") {
+    const panel = $("#crawlPanel");
+    if (panel) panel.hidden = false;
+    const titleNode = $("#consoleTitle");
+    const subtitleNode = $("#consoleSubtitle");
+    const badge = $("#consoleBadge");
+    const terminalStatus = $("#terminalStatus");
+    const bar = $("#progressBar");
+    if (titleNode) titleNode.textContent = title || "Longka 雷达素材搜索";
+    if (subtitleNode) subtitleNode.textContent = subtitle || "";
+    if (badge) badge.textContent = status || "运行中";
+    if (terminalStatus) terminalStatus.textContent = status || "运行中";
+    if (bar) bar.style.width = width;
+  }
+
+  function metricLabelV9(sample) {
+    const metrics = sample?.metrics || {};
+    return `赞 ${metrics.likes || 0} / 藏 ${metrics.saves || metrics.collects || 0} / 评 ${metrics.comments || 0} / 转 ${metrics.shares || 0}`;
+  }
+
+  function sampleMatchV9(sample, words) {
+    if (!words.length) return true;
+    const text = `${sample.keyword || ""} ${sample.title || ""} ${sample.content || ""} ${(sample.tags || []).join(" ")} ${(sample.comments || []).slice(0, 8).join(" ")}`;
+    return words.some((word) => text.includes(word));
+  }
+
+  function showNeedCollectionV9(message = needCollectText) {
+    const grid = $("#topicGrid");
+    const hint = $("#topicHint");
+    if (hint) hint.textContent = message;
+    if (!grid) return;
+    grid.innerHTML = `<article class="empty-card longka-sample-empty">
+      <b>当前关键词还没有素材</b>
+      <p>${escapeHtml(message)}</p>
+      <button class="primary" type="button" id="collectFreshInline">立即采集新素材</button>
+    </article>`;
+    $("#collectFreshInline")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      collectFreshMaterialV9();
+    });
+  }
+
+  function buildLocalTopicsV9(state) {
+    const words = cleanWordsV9();
+    const score = typeof longkaSamplePoolScore === "function"
+      ? longkaSamplePoolScore
+      : (sample) => {
+          const metrics = sample?.metrics || {};
+          return (metrics.likes || 0) + (metrics.saves || 0) * 1.5 + (metrics.comments || 0) * 2 + (metrics.shares || 0) * 2;
+        };
+    const samples = (Array.isArray(state?.contentSamples) ? state.contentSamples : [])
+      .filter((sample) => {
+        const status = typeof longkaSampleStatus === "function" ? longkaSampleStatus(sample) : sample.collectionStatus;
+        return status === "real" || status === "partial" || status === "manual";
+      })
+      .filter((sample) => sampleMatchV9(sample, words))
+      .sort((a, b) => score(b) - score(a))
+      .slice(0, 10);
+    return samples.map((sample) => mapRealSampleToCandidate(sample));
+  }
+
+  async function findTopicsFromLocalAssetsV9() {
+    const keyword = formValue("#topic");
+    if (!keyword) {
+      showNeedCollectionV9("请先输入关键词。");
+      return { ok: false, topics: [], message: "请先输入关键词。" };
+    }
+    activeTopic = null;
+    candidateTopics = [];
+    hasSearched = true;
+    setWorkflowStep(4);
+    setV9Monitor("检查中", "Longka 雷达素材搜索", "正在检查本地内容资产库", "28%");
+    appendTerminalLine(`> 检查本地内容资产库：${keyword}`);
+    appendTerminalLine("> 这里只复用客户自己的素材库；没有命中时，不用旧模板和假数据冒充。");
+    const state = await fetch("/api/state").then((res) => res.json());
+    const topics = buildLocalTopicsV9(state);
+    if (!topics.length) {
+      appendTerminalLine("> 本地资产库命中 0 条。请点击“立即采集新素材”。");
+      setV9Monitor("需要采集", "Longka 雷达素材搜索", needCollectText, "42%");
+      showNeedCollectionV9();
+      setRoute("topics", { scroll: false });
+      $("#topicsPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return { ok: false, topics: [], message: needCollectText };
+    }
+    candidateTopics = topics;
+    appendTerminalLine(`> 本地资产库命中 ${topics.length} 条可复用源头帖。`);
+    setV9Monitor("已完成", "Longka 雷达素材搜索", `找到 ${topics.length} 条可复用源头帖。`, "100%");
+    longkaRenderCandidateTopicsOnly(`本地资产库找到 ${topics.length} 条源头帖。请选择一条进入文案二创。`);
+    setRoute("topics", { scroll: false });
+    $("#topicsPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return { ok: true, topics, source: "local-assets" };
+  }
+
+  async function collectFreshMaterialV9() {
+    const keyword = formValue("#topic");
+    const industry = formValue("#industry");
+    const platform = activePublish || "xhs";
+    if (!keyword) {
+      showNeedCollectionV9("请先输入关键词。");
+      return;
+    }
+    activeTopic = null;
+    candidateTopics = [];
+    hasSearched = true;
+    setWorkflowStep(4);
+    setRoute("topics", { scroll: false });
+    setV9Monitor("采集中", "Longka 雷达正在采集新素材", "请观察小红书 Chrome 窗口是否跳转搜索。", "18%");
+    renderEmptyTopics("正在真实采集小红书源头帖。看到 Chrome 跳转搜索前，不会展示选题结果。");
+    appendTerminalLine(`> 采集新素材：${industry || "未填写行业"} / ${keyword} / ${platform}`);
+    appendTerminalLine("> 1/5 检查小红书 CDP 登录窗口。");
+    appendTerminalLine("> 2/5 打开搜索页并输入关键词。");
+    appendTerminalLine("> 3/5 快扫高赞、高藏、高评源头帖。");
+    appendTerminalLine("> 4/5 深挖 Top 帖子的正文、图片和评论区。");
+    appendTerminalLine("> 5/5 生成客户问题库和可二创选题。");
+    try {
+      const data = await longkaFetchJson("/api/sources/mediacrawler/xhs-collect", {
+        industry,
+        keywords: keyword,
+        platform,
+        cdpLimit: 20,
+        deepLimit: 5,
+      });
+      const samples = Array.isArray(data.samples) ? data.samples : [];
+      if (!samples.length) throw new Error("本次真实采集返回 0 条，请确认 CDP Chrome 已登录且关键词可搜索。");
+      candidateTopics = samples.map((sample) => mapRealSampleToCandidate(sample));
+      appendTerminalLine(`> 采集完成：快扫 ${data.quickScanCount || samples.length} 条；深挖 ${data.deepDiveCount || 0} 条；客户问题 ${data.questionCount || 0} 条。`);
+      appendTerminalLine(`> RunId: ${data.collectionRunId || "未返回"}`);
+      appendTerminalLine(`> 第一条：${samples[0]?.title || "未命名"}；${metricLabelV9(samples[0])}`);
+      setV9Monitor("已完成", "Longka 雷达采集完成", `找到 ${samples.length} 条真实源头帖。`, "100%");
+      longkaRenderCandidateTopicsOnly(`本次真实采集到 ${candidateTopics.length} 条源头帖。请选择一条进入文案二创。`);
+      $("#topicsPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (error) {
+      const message = error?.data?.stage ? `阶段：${error.data.stage}；${error.message}` : error.message;
+      appendTerminalLine(`> 采集失败：${message}`);
+      setV9Monitor("失败", "Longka 雷达采集失败", message, "100%");
+      showNeedCollectionV9(message);
+    }
+  }
+
+  collectRealTopics = findTopicsFromLocalAssetsV9;
+  longkaCollectFreshMaterialWithCdp = collectFreshMaterialV9;
+
+  const findButton = $("#findTopics");
+  if (findButton) {
+    findButton.textContent = "帮我找选题";
+    findButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      findTopicsFromLocalAssetsV9();
+    }, true);
+  }
+
+  const collectButton = $("#collectNewMaterial");
+  if (collectButton) {
+    collectButton.textContent = "采集新素材";
+    collectButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      collectFreshMaterialV9();
+    }, true);
+  }
+
+  window.longkaMaterialFlowV9 = {
+    findTopicsFromLocalAssets: findTopicsFromLocalAssetsV9,
+    collectFreshMaterial: collectFreshMaterialV9,
+  };
+})();
+

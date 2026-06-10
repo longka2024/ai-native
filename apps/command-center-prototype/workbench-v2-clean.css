@@ -959,6 +959,127 @@ p { margin: 0; color: var(--muted); line-height: 1.65; }
   width: fit-content;
 }
 
+.illustration-director {
+  display: grid;
+  gap: 14px;
+  margin: 14px 0;
+  padding: 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.director-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.director-head b,
+.director-reason b,
+.director-qa b {
+  display: block;
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.director-head span,
+.director-reason span {
+  display: block;
+  margin-top: 6px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.director-head em {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: 1px solid #d9e2ec;
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.director-reason {
+  padding: 12px;
+  border-left: 3px solid #2563eb;
+  background: #fff;
+}
+
+.director-slots {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.director-slots article {
+  min-height: 150px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.director-slots em,
+.director-slots b,
+.director-slots span,
+.director-slots small {
+  display: block;
+}
+
+.director-slots em {
+  color: #2563eb;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.director-slots b {
+  margin-top: 8px;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.director-slots span {
+  margin-top: 8px;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.director-slots small {
+  margin-top: 10px;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.director-qa {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.director-qa b {
+  margin-right: 4px;
+  font-size: 14px;
+}
+
+.director-qa span {
+  padding: 6px 9px;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 12px;
+}
+
 .xhs-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -1944,4 +2065,24 @@ p { margin: 0; color: var(--muted); line-height: 1.65; }
   border-color: #86efac;
   background: #f0fdf4;
   color: #166534;
+}
+
+@media (max-width: 1100px) {
+  .director-slots {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .director-head {
+    display: grid;
+  }
+
+  .director-head em {
+    width: fit-content;
+  }
+
+  .director-slots {
+    grid-template-columns: 1fr;
+  }
 }

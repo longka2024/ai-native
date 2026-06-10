@@ -24,6 +24,10 @@ const visualSources = resolveVisualSources(db, asset);
 const safeAssetId = asset.id || `asset-${Date.now()}`;
 const outDir = join(outRoot, safeAssetId);
 await mkdir(outDir, { recursive: true });
+await mkdir(join(outDir, 'prompts'), { recursive: true });
+await writeFile(join(outDir, 'copy.md'), buildCopyMarkdown(asset), 'utf8');
+await writeFile(join(outDir, 'layout-plan.md'), buildLayoutPlanMarkdown(asset), 'utf8');
+await writePromptFiles(asset, join(outDir, 'prompts'));
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({
@@ -78,6 +82,13 @@ try {
     visualSources,
     count: files.length,
     files,
+    publicFiles: files.map((file) => `exports/xhs-cards/${safeAssetId}/${file.split(/[\\/]/).pop()}`),
+    outputDir: outDir,
+    assetFiles: {
+      copy: join(outDir, 'copy.md'),
+      layoutPlan: join(outDir, 'layout-plan.md'),
+      promptsDir: join(outDir, 'prompts'),
+    },
   };
   const manifestJson = JSON.stringify(manifest, null, 2);
   await writeFile(join(outDir, 'manifest.json'), escapeJsonUnicode(manifestJson), 'utf8');
@@ -115,4 +126,72 @@ function resolveVisualSources(db, asset) {
 
 function escapeJsonUnicode(value) {
   return value.replace(/[\u007f-\uffff]/g, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`);
+}
+
+function buildCopyMarkdown(asset) {
+  const data = asset.structured || {};
+  return [
+    `# ${data.selectedTitle || asset.title || '小红书图文文案'}`,
+    '',
+    String(asset.copy || data.bodyDraft?.join('\n') || '').trim(),
+    '',
+  ].join('\n');
+}
+
+function buildLayoutPlanMarkdown(asset) {
+  const data = asset.structured || {};
+  const cards = Array.isArray(data.cardPlan) ? data.cardPlan : [];
+  const lines = [
+    `# ${data.selectedTitle || asset.title || '小红书图文插图计划'}`,
+    '',
+    `- 输出规格：小红书 3:4 图文卡片，默认 1080x1440`,
+    `- 视觉路线：${data.visualRoute?.style || 'Guizang editorial + Xiaohongshu knowledge cards'}`,
+    `- 生成环境：当前为 122/Web 或本地网页导出；43-generation 真出图服务待接入`,
+    '',
+  ];
+  cards.forEach((card, index) => {
+    lines.push(`## P${index + 1} ${card.role || '内容页'}`);
+    lines.push(`- 标题：${card.title || ''}`);
+    lines.push(`- 卡片文字：${card.copy || ''}`);
+    lines.push(`- 轮播任务：${card.carouselJob || '按图片集顺序展示'}`);
+    if (card.insertAfter) lines.push(`- 公众号插文参考：${card.insertAfter}`);
+    lines.push(`- 读者一眼要懂：${card.readerTakeaway || ''}`);
+    lines.push(`- 视觉说明：${card.visualBrief || ''}`);
+    lines.push('');
+  });
+  return lines.join('\n');
+}
+
+async function writePromptFiles(asset, promptDir) {
+  const data = asset.structured || {};
+  const cards = Array.isArray(data.cardPlan) ? data.cardPlan : [];
+  for (let index = 0; index < cards.length; index += 1) {
+    const card = cards[index];
+    const name = `${String(index + 1).padStart(2, '0')}-${slugify(card.role || card.title || 'card')}.md`;
+    const content = [
+      `# P${index + 1} ${card.role || '内容页'}`,
+      '',
+      `Title: ${card.title || ''}`,
+      `Card copy: ${card.copy || ''}`,
+      `Carousel job: ${card.carouselJob || '按图片集顺序展示'}`,
+      card.insertAfter ? `Article insertion reference: ${card.insertAfter}` : '',
+      `Reader takeaway: ${card.readerTakeaway || ''}`,
+      `Visual brief: ${card.visualBrief || ''}`,
+      '',
+      'Prompt:',
+      card.imagePrompt || `Create a 3:4 Xiaohongshu card for: ${card.title || card.copy || data.selectedTitle || asset.title}`,
+      '',
+    ].join('\n');
+    await writeFile(join(promptDir, name), content, 'utf8');
+  }
+}
+
+function slugify(value) {
+  const ascii = String(value || '')
+    .normalize('NFKD')
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .toLowerCase();
+  return ascii || 'card';
 }

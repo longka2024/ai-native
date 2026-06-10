@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Longka AI Native 内容生产中台</title>
-  <link rel="stylesheet" href="./workbench-v2-clean.css?v=20260606-improve-rewrite-1" />
+  <link rel="stylesheet" href="./workbench-v2-clean.css?v=20260608-motif-compound-1" />
 </head>
 <body>
   <header class="topbar">
@@ -33,8 +33,8 @@
         <span>今天完成一条可发布内容</span>
       </button>
       <button class="nav-item" data-route="assets">
-        <b>内容资产库</b>
-        <span>素材、问题、标题、结构长期沉淀</span>
+        <b>母题资产库</b>
+        <span>素材、母题、平台版本、复盘长期沉淀</span>
       </button>
       <button class="nav-item" data-route="sources">
         <b>对标账号库</b>
@@ -49,7 +49,7 @@
         <span>爆款标题与改写公式</span>
       </button>
       <button class="nav-item" data-route="structures">
-        <b>爆款结构库</b>
+        <b>结构库</b>
         <span>开头、展开、转化、结尾</span>
       </button>
       <button class="nav-item" data-route="records">
@@ -68,7 +68,7 @@
           <div>
             <span class="eyebrow">TODAY</span>
             <h1>今天先完成一条能发布的内容</h1>
-            <p>按步骤完成：定义任务、选择来源、读取素材、选择选题、选择标题、生成文案、体检优化、确认后再制作图文或视频。</p>
+            <p>从真实素材里选一个母题，先做成一个平台版本；确认后保存为母题资产，再继续复用成公众号、朋友圈或短视频脚本。</p>
           </div>
           <div class="hero-status" id="heroStatus"></div>
         </div>
@@ -82,8 +82,8 @@
         <div class="page-head">
           <div>
             <span class="eyebrow">ASSETS</span>
-            <h2>内容资产库</h2>
-            <p>这里沉淀长期可复用的真实素材、客户问题、标题、结构和已发布作品。今日工作台只引用这里的数据，不把全量资产堆进创作流程。</p>
+            <h2>母题资产库</h2>
+            <p>这里不是收藏夹。它沉淀可复利复写的母题：源头素材、平台版本、图文资产、发布复盘和下次复用动作。</p>
           </div>
           <button class="primary" data-action="load-assets">读取历史资产</button>
         </div>
@@ -95,7 +95,7 @@
           <div>
             <span class="eyebrow">SOURCES</span>
             <h2>对标账号库</h2>
-            <p>维护长期监控的信息源。X 账号可以一行一个或逗号分隔；小红书、RSS、网页、公众号后续按同一资产标准入库。</p>
+            <p>维护长期监控的信息源。X 账号可以一行一个或逗号分隔；小红书、RSS、网页、公众号后续按同一套母题资产标准入库。</p>
           </div>
         </div>
         <div class="source-editor">
@@ -112,7 +112,7 @@
 
       <section class="route-panel simple-panel" data-panel="questions" hidden>
         <h2>客户问题库</h2>
-        <p>从评论区、咨询、私域和手动导入中沉淀。它服务于选题，不强制每篇文案都依赖某一条爬虫帖子。</p>
+        <p>从评论区、咨询、私域和手动导入中沉淀。它服务于选题，不强制每篇文案都依赖某一条问题。</p>
         <div id="questionBoard" class="asset-board"></div>
       </section>
 
@@ -123,14 +123,14 @@
       </section>
 
       <section class="route-panel simple-panel" data-panel="structures" hidden>
-        <h2>爆款结构库</h2>
+        <h2>结构库</h2>
         <p>保存开头、展开、案例、清单、转化和结尾结构，用来指导二创，而不是固定模板套话。</p>
         <div id="structureBoard" class="asset-board"></div>
       </section>
 
       <section class="route-panel simple-panel" data-panel="records" hidden>
         <h2>作品记录</h2>
-        <p>记录已确认文案、已导出卡片、视频任务和发布后反馈，后续回流到资产库。</p>
+        <p>记录已确认文案、已导出卡片、视频任务和发布后反馈，后续回流到母题资产库。</p>
         <div id="recordBoard" class="asset-board"></div>
       </section>
 
@@ -146,7 +146,7 @@
     </section>
   </main>
 
-  <script src="./content-creation-base.js?v=20260606-improve-rewrite-1"></script>
-  <script src="./workbench-v2-clean.js?v=20260606-improve-rewrite-1"></script>
+  <script src="./content-creation-base.js?v=20260608-motif-compound-1"></script>
+  <script src="./workbench-v2-clean.js?v=20260608-motif-compound-1"></script>
 </body>
 </html>

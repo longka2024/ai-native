@@ -1,4 +1,4 @@
-const contentApiBase = location.protocol === "file:" ? "http://localhost:3760" : "";
+﻿const contentApiBase = location.protocol === "file:" ? "http://localhost:3760" : "";
 
 const contentState = {
   db: null,
@@ -147,7 +147,7 @@ async function collectXhsTopicSamples() {
     toast("真实采集闭环完成");
     await loadContentState();
   } catch (error) {
-    setCrawlerStatus(error.message || "真实采集失败，请查看服务和登录态。");
+    setCrawlerStatus(formatCrawlerError(error));
     toast("采集未完成");
   } finally {
     if (button) button.disabled = false;
@@ -517,8 +517,29 @@ async function postContentJson(path, body) {
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.ok === false) throw new Error(data.message || data.error || `HTTP ${res.status}`);
+  if (!res.ok || data.ok === false) {
+    const error = new Error(data.message || data.error || `HTTP ${res.status}`);
+    error.data = data;
+    throw error;
+  }
   return data;
+}
+
+function formatCrawlerError(error) {
+  const data = error?.data || {};
+  const lines = [data.message || error.message || "真实采集失败。"];
+  if (data.stage) lines.push(`阶段：${data.stage}`);
+  if (data.reason || data.collected?.reason) lines.push(`原因：${data.reason || data.collected.reason}`);
+  if (data.importMessage) lines.push(`导入：${data.importMessage}`);
+  const raw = data.collected?.stderr || data.collected?.stdout || data.stderr || data.stdout || "";
+  const important = String(raw)
+    .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /DataFetchError|-104|没有权限|账号池|Login state|ERROR|Traceback|search/i.test(line))
+    .slice(-6);
+  if (important.length) lines.push(`日志：${important.join(" / ")}`);
+  return lines.join("\n");
 }
 
 async function copyText(text) {

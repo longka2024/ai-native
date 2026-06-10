@@ -401,3 +401,40 @@
 
   replaceFindButton();
 })();
+
+// Longka v9 final handoff: this file is loaded after workbench-v2.js and used to
+// replace the "find topics" button. Keep the final click behavior here so the
+// visible customer path cannot fall back to the old "0 items, done" sample-pool UI.
+(() => {
+  const $ = (selector) => document.querySelector(selector);
+
+  function bindV9MaterialFlow() {
+    const flow = window.longkaMaterialFlowV9;
+    if (!flow?.findTopicsFromLocalAssets || !flow?.collectFreshMaterial) return;
+
+    const findButton = $("#findTopics");
+    if (findButton && findButton.dataset.v9MaterialFlow !== "1") {
+      findButton.dataset.v9MaterialFlow = "1";
+      findButton.textContent = "帮我找选题";
+      findButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        flow.findTopicsFromLocalAssets();
+      }, true);
+    }
+
+    const collectButton = $("#collectNewMaterial");
+    if (collectButton && collectButton.dataset.v9MaterialFlow !== "1") {
+      collectButton.dataset.v9MaterialFlow = "1";
+      collectButton.textContent = "采集新素材";
+      collectButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        flow.collectFreshMaterial();
+      }, true);
+    }
+  }
+
+  bindV9MaterialFlow();
+  window.addEventListener("load", bindV9MaterialFlow);
+})();

@@ -3023,11 +3023,11 @@ button:disabled {
 
 .xhs-preview-card.premium-card h2 {
   margin: 0;
-  max-width: 10.8em;
+  max-width: 12.4em;
   color: #141a17;
   font-family: Georgia, "Times New Roman", "Noto Serif SC", serif;
-  font-size: 76px;
-  line-height: 1.04;
+  font-size: 68px;
+  line-height: 1.08;
   letter-spacing: 0;
 }
 
@@ -3041,8 +3041,8 @@ button:disabled {
 .xhs-card-visual {
   position: relative;
   z-index: 1;
-  height: 420px;
-  margin-top: 58px;
+  height: 390px;
+  margin-top: 46px;
   overflow: hidden;
   border: 2px solid rgba(29, 39, 34, .16);
   background:
@@ -3398,8 +3398,8 @@ button:disabled {
 .before-after b,
 .evidence-board b {
   color: #1d2722;
-  font-size: 34px;
-  line-height: 1.16;
+  font-size: 30px;
+  line-height: 1.18;
 }
 
 .pain-note {
@@ -3414,14 +3414,14 @@ button:disabled {
 }
 
 .evidence-board {
-  inset: 72px 70px;
+  inset: 62px 70px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 22px;
 }
 
 .evidence-board div {
-  padding: 28px;
+  padding: 24px 28px;
   background: rgba(255, 250, 241, .78);
   border: 2px solid rgba(29, 39, 34, .14);
 }
