@@ -5795,5 +5795,191 @@ function firstLongkaSentenceV2(text = "") {
   return cleanLongkaTitleTextV2(text).split(/[，。！？；：,.!?;:\n]/).find((item) => item.trim().length >= 2) || "";
 }
 
+// LongkaTitleEngineV3: block title-asset pollution and growth-number mistakes.
+const LONGKA_TITLE_FORMULAS_V3 = [
+  { id: "growth-review", style: "复盘型", tags: ["growth", "result"], render: (s) => `${s.result}我做对了什么` },
+  { id: "growth-method", style: "方法型", tags: ["growth", "action"], render: (s) => `${s.audience}怎么跑出${s.result}` },
+  { id: "growth-truth", style: "真相型", tags: ["growth", "truth"], render: (s) => `${s.shortSubject}别只看涨粉` },
+  { id: "growth-list", style: "清单型", tags: ["growth", "list"], render: (s) => `${s.timeWindow}复盘${s.number}个增长动作` },
+  { id: "loss", style: "避坑型", tags: ["pain", "loss"], render: (s) => `${s.shortSubject}别再${s.badAction}` },
+  { id: "root", style: "真相型", tags: ["pain", "truth"], render: (s) => `${s.problem}问题出在哪` },
+  { id: "list", style: "清单型", tags: ["list"], render: (s) => `${s.audience}先看${s.number}个${s.xhsSubject}` },
+  { id: "result", style: "结果型", tags: ["result"], render: (s) => `${s.shortSubject}怎么拿到${s.result}` },
+  { id: "contrast", style: "对比型", tags: ["contrast"], render: (s) => `${s.shortSubject}有用和没用的差别` },
+  { id: "stop", style: "纠偏型", tags: ["action", "loss"], render: (s) => `别再${s.badAction}，先${s.action}` },
+  { id: "question", style: "痛点型", tags: ["question", "pain"], render: (s) => `${s.audience}为什么卡在${s.problem}` },
+  { id: "why", style: "解释型", tags: ["truth"], render: (s) => `为什么${s.shortSubject}总是没效果` },
+];
+
+buildCleanTitleChoices = function buildCleanTitleChoicesV3(topic, titleAssets = state.titleAssets) {
+  const signal = extractLongkaTitleSignalV3(topic);
+  const target = state.publishTarget || "xhs";
+  const formulaItems = LONGKA_TITLE_FORMULAS_V3
+    .map((formula, index) => ({ formula, score: scoreLongkaTitleFormulaV3(formula, signal, target, index) }))
+    .sort((a, b) => b.score - a.score)
+    .map((item) => ({
+      title: renderLongkaTitleForTargetV3(item.formula, signal, target),
+      reason: `${item.formula.style}：绑定当前选题原始标题、数据和痛点生成`,
+    }));
+  const domainItems = buildLongkaDomainTitleCandidatesV3(signal, target);
+  return rankLongkaTitlesV3([...domainItems, ...formulaItems], signal, target).slice(0, 5);
+};
+
+function extractLongkaTitleSignalV3(topic = {}) {
+  const rawTitle = cleanLongkaTitleTextV2(topic.title || topic.theme || topic.raw?.title || "");
+  const text = cleanLongkaTitleTextV2([
+    topic.theme, topic.title, topic.pain, topic.reason, topic.reuse, topic.content, topic.body, topic.summary,
+    topic.raw?.title, topic.raw?.description, topic.raw?.content, topic.raw?.text, topic.raw?.analysis, topic.raw?.pain,
+  ].filter(Boolean).join(" "));
+  const domain = inferLongkaTitleDomainV3(text);
+  const subject = pickLongkaSubjectV3(text, rawTitle, domain);
+  return {
+    text,
+    sourceTitle: rawTitle,
+    domain,
+    number: extractLongkaTitleFormulaNumberV3(rawTitle, text, domain),
+    timeWindow: extractLongkaTimeWindowV3(text),
+    subject: limitLongkaPhraseV2(subject, 18),
+    shortSubject: limitLongkaPhraseV2(subject, 8),
+    xhsSubject: compactLongkaXhsSubjectV3(subject, domain),
+    audience: limitLongkaPhraseV2(pickLongkaAudienceV3(text, domain), 8),
+    problem: limitLongkaPhraseV2(pickLongkaProblemV3(text, domain), 10),
+    action: limitLongkaPhraseV2(pickLongkaActionV3(text, domain), 10),
+    result: limitLongkaPhraseV2(pickLongkaResultV3(text, domain), 8),
+    badAction: limitLongkaPhraseV2(pickLongkaBadActionV3(text, domain), 8),
+  };
+}
+
+function inferLongkaTitleDomainV3(text = "") {
+  if (/从\s*\d+(?:\.\d+)?\s*到\s*\d+(?:\.\d+)?\s*[Kk万千]?|\d+(?:\.\d+)?\s*[Kk]\b|\d+(?:\.\d+)?\s*万\s*(曝光|浏览|播放|阅读)|\d+\s*个月|涨粉|粉丝|曝光|浏览|播放|发布/.test(text)) return "growth";
+  if (/私校|面试|择校|升学|孩子|家长|夏校|教育/.test(text)) return "education";
+  if (/律师|法律|法条|案件|客户/.test(text)) return "lawyer";
+  if (/AI|Cursor|Claude|Codex|DeepSeek|Lovable|Replit|Base44|skills?|工具|MVP|自媒体|内容创作|模板|低质/i.test(text)) return "ai-content";
+  return "general";
+}
+
+function pickLongkaSubjectV3(text = "", title = "", domain = "general") {
+  if (domain === "growth") {
+    if (/小红书|图文/.test(text)) return "小红书账号";
+    if (/视频|短视频/.test(text)) return "账号增长";
+    return "账号增长";
+  }
+  return pickLongkaSubjectV2(text, title, domain);
+}
+
+function pickLongkaAudienceV3(text = "", domain = "general") {
+  if (domain === "growth") return /小红书|图文/.test(text) ? "小红书博主" : "内容创作者";
+  return pickLongkaAudienceV2(text, domain);
+}
+
+function pickLongkaProblemV3(text = "", domain = "general") {
+  if (domain === "growth") {
+    if (/没有什么方法论|没方法|刚开始/.test(text)) return "起号没方法论";
+    if (/发布|曝光|内容/.test(text)) return "内容多但没复盘";
+    return "增长路径没拆清";
+  }
+  return pickLongkaProblemV2(text, domain);
+}
+
+function pickLongkaActionV3(text = "", domain = "general") {
+  if (domain === "growth") return "复盘增长动作";
+  return pickLongkaActionV2(text, domain);
+}
+
+function pickLongkaResultV3(text = "", domain = "general") {
+  if (domain === "growth") {
+    const k = text.match(/(\d+(?:\.\d+)?)\s*K/i);
+    if (k) return `${k[1]}K粉丝`;
+    const exposure = text.match(/(\d+(?:\.\d+)?)\s*万\s*(曝光|浏览|播放)/);
+    if (exposure) return `${exposure[1]}万曝光`;
+    return "跑出增长";
+  }
+  return pickLongkaResultV2(text, domain);
+}
+
+function pickLongkaBadActionV3(text = "", domain = "general") {
+  if (domain === "growth") return "只看数据";
+  return pickLongkaBadActionV2(text, domain);
+}
+
+function extractLongkaTitleFormulaNumberV3(title = "", text = "", domain = "general") {
+  if (domain === "growth") {
+    const month = text.match(/(\d+)\s*个月/);
+    if (month) return month[1];
+    return "3";
+  }
+  const source = title || text;
+  const matched = String(source || "").match(/(\d+)\s*(个|条|点|件|种|步|招)/);
+  if (!matched) return "3";
+  const value = Number(matched[1]);
+  if (!Number.isFinite(value) || value <= 0 || value > 20) return "3";
+  return String(value);
+}
+
+function extractLongkaTimeWindowV3(text = "") {
+  const month = text.match(/(\d+)\s*个月/);
+  if (month) return `${month[1]}个月`;
+  const day = text.match(/(\d+)\s*天/);
+  if (day) return `${day[1]}天`;
+  return "这次";
+}
+
+function compactLongkaXhsSubjectV3(subject = "", domain = "general") {
+  if (domain === "growth") return "账号增长";
+  return compactLongkaXhsSubjectV2(subject);
+}
+
+function scoreLongkaTitleFormulaV3(formula, signal, target, index) {
+  let score = 100 - index;
+  if (signal.domain === "growth") {
+    if (formula.tags.includes("growth")) score += 120;
+    if (["growth-review", "growth-method", "growth-list"].includes(formula.id)) score += 40;
+    if (["loss", "root", "question", "contrast"].includes(formula.id)) score -= 40;
+  } else if (formula.tags.includes("growth")) {
+    score -= 220;
+  }
+  score += scoreLongkaTitleFormulaV2(formula, signal, target, index) / 10;
+  return score;
+}
+
+function renderLongkaTitleForTargetV3(formula, signal, target = state.publishTarget) {
+  if (target !== "wechat-article") return formula.render(signal);
+  if (signal.domain === "growth") {
+    const longTitles = {
+      "growth-review": `从 0 到 ${signal.result}：这次账号增长真正做对了什么`,
+      "growth-method": `${signal.timeWindow}跑出${signal.result}，不是靠运气，而是靠这几个内容动作`,
+      "growth-truth": `${signal.shortSubject}别只看涨粉，真正值得拆的是背后的内容复盘`,
+      "growth-list": `${signal.timeWindow}复盘：一个账号从 0 跑出结果的关键动作`,
+    };
+    return longTitles[formula.id] || `${signal.subject}复盘：从数据里拆出可复制的方法`;
+  }
+  return renderLongkaTitleForTargetV2(formula, signal, target);
+}
+
+function buildLongkaDomainTitleCandidatesV3(signal, target = "xhs") {
+  if (signal.domain !== "growth") return [];
+  if (target === "wechat-article") {
+    return [
+      { title: `从 0 到 ${signal.result}：这次账号增长真正做对了什么`, reason: "账号增长复盘型：绑定粉丝增长和时间窗口" },
+      { title: `${signal.timeWindow}跑出${signal.result}，不是靠运气，而是靠内容复盘`, reason: "账号增长方法型：绑定持续发布和复盘" },
+    ];
+  }
+  return [
+    { title: `从0到${signal.result}复盘`, reason: "账号增长复盘型：绑定从0到结果" },
+    { title: `${signal.timeWindow}涨到${signal.result}`, reason: "结果型：绑定时间窗口和粉丝增长" },
+    { title: `${signal.result}我做对了什么`, reason: "真相型：绑定增长结果和复盘问题" },
+    { title: `${signal.shortSubject}增长复盘`, reason: "复盘型：绑定账号增长主题" },
+    { title: `${signal.problem}怎么办`, reason: "痛点型：绑定起号阶段问题" },
+  ];
+}
+
+function rankLongkaTitlesV3(items = [], signal = {}, target = "xhs") {
+  const forbidden = signal.domain === "growth" ? /公众号|关键问题|0个|素材库|标题库|工具|AI/ : /素材库|标题库/;
+  return rankLongkaTitlesV2(items, signal, target)
+    .filter((item) => !forbidden.test(item.title))
+    .filter((item) => !/先先|涨粉/.test(item.title) || signal.domain === "growth")
+    .filter((item) => target !== "xhs" || Array.from(item.title).length <= 20);
+}
+
 restoreWorkbenchSnapshot();
 renderToday();
