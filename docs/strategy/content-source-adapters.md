@@ -32,7 +32,8 @@ The crawler layer is not a data-hoarding layer. It must help Longka decide what 
   - 网页正文（免费）：内置 fetch + defuddle → 回退 XCrawl
   - 临时调研：Firecrawl（不入管线）
 - **只服务 AI 线的海外工具**：XCrawl（付费）/ AI HOT / last30days；另 3 条国内线（美容 / 私校留学 / 女性成长）不投入海外工具。
-- **不集成**：last30days 爬虫、apify、agent-reach；**不托管客户 cookie**；**不做客户发布**（三期走官方授权）。
+- **agent-reach**：仅作 **AI 线海外内容的 ad-hoc 阅读/探查**（快速看一眼外网页面/账号/讨论是否值得采），**不入自动管线、不作生产采集器**（同 Firecrawl 定位）；产出若要入库须转成带 source URL / tool / collectionStatus 的 `content_sample`。
+- **不集成**：last30days 爬虫、apify；**不托管客户 cookie**；**不做客户发布**（三期走官方授权）。
 
 ## MediaCrawlerPro Position
 

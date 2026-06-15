@@ -67,7 +67,8 @@
 - **江湖工具箱**：Pro 管线稳定运行后退役（爆款帖/对标账号采集已被路线1覆盖）。
   > **2026-06-14 修正**（见 `2026-06-14-collection-architecture-pivot-spec.md`）：江湖工具箱**不退役**，改为"手动补充档"——本地 win 软件扫码登录、健壮，承接高危"关键词搜索取爆款"，导出 Excel 经 `import-batch` 写 `longka_content_samples`（带 workspace）供二创；让 Pro 号退出搜索、只做低危深挖以保号。
 - **joyce677/TrendRadar fork**：v2.1.0 过时，弃用，用 sansan0 原版。
-- **Agent-Reach / web-access / apify-ultimate-scraper**：与主力路线重复，不集成。
+- **web-access / apify-ultimate-scraper**：与主力路线重复，不集成。
+- **Agent-Reach**：不入自动管线、不作生产采集器，仅作 **AI 线海外内容的 ad-hoc 阅读/探查**（同 Firecrawl 定位；产出若入库须转成带来源 URL/工具/采集状态的 `content_sample`）。
 - **last30days-cn 的 Playwright 爬虫代码**：禁止引入（裸爬不如 Pro）；只借鉴其评分公式（见 §5）。
 
 ### 三期暂缓

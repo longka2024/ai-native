@@ -90,6 +90,21 @@
   - 江湖工具箱从"退役"改为"手动补充档"。
   - 不做客户发布、不托管客户 cookie；`trigger-collection` 自动闭环仍暂缓。
 
+### Codex → Claude 技术基座移植（2026-06-16）
+
+- 文件：`docs/specs/2026-06-16-codex-to-claude-base-migration-spec.md`
+- 触发说法：
+  - "基座迁移"
+  - "移植到 Claude"
+  - "搬记忆 / memos"
+  - "建 CLAUDE.md"
+  - "Codex 迁移"
+- 开发边界：
+  - 建仓库根 CLAUDE.md（项目入口：四铁律 / 架构 / 正确 D:\ 与 122 路径 / 验证目标=122+小妹 / spec 索引）。
+  - 记忆移植：核心大文件落仓库 `memory/`（进 git），Claude 项目记忆补指针 + 偏好。
+  - 路径扫改 `E:\Codex` → `D:\AInative`；补 4 个缺失 skill。
+  - 不裸拷记忆（必须提炼）；不搬外部工具大仓；不改 server.mjs 业务逻辑；不删 ~/.codex 原文件。
+
 ## 使用规则
 
 1. 开发前先读 spec。

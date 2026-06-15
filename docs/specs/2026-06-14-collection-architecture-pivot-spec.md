@@ -65,7 +65,7 @@
 - 不做"帮客户发布到客户自己的号"（三期走官方扫码授权 / 开放平台，本期不碰）。
 - **不托管客户平台 cookie**（零客户凭证保管；托管 = 脱库即集体盗号，商用灭顶风险）。
 - 不强化自己的 CDP/Pro 去硬刚平台搜索风控（高危搜索交给江湖 / TrendRadar）。
-- 不集成 last30days 爬虫 / apify-ultimate-scraper / agent-reach；Firecrawl 仅临时调研不入管线。
+- 不集成 last30days 爬虫 / apify-ultimate-scraper；**agent-reach 仅作 AI 线海外内容的 ad-hoc 阅读/探查**（同 Firecrawl，不入自动管线、不作生产采集器，产出入库须转成带来源 URL/工具/采集状态的 `content_sample`）。
 - 不动现有模块化前端结构（用户已定，盯着改的）；不改 MediaCrawlerPro 源码；不新建平行样本表。
 - `trigger-collection` 自动闭环本期不实现（仍 Phase 2-2 暂缓；结合封号问题，做也要极克制）。
 
