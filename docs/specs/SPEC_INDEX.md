@@ -62,6 +62,34 @@
   - 复盘数据必须说明来源，不得伪装真实数据。
   - 不允许新开割裂页面作为唯一入口，不允许 CSS 假图当最终图。
 
+### 采集流程重构一期
+
+- 文件：`docs/specs/2026-06-12-collection-pipeline-rebuild-spec.md`
+- 触发说法：
+  - "按采集 spec"
+  - "采集重构"
+  - "样本库管线"
+- 开发边界：
+  - 三层架构：信号层（TrendRadar + AI HOT）→ 采集层（MediaCrawlerPro 主力 / XCrawl / Octoparse 冷备）→ 122 服务器 PG 样本库。
+  - Pro 用 SQLite 暂存，采集完即同步到 PG（一条包装命令）。
+  - 不改 MediaCrawlerPro 源码；不引入 last30days-cn 爬虫代码（只借鉴评分公式）；TrendRadar GPL 代码独立部署不混仓。
+  - 公众号采集和发布回流放三期，不在本 spec 范围。
+
+### 采集架构商用定调（2026-06-14，修正前两期方向）
+
+- 文件：`docs/specs/2026-06-14-collection-architecture-pivot-spec.md`
+- 触发说法：
+  - "采集架构定调"
+  - "客户不碰cookie"
+  - "江湖补充档"
+  - "采集分工"
+  - "黄金组合"
+- 开发边界：
+  - 采集内部化：自有小号池集中采，客户只消费成品，不碰 cookie/扩展/F12。
+  - 工具分工：高危搜索给 TrendRadar + 江湖；MediaCrawlerPro 号退出搜索只做深挖保号；海外工具只服务 AI 线。
+  - 江湖工具箱从"退役"改为"手动补充档"。
+  - 不做客户发布、不托管客户 cookie；`trigger-collection` 自动闭环仍暂缓。
+
 ## 使用规则
 
 1. 开发前先读 spec。

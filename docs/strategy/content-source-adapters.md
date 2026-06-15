@@ -20,6 +20,20 @@ The crawler layer is not a data-hoarding layer. It must help Longka decide what 
 - Which sample can become a publishable Longka asset.
 - Which topic should be abandoned before wasting production time.
 
+## 2026-06-14 商用定调（黄金组合 + 客户不碰采集）
+
+> 见 `docs/specs/2026-06-14-collection-architecture-pivot-spec.md`。本节为最新有效结论；与下方更早的工具笔记冲突时，**以本节为准**。
+
+- **客户不碰采集**：中小商户只消费"内容工厂"成品，全程不接触 cookie/扩展/F12。采集是平台内部供料，用自有小号池集中采，与客户数解耦。
+- **黄金组合**：
+  - 发现（免费/零登录）：TrendRadar（4线）+ AI HOT（仅 AI 线）
+  - 高危搜索取爆款（人工）：江湖工具箱（健壮）
+  - 低危深挖（保号）：MediaCrawlerPro（**退出搜索**，只做详情+评论+创作者主页）
+  - 网页正文（免费）：内置 fetch + defuddle → 回退 XCrawl
+  - 临时调研：Firecrawl（不入管线）
+- **只服务 AI 线的海外工具**：XCrawl（付费）/ AI HOT / last30days；另 3 条国内线（美容 / 私校留学 / 女性成长）不投入海外工具。
+- **不集成**：last30days 爬虫、apify、agent-reach；**不托管客户 cookie**；**不做客户发布**（三期走官方授权）。
+
 ## MediaCrawlerPro Position
 
 MediaCrawlerPro is infrastructure for topic validation, not a搬运工具.
