@@ -477,7 +477,7 @@ Xudong07452910</textarea>
 function renderTopicStep() {
   return `<section class="work-card">
     ${cardHead("第 5 步：选择一个今天要写的选题", "这里展示系统从真实素材里筛出来的可写方向。选一个后，下一步生成平台标题。")}
-    ${state.topics.length ? `<div class="topic-grid">${state.topics.map(renderTopicCard).join("")}</div>` : `<div class="empty-state"><b>当前来源没有匹配选题</b><span>请换关键词、切换素材来源，或先采集/导入对应平台素材。</span></div>`}
+    ${renderTopicGrid()}
     <div class="actions">
       <button class="ghost" data-step-target="4">返回重新找素材</button>
       <button class="primary" data-step-target="6" ${state.selectedTopicId ? "" : "disabled"}>下一步：生成标题</button>
@@ -485,9 +485,24 @@ function renderTopicStep() {
   </section>`;
 }
 
-function renderTopicCard(topic) {
-  return `<article class="topic-card ${state.selectedTopicId === topic.id ? "active" : ""}">
-    <div class="meta"><span>来源：${escapeHtml(topic.platform)}</span><span>${escapeHtml(topic.collectionStatus)}</span><span>目标：${escapeHtml(currentTarget().title)}</span></div>
+function renderTopicGrid() {
+  if (!state.topics.length) {
+    return `<div class="empty-state"><b>当前来源没有匹配选题</b><span>请换关键词、切换素材来源，或先采集/导入对应平台素材。</span></div>`;
+  }
+  const fresh = state.topics.filter((topic) => !isTopicUsed(topic));
+  const used = state.topics.filter((topic) => isTopicUsed(topic));
+  let html = fresh.length
+    ? `<div class="topic-grid">${fresh.map((topic) => renderTopicCard(topic, false)).join("")}</div>`
+    : `<div class="empty-state"><b>这批新选题你都写过了</b><span>下面是写过的话题，可以换个角度再写一篇。</span></div>`;
+  if (used.length) {
+    html += `<div class="used-topics-block"><div class="status-row"><b>已写过</b><span>${used.length} 条（已从新选题里隐藏，避免重复选题）</span></div><div class="topic-grid">${used.map((topic) => renderTopicCard(topic, true)).join("")}</div></div>`;
+  }
+  return html;
+}
+
+function renderTopicCard(topic, isUsed = false) {
+  return `<article class="topic-card ${state.selectedTopicId === topic.id ? "active" : ""} ${isUsed ? "used" : ""}">
+    <div class="meta"><span>来源：${escapeHtml(topic.platform)}</span><span>${escapeHtml(topic.collectionStatus)}</span><span>目标：${escapeHtml(currentTarget().title)}</span>${isUsed ? `<span class="used-badge">✓ 已用过</span>` : ""}</div>
     <b>${escapeHtml(topic.theme)}</b>
     <p>${escapeHtml(topic.reason)}</p>
     <p><strong>源头标题：</strong>${escapeHtml(topic.title)}</p>
@@ -496,7 +511,7 @@ function renderTopicCard(topic) {
     <p><strong>风险：</strong>${escapeHtml(topic.risk)}</p>
     <div class="metric-row">${Object.entries(topic.metrics || {}).map(([key, value]) => `<span>${escapeHtml(key)} ${escapeHtml(value)}</span>`).join("")}</div>
     ${topic.url ? `<a class="source-link" href="${escapeHtml(topic.url)}" target="_blank" rel="noreferrer">打开原始素材</a>` : `<span class="muted-text">暂无原链接</span>`}
-    <button class="primary" data-topic-id="${escapeHtml(topic.id)}">用这个选题继续</button>
+    <button class="primary" data-topic-id="${escapeHtml(topic.id)}">${isUsed ? "再写一篇" : "用这个选题继续"}</button>
   </article>`;
 }
 

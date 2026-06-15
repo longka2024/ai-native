@@ -675,6 +675,30 @@ function motherTopicKey(topic = {}) {
   return cleanSourceText(topic.theme || topic.title || "").slice(0, 28);
 }
 
+// 话题"已用过"标记 —— 稳定身份键，按业务线隔离，跨会话留存
+function usedTopicKey(topic = {}) {
+  const scope = state.businessLine || state.workspace || "";
+  const base = topic.url || topic.id || cleanSourceText(topic.title || topic.theme || "").slice(0, 80);
+  return `${scope}::${base}`;
+}
+
+function isTopicUsed(topic = {}) {
+  return Boolean((state.usedTopics || {})[usedTopicKey(topic)]);
+}
+
+function markTopicUsed(topic, angle = "") {
+  if (!topic) return;
+  const key = usedTopicKey(topic);
+  state.usedTopics = {
+    ...(state.usedTopics || {}),
+    [key]: {
+      angle: angle || topic.theme || topic.title || "",
+      title: topic.title || topic.theme || "",
+      usedAt: new Date().toISOString(),
+    },
+  };
+}
+
 function shouldKeepScoredSample(item, keywords) {
   if (item.sample.platform === "xiaohongshu" && item.sample.readyForCreation === true) return true;
   if (!keywords.length) return state.sourceChannel === "all-assets";

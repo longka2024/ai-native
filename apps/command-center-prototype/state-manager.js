@@ -108,6 +108,7 @@ function compactSnapshot() {
     materialAuthor: state.materialAuthor,
     materialLatestRuns: state.materialLatestRuns,
     topics: capList(state.topics, 40),
+    usedTopics: state.usedTopics || {},
     selectedTopicId: state.selectedTopicId,
     titleChoices: capList(state.titleChoices, 20),
     titleAssets: capList(state.titleAssets, 20),

@@ -33,17 +33,17 @@ async function generateSopDraft() {
       route: draft.contentStrategy?.selectedAngle || currentTarget().title,
     };
     state.draftReview = runLongkaReview(state.draft);
-    // P1-2: 三层编辑审查循环（最多3轮）
+    // P1-2: 编辑审查——记录真实验收结论 + 把改进建议带给下一版（非破坏性，不覆盖 LLM 稿）
     state.draft = await runEditorialReviewLoop(state.draft, selectedTopic());
-    // P2-1: 去 AI 味（humanizer-zh skill），仅对初稿生效，优化版跳过避免重复处理
-    if (!state.pendingRevision) {
-      state.draft = await humanizeDraftWithSkill(state.draft);
-    }
+    // P2-1: 去 AI 味（humanizer-zh skill）——每一版都跑（含"继续优化"版），让小妹的再编辑也去 AI 味
+    state.draft = await humanizeDraftWithSkill(state.draft);
     rememberCopyVersion(state.draft, state.pendingRevision ? `AI 优化第 ${state.draftRevision} 版` : "AI 初稿");
     state.improvedDraft = "";
     state.pendingRevision = null;
     state.draftStatus = "done";
     state.draftError = "";
+    // 话题"已用过"标记：成功出稿即记下，下次这个话题从新选题里隐藏
+    markTopicUsed(selectedTopic(), state.selectedTitle);
   } catch (error) {
     state.draftStatus = "error";
     state.draftError = `${error.message}。系统不会把本地模板当成最终稿，请检查文案模型配置后重试。`;
@@ -798,35 +798,26 @@ async function humanizeDraftWithSkill(draft) {
   return draft;
 }
 
-// 调用 content-creation-base.js 的 runEditorialReview，最多3轮改写
+// 编辑审查：读取 runLongkaReview 已算出的真实诊断（同一个 runEditorialReview），
+// 记录验收结论 + 把改进建议带给下一版。绝不用本地模板 improveDraft 覆盖 LLM 好稿（会降质）。
 async function runEditorialReviewLoop(draft, topic) {
-  const base = globalThis.LongkaContentCreationBase;
-  if (!base || typeof base.runEditorialReview !== "function") return draft;
-  let currentDraft = draft;
-  let round = 0;
-  while (round < 3) {
-    round += 1;
-    const result = base.runEditorialReview(currentDraft, topic);
-    if (!result || result.pass) {
-      state.draftMeta = { ...(state.draftMeta || {}), editorialRounds: round, editorialPass: true };
-      return currentDraft;
-    }
-    const issues = (result.issues || []).join("；");
-    if (!issues) break;
-    // 把审查问题附加到 pendingRevision 指令里
-    if (state.pendingRevision) {
-      state.pendingRevision.qualityFeedback = {
-        ...(state.pendingRevision.qualityFeedback || {}),
-        rewriteBrief: [
-          ...(state.pendingRevision.qualityFeedback?.rewriteBrief || []),
-          `编辑审查第${round}轮：${issues}`,
-        ].slice(0, 10),
-      };
-    }
-    // 用 improveDraft 根据审查意见优化一版
-    currentDraft = improveDraft(currentDraft, round > 1);
-    state.draft = currentDraft;
-    state.draftMeta = { ...(state.draftMeta || {}), editorialRounds: round, editorialPass: false };
+  const review = state.draftReview;
+  if (!review) return draft;
+  state.draftMeta = {
+    ...(state.draftMeta || {}),
+    editorialRounds: review.round || 1,
+    editorialPass: !!review.passed,
+  };
+  const brief = (review.rewriteBrief || []).filter(Boolean);
+  // 未通过：把真实改进建议带进"继续优化"指令，让下一版 LLM 重写时吸收（不在此处用模板改写）
+  if (!review.passed && brief.length && state.pendingRevision) {
+    state.pendingRevision.qualityFeedback = {
+      ...(state.pendingRevision.qualityFeedback || {}),
+      rewriteBrief: [
+        ...(state.pendingRevision.qualityFeedback?.rewriteBrief || []),
+        ...brief.map((s) => `编辑审查：${s}`),
+      ].slice(0, 10),
+    };
   }
-  return currentDraft;
+  return draft;
 }
