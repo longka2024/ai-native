@@ -21,33 +21,34 @@
 
   function installCollectorPanel() {
     installContentAssetEnginePage();
-    const assetLibrary = $("#assetLibrary");
-    if (!assetLibrary || $("#collectorPanel")) return;
-    assetLibrary.insertAdjacentHTML("afterbegin", buildPanelHtml());
+    // 适配 workbench-v2.html：挂载到 #contentAssetEngine 而非旧版 #assetLibrary
+    const container = $("#contentAssetEngine") || $("#assetLibrary");
+    if (!container || $("#collectorPanel")) return;
+    container.insertAdjacentHTML("afterbegin", buildPanelHtml());
     bindActions();
     refreshCollectorHealth();
   }
 
   function installContentAssetEnginePage() {
-    if (!document.querySelector("[data-route-link='content-engine']")) {
-      const sidebar = document.querySelector(".command-sidebar");
-      const before = document.querySelector("[data-route-link='keywords']");
+    if (!document.querySelector("[data-route='content-engine']")) {
+      // 适配 workbench-v2.html 的 .sidebar 结构（而非旧版 .command-sidebar）
+      const sidebar = document.querySelector(".sidebar");
       const button = document.createElement("button");
       button.className = "nav-item";
-      button.dataset.routeLink = "content-engine";
+      button.dataset.route = "content-engine";
       button.innerHTML = "<b>内容资产工程</b><span>采集 / 单元 / 主题 / 装配</span>";
-      if (sidebar) sidebar.insertBefore(button, before || sidebar.children[1] || null);
+      if (sidebar) sidebar.appendChild(button);
     }
 
     if (!$("#contentAssetEngine")) {
-      const content = document.querySelector(".command-content");
+      const content = document.querySelector(".content");
       const section = document.createElement("section");
       section.className = "asset-library route-panel content-engine-page";
       section.id = "contentAssetEngine";
       section.dataset.route = "content-engine";
       section.hidden = true;
       section.innerHTML = buildContentEngineHtml();
-      content?.insertBefore(section, $("#assetLibrary") || null);
+      content?.appendChild(section);
       bindContentEngineActions(section);
     }
     bindContentEngineRoute();
@@ -57,14 +58,14 @@
     if (document.body.dataset.contentEngineRouteBound === "1") return;
     document.body.dataset.contentEngineRouteBound = "1";
     document.addEventListener("click", (event) => {
-      const trigger = event.target.closest("[data-route-link='content-engine']");
+      const trigger = event.target.closest("[data-route='content-engine']");
       if (!trigger) return;
       event.preventDefault();
       document.querySelectorAll(".route-panel").forEach((panel) => {
-        panel.hidden = panel.dataset.route !== "content-engine";
+        panel.hidden = panel.dataset.route !== "content-engine" && panel.dataset.panel !== "content-engine";
       });
-      document.querySelectorAll("[data-route-link], .nav-item").forEach((button) => {
-        button.classList.toggle("active", button.dataset.routeLink === "content-engine");
+      document.querySelectorAll(".nav-item").forEach((button) => {
+        button.classList.toggle("active", button.dataset.route === "content-engine");
       });
       $("#contentAssetEngine")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -202,7 +203,7 @@ xionghuanwei</textarea>
       return;
     }
     if (action === "go-workflow") {
-      document.querySelector("[data-route-link='today']")?.click();
+      document.querySelector("[data-route='today']")?.click();
       markSopAction(trigger, "已跳转");
       return;
     }

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "last30days": {
+      "source": "C:\\Users\\longfei\\AppData\\Local\\Temp\\last30days-skill",
+      "sourceType": "local",
+      "computedHash": "7c9cabd73b72d97e463e4718fbaea7f6ed6090d8ae852164e6337861866899a7"
+    }
+  }
+}

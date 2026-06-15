@@ -56,6 +56,10 @@
         <b>作品记录</b>
         <span>已确认、已导出、待复盘</span>
       </button>
+      <button class="nav-item" data-route="accounts">
+        <b>账号管理</b>
+        <span>各平台 Cookie 配置</span>
+      </button>
       <button class="nav-item" data-route="settings">
         <b>设置</b>
         <span>模型、采集、导入导出</span>
@@ -143,10 +147,28 @@
           <button class="secondary" data-action="check-health">检查采集能力</button>
         </div>
       </section>
+
+      <section class="route-panel simple-panel" data-panel="accounts" hidden>
+        <h2>账号管理</h2>
+        <p>各平台 Cookie 配置。登录目标平台后，从浏览器 F12 → Application → Cookies 复制全部 Cookie 字符串，粘贴到对应平台输入框保存。</p>
+        <div id="accountCookiesBoard"></div>
+      </section>
     </section>
   </main>
 
+  <!-- 模块化架构 v20260611 — 按依赖顺序加载 -->
+  <script src="./state-manager.js?v=20260611-modular-1"></script>
+  <script src="./config.js?v=20260611-modular-1"></script>
+  <script src="./utils.js?v=20260611-modular-1"></script>
+  <script src="./copy-manager.js?v=20260611-modular-1"></script>
+  <script src="./visual-engine.js?v=20260611-modular-1"></script>
+  <script src="./topic-engine.js?v=20260611-titlefix-2"></script>
+  <script src="./title-engine.js?v=20260612-titlefix-4"></script>
   <script src="./content-creation-base.js?v=20260608-motif-compound-1"></script>
-  <script src="./workbench-v2-clean.js?v=20260608-motif-compound-1"></script>
+  <script src="./rewrite-engine.js?v=20260612-humanize-platform-1"></script>
+  <script src="./asset-manager.js?v=20260611-modular-1"></script>
+  <script src="./collector-panel.js?v=20260611-modular-1"></script>
+  <script src="./material-flow.js?v=20260611-modular-1"></script>
+  <script src="./workbench-main.js?v=20260611-titlefix-2"></script>
 </body>
 </html>
