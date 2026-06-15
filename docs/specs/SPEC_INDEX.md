@@ -105,6 +105,21 @@
   - 路径扫改 `E:\Codex` → `D:\AInative`；补 4 个缺失 skill。
   - 不裸拷记忆（必须提炼）；不搬外部工具大仓；不改 server.mjs 业务逻辑；不删 ~/.codex 原文件。
 
+### 内容教练闭环（2026-06-16，灵魂功能）
+
+- 文件：`docs/specs/2026-06-16-content-coach-loop-spec.md`
+- 触发说法：
+  - "教练闭环"
+  - "越用越强"
+  - "文案教练 / 点评闭环"
+  - "独家素材库 / 增量素材"
+  - "rubric 进化"
+- 开发边界：
+  - 产品 spec(非技术 spec):把 cheat-on-content 教练闭环(打分→预测→发布→复盘→进化 rubric)做成**客户无感的后端工作流**,每客户一套会进化的 rubric。
+  - P0 修质检空转 bug + AI 味回炉 + humanizer 扩到每版;P1 教练点评 + 独家素材库(增量层);P2 复盘 + rubric 进化;P3 朱雀终检。
+  - 不让客户懂技术/不暴露 skill 名;不让 AI 编造客户经历(增量素材只来自客户);rubric 升级不跳全量重打+审核;每客户 rubric 隔离。
+  - rubric 维度素材累积在 `memory/rubric-dimensions.md`。
+
 ## 使用规则
 
 1. 开发前先读 spec。
