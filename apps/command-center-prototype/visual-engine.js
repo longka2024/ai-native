@@ -182,19 +182,21 @@ function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVis
     `Style lock: ${contract.styleLock}.`,
     `Style brief: ${contract.styleBrief}.`,
     `Negative prompt: ${contract.negativePrompt}.`,
-    "Do not reuse unrelated content asset library, title formula library, user question library, or structure library visuals unless this selected topic is explicitly about those libraries."
+    "Do not reuse unrelated content asset library, title formula library, user question library, or structure library visuals unless this selected topic is explicitly about those libraries.",
+    "Aesthetic quality: refined and comfortable to look at — one consistent restrained palette across the set, clear visual hierarchy, generous whitespace, one focal point per page, mobile-legible. Vary the layout from page to page so the set does not look monotonous."
   ].join(" ");
   const cardSpecs = {
-    cover: { title: title || signal.coverText, text: signal.coverText, extra: `Only express ${signal.subject} and ${signal.result}.`, prompt: `Cover page. Strong focal point: ${signal.subject} + ${signal.result}.` },
-    problem: { title: signal.problemTitle, text: signal.pain, extra: `Show the real reader question behind ${signal.result}.`, prompt: `Problem page. Show the question behind ${signal.subject}.` },
-    case: { title: signal.caseTitle, text: signal.casePoints.join("\n"), extra: `Break the current case into subject=${signal.subject}, result=${signal.result}, key=${signal.keyPoint}.`, prompt: "Case deconstruction page with three paper cards: who, what worked, result." },
-    method: { title: signal.methodTitle, text: signal.methodSteps.join("\n"), extra: `Break the path to ${signal.result} into executable steps.`, prompt: "Method page. Show an executable route, not a generic template." },
-    action: { title: signal.actionTitle, text: signal.action, extra: `Give only the next practical step around ${signal.subject}.`, prompt: `Action checklist page, practical next step for ${signal.subject}.` },
+    cover: { title: title || signal.coverText, text: signal.coverText, extra: `Only express ${signal.subject} and ${signal.result}.`, layout: "Cover layout: one bold headline, one strong hero focal element, lots of whitespace, magazine-cover feel.", prompt: `Cover page. Strong focal point: ${signal.subject} + ${signal.result}.` },
+    problem: { title: signal.problemTitle, text: signal.pain, extra: `Show the real reader question behind ${signal.result}.`, layout: "Comparison layout: two contrasting panels (wrong vs right / before vs after) side by side.", prompt: `Problem page. Show the question behind ${signal.subject}.` },
+    case: { title: signal.caseTitle, text: signal.casePoints.join("\n"), extra: `Break the current case into subject=${signal.subject}, result=${signal.result}, key=${signal.keyPoint}.`, layout: "Evidence layout: a 3-card grid or quadrant (who / what worked / result), each a distinct block.", prompt: "Case deconstruction page with three cards: who, what worked, result." },
+    method: { title: signal.methodTitle, text: signal.methodSteps.join("\n"), extra: `Break the path to ${signal.result} into executable steps.`, layout: "Step-flow layout: a numbered vertical path with 3-5 connected nodes and arrows.", prompt: "Method page. Show an executable route, not a generic template." },
+    action: { title: signal.actionTitle, text: signal.action, extra: `Give only the next practical step around ${signal.subject}.`, layout: "Checklist layout: a short check-item list with check marks, one clear next step highlighted.", prompt: `Action checklist page, practical next step for ${signal.subject}.` },
   };
   return plan.slots.map((slot) => {
     const spec = cardSpecs[slot.type] || cardSpecs.cover;
     const actionBrief = actionBriefs[slot.type] || "";
     const role = `${slot.placement || ""} ${slot.role || slot.type}`.trim();
+    const layoutHint = (visual.id === "xhs-knowledge-card" || visual.id === "guizang-editorial") ? (spec.layout || "") : "";
     const jujuPromptBlock = juju ? [
       "Original JUJU visual language.",
       "Target ratio and size: 3:4, 1200 x 1600.",
@@ -220,7 +222,7 @@ function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVis
       carouselJob: role,
       visualBrief: `${contract.styleBrief} Director placement: ${slot.placement || "current page"}. Reader job: ${slot.job || ""}. Visual focus: ${slot.focus || ""}. ${actionBrief} ${spec.extra}`,
       readerTakeaway: slot.job || signal.takeaway,
-      imagePrompt: `${promptBase} Placement: ${slot.placement || ""}. Reader job: ${slot.job || ""}. Visual focus: ${slot.focus || ""}. Title: ${spec.title}. Allowed text only: ${String(spec.title || "").slice(0, 18)}; ${String(spec.text || "").split("\n").slice(0, 3).join("; ").slice(0, 48)}. ${spec.prompt} ${actionBrief} ${jujuPromptBlock}`,
+      imagePrompt: `${promptBase} Placement: ${slot.placement || ""}. Reader job: ${slot.job || ""}. Visual focus: ${slot.focus || ""}. Title: ${spec.title}. Allowed text only: ${String(spec.title || "").slice(0, 18)}; ${String(spec.text || "").split("\n").slice(0, 3).join("; ").slice(0, 48)}. ${spec.prompt} ${layoutHint} ${actionBrief} ${jujuPromptBlock}`,
     };
   });
 }
