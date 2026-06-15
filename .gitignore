@@ -54,3 +54,19 @@ apps/command-center-prototype/data/command-center.json
 # Independent git clones vendored for reference only
 external/cheat-on-content/
 external/juju-content-illustrations/
+
+# Operational one-off scripts — contain LIVE platform cookies and DB credentials.
+# Keep local only, NEVER commit (repo is public). Sanitize before versioning any of these.
+/scripts/
+
+# Vendored third-party skill (last30days) — not integrated per architecture pivot,
+# runtime-only, includes binary assets + cookie-extraction tooling.
+apps/command-center-prototype/.agents/
+
+# Python bytecode cache
+__pycache__/
+*.pyc
+
+# Temp screenshots and scratch files
+apps/command-center-prototype/temp_screenshot*.png
+tieba_sync2.txt
