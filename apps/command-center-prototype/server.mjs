@@ -1,12 +1,23 @@
-import { createServer } from 'node:http';
+import { createServer, get as httpGet } from 'node:http';
+import { execFile } from 'node:child_process';
 import { readFile, writeFile, mkdir, readdir, stat } from 'node:fs/promises';
-import { existsSync, createReadStream } from 'node:fs';
+import { existsSync, createReadStream, readFileSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { collectorHealth, confirmContentAsset, deleteCollectionRun, importLocalPlatformBatch, initCollectorHub, loadLatestXBatch, loadRecentCollectionBatches, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch } from './collector-hub.mjs';
+import { collectorHealth, confirmContentAsset, deleteCollectionRun, importLocalPlatformBatch, initCollectorHub, loadHot30Samples, loadLatestXBatch, loadRecentCollectionBatches, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch } from './collector-hub.mjs';
+import { runSkill, listSkills } from './skills-runner.mjs';
+
+// 自动加载同目录下的 .env 文件（不依赖 dotenv 包）
+try {
+  const envPath = new URL('.env', import.meta.url);
+  const envContent = readFileSync(envPath, 'utf8');
+  for (const line of envContent.split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^['"]|['"]$/g, '');
+  }
+} catch { /* .env 不存在时跳过 */ }
 
 const root = resolve(fileURLToPath(new URL('.', import.meta.url)));
 const dataDir = join(root, 'data');
@@ -18,8 +29,12 @@ const mediaCrawlerPythonDir = join(mediaCrawlerRoot, 'MediaCrawlerPro-Python');
 const mediaCrawlerDbPath = process.env.MEDIACRAWLER_DB_PATH || join(mediaCrawlerPythonDir, 'media_crawler.db');
 const mediaCrawlerPythonExe = resolveMediaCrawlerPythonExe();
 const mediaCrawlerSitePackages = join(root, 'Runtime', 'site-packages');
-const verifiedClippingsDir = 'F:\\Longka Wiki\\龙咖Wiki\\Clippings';
-const defaultClippingsDir = 'F:\\Longka Wiki\\龙咖Wiki\\Clippings';
+// P0-3: Clippings 路径从环境变量读取，不再硬编码 F:\
+const verifiedClippingsDir = process.env.WIKI_CLIPPINGS_PATH || '';
+const defaultClippingsDir = process.env.WIKI_CLIPPINGS_PATH || '';
+if (!verifiedClippingsDir) {
+  console.warn('[Longka] WIKI_CLIPPINGS_PATH 未配置，Clippings 功能将跳过。如需启用请设置环境变量。');
+}
 const port = Number(process.env.PORT || 3760);
 let dbWriteQueue = Promise.resolve();
 const execFileAsync = promisify(execFile);
@@ -176,7 +191,65 @@ createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
+    if (req.method === 'GET' && (url.pathname === '/trendradar' || url.pathname.startsWith('/trendradar/'))) {
+      return proxyTrendRadar(req, res, url);
+    }
+
     if (req.method === 'GET' && url.pathname === '/api/state') return sendJson(res, await readDb());
+
+    // === 采集账号 Cookie 管理 API ===
+    if (req.method === 'GET' && url.pathname === '/api/accounts/cookies') {
+      if (!pgPool) return sendJson(res, { ok: false, error: 'PG not connected', accounts: [] });
+      const platform = url.searchParams.get('platform') || '';
+      let rows;
+      if (platform) {
+        ({ rows } = await pgPool.query('SELECT * FROM crawler_cookies_account WHERE platform_name = $1 ORDER BY update_time DESC', [platform]));
+      } else {
+        ({ rows } = await pgPool.query('SELECT * FROM crawler_cookies_account ORDER BY platform_name, update_time DESC'));
+      }
+      return sendJson(res, { ok: true, accounts: rows });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/accounts/cookies') {
+      if (!pgPool) return sendJson(res, { ok: false, error: 'PG not connected' });
+      const { platform_name, account_name, cookies } = await readJson(req);
+      if (!platform_name || !cookies) return sendJson(res, { ok: false, error: 'platform_name and cookies required' });
+      // upsert: same platform_name + account_name → update; else insert
+      const existing = await pgPool.query('SELECT id FROM crawler_cookies_account WHERE platform_name = $1 AND account_name = $2', [platform_name, account_name || 'default']);
+      if (existing.rowCount > 0) {
+        await pgPool.query(
+          'UPDATE crawler_cookies_account SET cookies = $1, status = 0, invalid_timestamp = 0, update_time = now() WHERE platform_name = $2 AND account_name = $3',
+          [cookies, platform_name, account_name || 'default']
+        );
+      } else {
+        await pgPool.query(
+          'INSERT INTO crawler_cookies_account (platform_name, account_name, cookies) VALUES ($1, $2, $3)',
+          [platform_name, account_name || 'default', cookies]
+        );
+      }
+      return sendJson(res, { ok: true });
+    }
+
+    if (req.method === 'DELETE' && url.pathname === '/api/accounts/cookies') {
+      if (!pgPool) return sendJson(res, { ok: false, error: 'PG not connected' });
+      const id = url.searchParams.get('id');
+      if (!id) return sendJson(res, { ok: false, error: 'id required' });
+      await pgPool.query('DELETE FROM crawler_cookies_account WHERE id = $1', [Number(id)]);
+      return sendJson(res, { ok: true });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/accounts/cookies/export-xlsx') {
+      if (!pgPool) return sendJson(res, { ok: false, error: 'PG not connected' });
+      const { rows } = await pgPool.query('SELECT * FROM crawler_cookies_account WHERE status = 0 ORDER BY platform_name');
+      // 按 platform 分组返回
+      const grouped = {};
+      for (const row of rows) {
+        if (!grouped[row.platform_name]) grouped[row.platform_name] = [];
+        grouped[row.platform_name].push(row);
+      }
+      return sendJson(res, { ok: true, accounts: rows, grouped });
+    }
+    // === 结束 Cookie 管理 API ===
 
     if (req.method === 'GET' && url.pathname === '/api/radar/seed-plan') {
       const db = await readDb();
@@ -197,6 +270,28 @@ createServer(async (req, res) => {
 
     if (req.method === 'GET' && url.pathname === '/api/collectors/health') {
       return sendJson(res, await collectorHealth());
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/signals/trendradar-hits') {
+      return handleTrendRadarHits(req, res);
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/signals/aihot-items') {
+      return handleAihotItems(req, res);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/signals/trigger-collection') {
+      return handleTriggerCollection(req, res);
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/samples/hot30') {
+      const result = await loadHot30Samples({
+        workspace: url.searchParams.get('workspace') || '',
+        platform: url.searchParams.get('platform') || '',
+        keywords: url.searchParams.get('keywords') || '',
+        limit: url.searchParams.get('limit') || 30,
+      });
+      return sendJson(res, result);
     }
 
     if (req.method === 'GET' && url.pathname === '/api/collectors/recent-assets') {
@@ -317,6 +412,36 @@ createServer(async (req, res) => {
       const payload = await readJson(req);
       const result = await runXcrawlStandard(xcrawlMatch[1], payload);
       return sendJson(res, result, result.ok ? 200 : 400);
+    }
+
+    // 免费抓取文章正文（不用 xcrawl，Node 内置 fetch）
+    if (req.method === 'POST' && url.pathname === '/api/fetch-article') {
+      const { url: articleUrl } = await readJson(req);
+      if (!articleUrl) return sendJson(res, { ok: false, error: 'missing_url' }, 400);
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 15000);
+        const resp = await fetch(articleUrl, {
+          signal: ctrl.signal,
+          redirect: 'follow',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+          },
+        });
+        clearTimeout(timer);
+        if (!resp.ok) return sendJson(res, { ok: false, error: `HTTP ${resp.status}` }, 502);
+        const html = await resp.text();
+        // 提取标题
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        const title = titleMatch ? titleMatch[1].trim() : '';
+        // 去标签取正文
+        const body = extractArticleText(html);
+        return sendJson(res, { ok: true, title, body, url: articleUrl });
+      } catch (error) {
+        return sendJson(res, { ok: false, error: error.message }, 502);
+      }
     }
 
     if (req.method === 'GET' && url.pathname === '/api/customer-profile') {
@@ -1219,6 +1344,24 @@ createServer(async (req, res) => {
       return sendJson(res, result.ok ? result : { ...result, fallback: true });
     }
 
+    if (req.method === 'POST' && url.pathname === '/api/content/title-choices') {
+      const payload = await readJson(req);
+      const result = await generateTitleChoices(payload);
+      return sendJson(res, result);
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/skills') {
+      return sendJson(res, { ok: true, skills: listSkills() });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/skills/run') {
+      const { skill, content, vars } = await readJson(req);
+      if (!skill || !content) return sendJson(res, { ok: false, error: 'missing_params' }, 400);
+      const cfg = await readOperatorAiConfig();
+      const result = await runSkill(skill, content, vars || {}, cfg);
+      return sendJson(res, result);
+    }
+
     if (req.method === 'POST' && url.pathname === '/api/xiaomei/video-job') {
       const payload = await readJson(req);
       const manifest = await exportAdhocVideoJobForXiaomei(payload);
@@ -1247,6 +1390,13 @@ createServer(async (req, res) => {
   }
 }).listen(port, () => {
   console.log(`AI Native topic pipeline: http://localhost:${port}`);
+  // P0-2: 启动时检查 API Key 是否配置
+  const hasApiKey = !!(process.env.DEEPSEEK_API_KEY || process.env.AIGOCODE_API_KEY);
+  if (!hasApiKey) {
+    console.warn('\n⚠️  [Longka] AI 模型 API Key 未配置！');
+    console.warn('   文案生成功能将不可用。请在 .env 文件中配置：');
+    console.warn('   AIGOCODE_API_KEY=your-api-key  或  DEEPSEEK_API_KEY=your-api-key\n');
+  }
 });
 
 function buildCandidates(config, rawMaterials) {
@@ -3789,6 +3939,18 @@ async function ensureDb() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )
     `);
+    // 采集账号 Cookie 管理表
+    await pgPool.query(`
+      CREATE TABLE IF NOT EXISTS crawler_cookies_account (
+        id SERIAL PRIMARY KEY,
+        platform_name TEXT NOT NULL,
+        account_name TEXT NOT NULL DEFAULT '',
+        cookies TEXT NOT NULL DEFAULT '',
+        status INTEGER NOT NULL DEFAULT 0,
+        invalid_timestamp INTEGER NOT NULL DEFAULT 0,
+        update_time TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
     const existing = await pgPool.query('SELECT id FROM ai_native_command_center_state WHERE id = $1', ['default']);
     if (!existing.rowCount) {
       const initial = {
@@ -4259,13 +4421,108 @@ function defaultConversionPath(angle = '') {
   return '引导低成本评估，再决定下一步。';
 }
 
+async function generateTitleChoices(payload = {}) {
+  const cfg = await readOperatorAiConfig();
+  if (!cfg.apiKey) return { ok: false, error: 'missing_ai_key', choices: [] };
+
+  const topic = payload.topic || {};
+  const publishTarget = payload.publishTarget || 'xhs';
+  const keywords = payload.keywords || '';
+  const signal = payload.signal || {};
+  const titleAssets = Array.isArray(payload.titleAssets) ? payload.titleAssets.slice(0, 10) : [];
+
+  const system = [
+    '你是小红书爆款标题专家，熟悉 DBS 内容体系。',
+    '根据提供的源头选题生成 5 个候选标题。',
+    '硬规则：标题必须紧扣 sourceAngle（源头核心角度），不得偏移到相关但不同的子话题。',
+    '  例：源头是"月薪多少才能送孩子上私校"，标题必须围绕钱/收入/支出展开，不能写成教育理念或升学方法。',
+    '  例：源头是"某行业如何起号"，标题必须围绕起号/内容展开，不能写成人生感悟。',
+    '如果 sourceComments 提供了评论，标题要回应评论里最高频的焦虑或问题。',
+    '标题要求：有具体信息点（数字/场景/反差）、情绪密度高、不超过 20 字（小红书）或 30 字（公众号）。',
+    '禁止：泛化励志话、空洞口号、重复同一句式、偏离 sourceAngle 的标题。',
+    '输出必须是 JSON，格式：{"choices":[{"title":"...","reason":"..."},...]}'
+  ].join('\n');
+
+  const sourceContent = (topic.content || topic.body || topic.summary || '').slice(0, 600);
+  const sourcePain = topic.pain || topic.theme || topic.title || '';
+  const sourceComments = Array.isArray(topic.comments)
+    ? topic.comments.slice(0, 6).map(c => (typeof c === 'string' ? c : c.content || c.text || '')).filter(Boolean)
+    : [];
+  const userMsg = {
+    sourceAngle: sourcePain,
+    sourceTitle: topic.title || topic.theme || signal.sourceTitle || '',
+    sourcePain,
+    sourceContent: sourceContent || '（源帖正文未提供，请基于 sourceAngle 展开）',
+    sourceComments,
+    publishTarget,
+    keywords,
+    historicalTitles: titleAssets.map(a => a.title).filter(Boolean).slice(0, 8),
+  };
+
+  const model = cfg.titleModel || cfg.draftModel || cfg.model;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const requestBody = {
+      model,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: JSON.stringify(userMsg) },
+      ],
+      response_format: { type: 'json_object' },
+      max_tokens: 800,
+      temperature: 0.7,
+    };
+    if (cfg.provider === 'deepseek') requestBody.thinking = { type: 'disabled' };
+
+    const response = await fetch(`${cfg.baseUrl.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${cfg.apiKey}` },
+      signal: controller.signal,
+      body: JSON.stringify(requestBody),
+    });
+    const raw = await response.text();
+    if (!response.ok) return { ok: false, error: 'ai_failed', choices: [] };
+    const data = JSON.parse(raw);
+    const content = data.choices?.[0]?.message?.content || '';
+    const parsed = JSON.parse(content.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim());
+    const choices = Array.isArray(parsed.choices) ? parsed.choices : [];
+    return { ok: true, choices };
+  } catch (err) {
+    return { ok: false, error: err.name === 'AbortError' ? 'timeout' : 'parse_error', choices: [] };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function extractVerbatimAnchors(text = '') {
+  const cleaned = String(text).replace(/\s+/g, ' ').trim();
+  if (cleaned.length < 30) return [];
+  // Split on Chinese sentence delimiters
+  const sentences = cleaned.split(/[。！？\n]+/).map((s) => s.trim()).filter((s) => s.length >= 12 && s.length <= 50);
+  // Prefer sentences with specific details: numbers, place names, concrete nouns
+  const scored = sentences.map((s) => ({
+    text: s,
+    score: (
+      (/\d/.test(s) ? 3 : 0)                    // has numbers
+      + (/[年月周天次个万块]/.test(s) ? 2 : 0)    // has time/quantity units
+      + (s.length >= 18 ? 2 : 0)                  // reasonable length
+      + (/[\u4e00-\u9fff]{10,}/.test(s) ? 1 : 0)  // dense Chinese
+    ),
+  }));
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, 5).map((item) => item.text);
+}
+
 async function generateSopRewriteDraft(payload = {}) {
   const cfg = await readOperatorAiConfig();
   if (!cfg.apiKey) return { ok: false, error: 'missing_ai_key', message: '缺少 AIGOCODE_API_KEY，无法按 SOP 生成二创文案。' };
   const commentDrivenStrategy = buildCommentDrivenCopyStrategy(payload);
+  const sourceRawText = asText(payload.topic?.content || payload.sourcePost?.content || payload.sourceTopic?.content);
+  const verbatimAnchors = extractVerbatimAnchors(sourceRawText);
   const system = [
     '你是 Longka AI Native 内容生产系统的资深小红书/短视频内容策划。',
-    '你必须严格按“爆款采集分析 SOP：从爬虫样本到自己的内容框架”工作。',
+    '你必须严格按”爆款采集分析 SOP：从爬虫样本到自己的内容框架”工作。',
     '不要套固定模板，不要只替换标题，不要复述原帖。',
     '必须基于用户在第四步选中的单条源头帖、评论问题、互动数据和第五步选中的标题做二次创作。',
     '评论区问题是选题入口，不是装饰性证据。每次写正文前，必须先选定一个评论问题作为本篇文章的主问题。',
@@ -4275,10 +4532,13 @@ async function generateSopRewriteDraft(payload = {}) {
     '美业/护肤/医美内容不得承诺祛斑、根治、必然有效，不替代专业诊断。',
     '硬约束：xhsCopy.title 必须逐字使用 payload.selectedTitle，禁止模型自拟新标题。',
     '硬约束：正文必须围绕 payload.topic/sourcePost 的 title、content、pain、comments 写，不得跳到无关案例、无关行业或无关主题。',
-    '硬约束：除非源头素材明确提供真实经历，不得虚构“我上周帮客户”“我见过一个客户”“医生说”等第一人称或权威案例。',
-    '硬约束：小红书正文要像真实运营者写给读者的口语内容，少用“首先/其次/最后/其实根源就一个/正确的废话”等 AI 腔连接。',
+    '硬约束：除非源头素材明确提供真实经历，不得虚构”我上周帮客户””我见过一个客户””医生说”等第一人称或权威案例。',
+    '硬约束：小红书正文要像真实运营者写给读者的口语内容，少用”首先/其次/最后/其实根源就一个/正确的废话”等 AI 腔连接。',
+    verbatimAnchors.length >= 2
+      ? `硬约束【降低AI检测】：必须从 sourceEvidence.verbatimAnchors 中选取至少 2 个短语，原文一字不改地嵌入正文段落中（可用破折号引出或自然融入叙述，不要加引号）。不可跳过此规则。`
+      : '',
     '输出必须是 JSON，不要 Markdown，不要解释。',
-  ].join('\n');
+  ].filter(Boolean).join('\n');
   const user = {
     task: '根据第四步选中的源头帖，按 SOP 生成第五步可给客户确认的二创稿。',
     sourceEvidence: {
@@ -4288,6 +4548,10 @@ async function generateSopRewriteDraft(payload = {}) {
       sourceContent: asText(payload.topic?.content || payload.sourcePost?.content || payload.sourceTopic?.content).slice(0, 1200),
       sourceComments: collectPayloadComments(payload),
       businessLine: asText(payload.businessLine || payload.keyword),
+      verbatimAnchors: verbatimAnchors,
+      verbatimAnchorRule: verbatimAnchors.length >= 2
+        ? `从上面 verbatimAnchors 数组中选取至少 2 个，原文一字不动嵌入正文（不改写、不翻译、不加引号）。每个锚点至少出现一次。`
+        : '源头素材太短，无法提取锚点，请确保正文贴近源头素材的具体用词。',
       rule: '正文只能使用这些源头证据展开。没有出现在源头证据里的案例、数字、身份、结果，不准编。',
     },
     currentDraftForRevision: payload.currentDraft ? {
@@ -4388,12 +4652,25 @@ async function generateSopRewriteDraft(payload = {}) {
       };
     }
     const knownSourcePhrases = ['内容资产库', '不知道发什么', 'AI 味', 'AI味', '素材', '沉淀', 'Agent', '工作流', 'AI自媒体', 'AI 内容'];
+    // 锚点来源：业务线/关键词 + 选中标题 + 源头标题（正文本就该咬住正在写的主题，不只业务词）
+    const anchorSeeds = splitQueryWords(
+      `${payload.businessLine || ''} ${payload.keyword || ''} ${asText(payload.selectedTitle)} `
+      + `${asText(payload.sourceTopic?.title || payload.topic?.title || payload.sourcePost?.title || '')}`
+    ).filter((word) => word.length >= 2);
+    // 中文复合词拆成 2 字片段，避免"温哥华私校"整体不命中而误判跑题
+    const twoGrams = [];
+    for (const seed of anchorSeeds) {
+      const cjk = seed.replace(/[^一-龥]/g, '');
+      for (let k = 0; k + 2 <= cjk.length; k += 1) twoGrams.push(cjk.slice(k, k + 2));
+    }
     const anchors = [...new Set([
-      ...splitQueryWords(`${payload.businessLine || ''} ${payload.keyword || ''}`).filter((word) => word.length >= 2),
+      ...anchorSeeds,
+      ...twoGrams,
       ...knownSourcePhrases.filter((word) => sourceText.includes(word)),
-    ])].slice(0, 10);
+    ])].slice(0, 40);
     const hitCount = anchors.filter((word) => body.includes(word)).length;
     if (anchors.length >= 3 && hitCount < 1) {
+      console.error(`[AI生成失败] type=ai_source_drift 命中=0/${anchors.length} 锚点样例=${anchors.slice(0, 8).join(',')}`);
       return {
         ok: false,
         error: 'ai_source_drift',
@@ -4431,7 +4708,14 @@ async function generateSopRewriteDraft(payload = {}) {
       });
       const raw = await response.text();
       if (!response.ok) {
-        return { ok: false, error: 'ai_request_failed', message: `AI 文案接口失败 HTTP ${response.status}`, detail: raw.slice(0, 500), model };
+        const detail = raw.slice(0, 500);
+        console.error(`[AI生成失败] type=ai_request_failed model=${model} http=${response.status} base=${cfg.baseUrl} detail=${detail}`);
+        const hint = (response.status === 402 || /insufficient|balance|余额|欠费|quota/i.test(detail))
+          ? 'AI 接口余额不足或欠费'
+          : (response.status === 401 || response.status === 403) ? 'AI 接口鉴权失败（检查 API Key）'
+          : (response.status === 429) ? 'AI 接口被限流（请求过快或额度受限）'
+          : `AI 文案接口失败 HTTP ${response.status}`;
+        return { ok: false, error: 'ai_request_failed', message: `${hint}（HTTP ${response.status}）`, detail, model, httpStatus: response.status };
       }
       const data = JSON.parse(raw);
       const content = data.choices?.[0]?.message?.content || '';
@@ -4442,7 +4726,10 @@ async function generateSopRewriteDraft(payload = {}) {
           draft.xhsCopy = { ...(draft.xhsCopy || {}), title: asText(payload.selectedTitle) };
         }
         const bodyCheck = validateDraftBody(draft, requestUser);
-        if (!bodyCheck.ok) return { ...bodyCheck, detail: content.slice(0, 500), model };
+        if (!bodyCheck.ok) {
+          console.error(`[AI生成失败] type=${bodyCheck.error} model=${model} reason=内容质检未过 detail=${content.slice(0, 300)}`);
+          return { ...bodyCheck, detail: content.slice(0, 500), model };
+        }
         return { ok: true, draft, model };
       } catch (error) {
         const textDraft = normalizeDraftFromModelText(content, payload);
@@ -4452,15 +4739,21 @@ async function generateSopRewriteDraft(payload = {}) {
             textDraft.xhsCopy = { ...(textDraft.xhsCopy || {}), title: asText(payload.selectedTitle) };
           }
           const bodyCheck = validateDraftBody(textDraft, requestUser);
-          if (!bodyCheck.ok) return { ...bodyCheck, detail: content.slice(0, 500), model, parseError: error.message };
+          if (!bodyCheck.ok) {
+            console.error(`[AI生成失败] type=${bodyCheck.error} model=${model} reason=内容质检未过(文本恢复) detail=${content.slice(0, 300)}`);
+            return { ...bodyCheck, detail: content.slice(0, 500), model, parseError: error.message };
+          }
           return { ok: true, draft: textDraft, model, recoveredFromText: true, parseError: error.message };
         }
+        console.error(`[AI生成失败] type=ai_parse_or_request_failed model=${model} parseError=${error.message} detail=${content.slice(0, 300)}`);
         return { ok: false, error: 'ai_parse_or_request_failed', message: error.message, detail: content.slice(0, 500), model };
       }
     } catch (error) {
+      const errType = error.name === 'AbortError' ? 'ai_request_timeout' : 'ai_parse_or_request_failed';
+      console.error(`[AI生成失败] type=${errType} model=${model} base=${cfg.baseUrl} error=${error.message}`);
       return {
         ok: false,
-        error: error.name === 'AbortError' ? 'ai_request_timeout' : 'ai_parse_or_request_failed',
+        error: errType,
         message: error.name === 'AbortError' ? `AI 文案接口超过 ${timeoutMs / 1000} 秒未返回。` : error.message,
         model,
       };
@@ -4815,6 +5108,131 @@ function buildXiaomeiJobReadme(taskPackage) {
   ].join('\n');
 }
 
+function proxyTrendRadar(req, res, url) {
+  const upstreamPath = url.pathname.replace(/^\/trendradar\/?/, '/') || '/';
+  const target = `http://127.0.0.1:8390${upstreamPath === '/' ? '/index.html' : upstreamPath}${url.search || ''}`;
+  const upstream = httpGet(target, (proxied) => {
+    const headers = { ...proxied.headers };
+    delete headers['content-security-policy'];
+    res.writeHead(proxied.statusCode || 502, headers);
+    proxied.pipe(res);
+  });
+  upstream.on('error', (error) => {
+    sendJson(res, { ok: false, error: `TrendRadar 服务不可达：${error.message}` }, 502);
+  });
+  upstream.setTimeout(15000, () => {
+    upstream.destroy(new Error('上游响应超时'));
+  });
+}
+
+const signalCache = { ttl: 0, data: null };
+
+function handleTrendRadarHits(req, res) {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const keywords = url.searchParams.get('keywords') || '';
+  // 自定义关键词时跳过缓存
+  if (!keywords && Date.now() < signalCache.ttl) {
+    return sendJson(res, signalCache.data);
+  }
+  const hours = parseInt(url.searchParams.get('hours') || '24', 10);
+  const pyArgs = ['/home/ubuntu/longka-sync/read_tr_signals.py'];
+  if (keywords) {
+    // 将 keywords 转为 JSON 对象 {workspace: [kw1,kw2,...]}，暂存到默认 workspace
+    const kwList = keywords.split(',').map((k) => k.trim()).filter(Boolean);
+    const kwJson = JSON.stringify({ 自定义筛选: kwList });
+    pyArgs.push(kwJson);
+  }
+  execFile('python3', pyArgs, { timeout: 30000, env: { ...process.env } }, (err, stdout) => {
+    if (err) {
+      return sendJson(res, { ok: false, error: `信号读取失败：${err.message}`, hits: [] });
+    }
+    try {
+      const data = JSON.parse(stdout);
+      if (!keywords) {
+        signalCache.data = data;
+        signalCache.ttl = Date.now() + 300000; // 5 min cache
+      }
+      sendJson(res, data);
+    } catch (parseErr) {
+      sendJson(res, { ok: false, error: `信号解析失败：${parseErr.message}`, hits: [] });
+    }
+  });
+}
+
+const AIHOT_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+let aihotCache = { data: null, ttl: 0 };
+
+function handleAihotItems(req, res) {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const keywords = (url.searchParams.get('keywords') || '').trim();
+  // 无自定义关键词时用缓存（5 分钟）
+  if (!keywords && Date.now() < aihotCache.ttl) {
+    return sendJson(res, aihotCache.data);
+  }
+  const take = Math.min(100, Math.max(1, parseInt(url.searchParams.get('take') || '50', 10) || 50));
+  const mode = url.searchParams.get('mode') || 'selected';
+  const apiUrl = `https://aihot.virxact.com/api/public/items?mode=${encodeURIComponent(mode)}&take=${take}`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10000);
+  fetch(apiUrl, {
+    headers: { 'User-Agent': AIHOT_UA, 'Accept': 'application/json' },
+    signal: ctrl.signal,
+  }).then(async (resp) => {
+    clearTimeout(timer);
+    if (!resp.ok) return sendJson(res, { ok: false, error: `AI HOT HTTP ${resp.status}`, hits: [] });
+    const data = await resp.json();
+    const items = Array.isArray(data.items) ? data.items : [];
+    // 关键词过滤
+    let filtered = items;
+    if (keywords) {
+      const kwLower = keywords.toLowerCase();
+      const kwList = keywords.split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
+      filtered = items.filter(item => {
+        const text = `${item.title || ''} ${item.summary || ''} ${item.category || ''}`.toLowerCase();
+        return kwList.some(kw => text.includes(kw));
+      });
+    }
+    // 映射为信号卡片格式
+    const hits = filtered.map(item => ({
+      id: item.id,
+      title: item.title || '',
+      url: item.url || '',
+      platform: item.source || 'AI HOT',  // 兼容 signalCardHtml 的 hit.platform
+      source: item.source || 'AI HOT',
+      summary: item.summary || '',
+      category: item.category || '',
+      score: item.score ?? 0,
+      selected: !!item.selected,
+      publishedAt: item.publishedAt || '',
+    }));
+    const result = { ok: true, hits, total: hits.length };
+    if (!keywords) {
+      aihotCache.data = result;
+      aihotCache.ttl = Date.now() + 300000;
+    }
+    sendJson(res, result);
+  }).catch((err) => {
+    clearTimeout(timer);
+    sendJson(res, { ok: false, error: `AI HOT 请求失败：${err.message}`, hits: [] });
+  });
+}
+
+function handleTriggerCollection(req, res) {
+  let body = '';
+  req.on('data', (chunk) => body += chunk);
+  req.on('end', () => {
+    try {
+      const { keyword, workspace } = JSON.parse(body || '{}');
+      if (!keyword) return sendJson(res, { ok: false, error: '缺少 keyword' }, 400);
+      const ws = workspace || '';
+      // TODO: queue for actual collection trigger (Phase 2-2)
+      sendJson(res, { ok: true, keyword, workspace: ws, triggered: true, message: `关键词「${keyword}」已记录，采集触发器将在下一轮 TrendRadar 扫描后执行。` });
+    } catch (e) {
+      sendJson(res, { ok: false, error: e.message }, 400);
+    }
+  });
+}
+
 function sendJson(res, value, status = 200) {
   const body = JSON.stringify(value);
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'content-length': Buffer.byteLength(body), 'access-control-allow-origin': '*' });
@@ -4840,4 +5258,25 @@ function serveStatic(pathname, res) {
   }
   res.writeHead(200, { 'content-type': mimeTypes[extname(filePath)] || 'application/octet-stream' });
   createReadStream(filePath).pipe(res);
+}
+
+// HTML 正文提取：去标签、去脚本样式、整理纯文本
+function extractArticleText(html) {
+  if (!html) return '';
+  // 去掉 script / style / nav / header / footer / iframe / noscript
+  let text = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ');
+  text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ');
+  text = text.replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, ' ');
+  text = text.replace(/<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>/gi, ' ');
+  text = text.replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, ' ');
+  text = text.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, ' ');
+  text = text.replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, ' ');
+  // 去掉所有 HTML 标签
+  text = text.replace(/<[^>]*>/g, ' ');
+  // 解码 HTML 实体
+  text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(d));
+  // 归一化空白
+  text = text.replace(/\s+/g, ' ').replace(/\n\s*\n/g, '\n').trim();
+  // 截取前 5000 字符
+  return text.slice(0, 5000);
 }

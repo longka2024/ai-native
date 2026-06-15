@@ -189,6 +189,7 @@ function buildBatch(items = [], options = {}) {
     sourceType: 'jianghu_export',
     labelType: options.labelType || 'radar_seed',
     query,
+    workspace: options.workspace || '',
     samples: items.map((item) => jianghuItemToSample(item, { platform, query, labelType: options.labelType || 'radar_seed' })),
   };
 }
@@ -224,6 +225,7 @@ function previewBatch(batch) {
     platform: batch.platform,
     batchName: batch.batchName,
     query: batch.query,
+    workspace: batch.workspace,
     total: samples.length,
     qualityCounts,
     top,
@@ -252,7 +254,7 @@ async function uploadBatch(batch, base) {
 
 const file = argValue('--file');
 if (!file) {
-  console.error('Usage: node jianghu-importer.mjs --file jianghu.txt [--dry-run] [--upload] [--base http://122.51.218.154/ai-native-v2]');
+  console.error('Usage: node jianghu-importer.mjs --file jianghu.txt [--workspace 美容] [--platform xiaohongshu] [--dry-run] [--upload] [--base http://122.51.218.154/ai-native-v2]');
   process.exit(2);
 }
 
@@ -267,6 +269,7 @@ const batch = buildBatch(items, {
   deviceName: argValue('--device-name', ''),
   query: argValue('--query', ''),
   labelType: argValue('--label-type', 'radar_seed'),
+  workspace: argValue('--workspace', ''),
 });
 
 if (output) {

@@ -75,6 +75,72 @@ export async function loadRecentContentAssets(input = {}) {
   };
 }
 
+// hot30：近 30 天样本按互动热度评分排序，供 topic-engine "30天热点"选题信号消费。
+// 依据 spec: docs/specs/2026-06-12-collection-pipeline-rebuild-spec.md §7
+// score = (likes×1.0 + comments×2.5 + collects×1.5 + shares×2.0) × 时效衰减（半衰期 10 天）
+export async function loadHot30Samples(input = {}) {
+  await requireCollectorDb();
+  const limit = clampNumber(input.limit || 30, 1, 100);
+  const workspace = normalizeText(input.workspace || '');
+  const platform = normalizeText(input.platform || '');
+  const keywords = normalizeText(input.keywords || '');
+  const kwList = keywords ? keywords.split(',').map((k) => k.trim()).filter(Boolean) : [];
+  // 构建关键词 ILIKE 条件
+  let kwWhere = '';
+  const params = [workspace, platform];
+  if (kwList.length > 0) {
+    const likes = kwList.map((_, i) => `(title ILIKE $${i + 3} OR body ILIKE $${i + 3} OR keyword ILIKE $${i + 3})`).join(' OR ');
+    kwWhere = ` AND (${likes})`;
+    params.push(...kwList.map((k) => `%${k}%`));
+  }
+  const result = await pgPool.query(`
+    select id, platform, source_id, source_url, title, body, keyword, label_type,
+           metrics, published_at, collected_at,
+           coalesce(workspace, '') as workspace
+    from longka_content_samples
+    where published_at >= now() - interval '30 days'
+      and ($1 = '' or coalesce(workspace, '') = $1)
+      and ($2 = '' or platform = $2)
+      ${kwWhere}
+  `, params);
+  const now = Date.now();
+  const scored = result.rows.map((row) => {
+    const metrics = row.metrics || {};
+    const likes = Number(metrics.likes) || 0;
+    const comments = Number(metrics.comments) || Number(metrics.replies) || 0;
+    const collects = Number(metrics.collects) || Number(metrics.bookmarks) || 0;
+    const shares = Number(metrics.shares) || Number(metrics.retweets) || 0;
+    const engagement = likes * 1.0 + comments * 2.5 + collects * 1.5 + shares * 2.0;
+    const ageDays = Math.max(0, (now - new Date(row.published_at).getTime()) / 86400000);
+    const recency = Math.pow(0.5, ageDays / 10);
+    const score = Math.round(engagement * (0.3 + 0.7 * recency) * 100) / 100;
+    return {
+      id: row.id,
+      platform: row.platform,
+      sourceId: row.source_id,
+      url: row.source_url,
+      title: normalizeText(row.title || '') || normalizeText(row.body || '').slice(0, 60),
+      body: normalizeText(row.body || '').slice(0, 2000),
+      keyword: row.keyword,
+      workspace: row.workspace,
+      labelType: row.label_type,
+      metrics: { likes, comments, collects, shares },
+      publishedAt: row.published_at,
+      ageDays: Math.round(ageDays * 10) / 10,
+      score,
+    };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  return {
+    ok: true,
+    workspace: workspace || 'all',
+    platform: platform || 'all',
+    windowDays: 30,
+    totalInWindow: scored.length,
+    items: scored.slice(0, limit),
+  };
+}
+
 export async function loadUnifiedContentAssets(input = {}) {
   await requireCollectorDb();
   const limit = clampNumber(input.limit || 200, 1, 500);
@@ -452,6 +518,7 @@ export async function importLocalPlatformBatch(input = {}) {
   }
   const normalizedPlatform = platform === 'xhs' ? 'xiaohongshu' : platform;
   const query = normalizeText(input.query || input.keyword || input.account || input.batchName || '');
+  const workspace = normalizeText(input.workspace || '');
   const run = await createCollectionRun({
     id: normalizeText(input.runId || input.run_id || ''),
     collectorType: normalizeText(input.collectorType || 'local_platform_helper'),
@@ -477,6 +544,7 @@ export async function importLocalPlatformBatch(input = {}) {
     platform: normalizedPlatform,
     sourceType: run.sourceType,
     keyword: query,
+    workspace,
     labelType: run.labelType,
     language: input.language || 'zh',
   });
@@ -499,11 +567,11 @@ export async function ingestContentSamples(samples = [], context = {}) {
       insert into longka_content_samples (
         id, run_id, collector_type, platform, source_type, source_url, source_id,
         author_name, author_id, title, body, markdown, language, keyword, label_type,
-        metrics, comments, raw_json, published_at, collected_at, created_at
+        metrics, comments, raw_json, published_at, collected_at, created_at, workspace
       )
       values (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-        $16::jsonb,$17::jsonb,$18::jsonb,$19,$20,$21
+        $16::jsonb,$17::jsonb,$18::jsonb,$19,$20,$21,$22
       )
       on conflict (platform, source_id) do update set
         run_id = excluded.run_id,
@@ -521,7 +589,8 @@ export async function ingestContentSamples(samples = [], context = {}) {
         comments = excluded.comments,
         raw_json = excluded.raw_json,
         published_at = excluded.published_at,
-        collected_at = excluded.collected_at
+        collected_at = excluded.collected_at,
+        workspace = excluded.workspace
     `, [
       sample.id,
       sample.runId,
@@ -544,6 +613,7 @@ export async function ingestContentSamples(samples = [], context = {}) {
       sample.publishedAt,
       sample.collectedAt,
       sample.createdAt,
+      sample.workspace,
     ]);
   }
   return normalized;
@@ -772,6 +842,8 @@ async function ensureCollectorSchema() {
       unique(platform, source_id)
     )
   `);
+  await pgPool.query('alter table longka_content_samples add column if not exists workspace text');
+  await pgPool.query('create index if not exists idx_longka_content_samples_workspace on longka_content_samples(workspace, published_at desc)');
   await pgPool.query('create index if not exists idx_longka_content_samples_platform on longka_content_samples(platform)');
   await pgPool.query('create index if not exists idx_longka_content_samples_collector on longka_content_samples(collector_type)');
   await pgPool.query('create index if not exists idx_longka_content_samples_label on longka_content_samples(label_type)');
@@ -823,6 +895,7 @@ function normalizeContentSample(sample = {}, context = {}) {
     markdown: normalizeText(sample.markdown || ''),
     language: normalizeText(sample.language || context.language || 'unknown'),
     keyword: normalizeText(sample.keyword || context.keyword || ''),
+    workspace: normalizeText(sample.workspace || context.workspace || ''),
     labelType: normalizeText(sample.labelType || sample.label_type || context.labelType || 'unknown'),
     metrics: sample.metrics && typeof sample.metrics === 'object' ? sample.metrics : {},
     comments: Array.isArray(sample.comments) ? sample.comments : [],
@@ -849,6 +922,7 @@ function dbRowToContentSample(row = {}) {
     markdown: row.markdown,
     language: row.language,
     keyword: row.keyword,
+    workspace: row.workspace,
     labelType: row.label_type,
     metrics: row.metrics || {},
     comments: row.comments || [],
