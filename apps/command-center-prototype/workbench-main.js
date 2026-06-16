@@ -82,6 +82,9 @@ function clearProductionState() {
 
 function changeVisualStyle(styleId) {
   if (!visualStyles.some((item) => item.id === styleId)) return;
+  // 记住这个账号(业务线)手动选的风格，作为以后默认，保持品牌一致。
+  const lineKey = state.businessLine || state.workspace || "";
+  if (lineKey) state.visualStyleByLine = { ...(state.visualStyleByLine || {}), [lineKey]: styleId };
   if (state.visualStyle === styleId) return;
   state.visualStyleTouched = true;
   state.visualStyle = styleId;
@@ -1312,8 +1315,12 @@ function renderProductionStep() {
 
 function autoApplyRecommendedVisualStyle() {
   const rec = recommendVisualRouteClean();
-  if (!state.visualStyleTouched && rec.id && rec.id !== state.visualStyle && state.xhsCardExportStatus !== "loading") {
-    state.visualStyle = rec.id;
+  // 每账号(业务线)默认风格优先：账号锁了风格就用它，保持品牌一致，不被单篇内容推荐切走。
+  const lineKey = state.businessLine || state.workspace || "";
+  const lineStyle = (state.visualStyleByLine || {})[lineKey];
+  const pick = (lineStyle && visualStyles.some((s) => s.id === lineStyle)) ? lineStyle : rec.id;
+  if (!state.visualStyleTouched && pick && pick !== state.visualStyle && state.xhsCardExportStatus !== "loading") {
+    state.visualStyle = pick;
     state.xhsCardPlan = [];
     state.xhsCardExportStatus = "idle";
     state.xhsCardExportMessage = zh("&#24050;&#25353;&#24403;&#21069;&#20869;&#23481;&#33258;&#21160;&#20999;&#21040;&#25512;&#33616;&#37197;&#22270;&#36335;&#32447;&#12290;");

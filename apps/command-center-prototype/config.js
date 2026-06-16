@@ -102,7 +102,7 @@ const VISUAL_STYLE_REGISTRY = {
   "guizang-editorial": {
     route: "guizang-social-card-skill / open-design",
     character: "No cartoon mascot. Use editorial layout, evidence blocks, screenshots, titles, pull quotes, marginal notes, data rows, or grids.",
-    styleBrief: "Guizang social card: Editorial Magazine or Swiss International. Refined typography feeling, strict grid, strong hierarchy, paper/ink atmosphere, one sharp visual argument.",
+    styleBrief: "Guizang premium editorial social card with a warm ivory/beige paper background and elegant gold + soft olive accents, refined serif Chinese headlines, thin gold line icons, strict grid, strong hierarchy, one sharp visual argument — a high-end magazine / premium-consulting look that stays consistent across a brand account's posts.",
     styleLock: "Expression comes first. Content shape decides layout. Every page needs a clear focal point and visual relation to the selected topic. Do not mix Editorial and Swiss in one set.",
     negativePrompt: "No Xiaohei, no Juju dog, no Baoyu hand-drawn info card, no children's cartoon, no ordinary big-character poster, no random blobs/stickers, no nested cards, no text overflow.",
     qa: ["clear editorial focal point", "premium grid", "no cartoon mascot", "text does not overflow"],

@@ -125,6 +125,7 @@ function compactSnapshot() {
     currentCopyVersionId: state.currentCopyVersionId,
     confirmedCopyVersionId: state.confirmedCopyVersionId,
     visualStyle: state.visualStyle,
+    visualStyleByLine: state.visualStyleByLine || {},
     xhsCardPlan: capList(state.xhsCardPlan, 8),
     xhsCardExportStatus: state.xhsCardExportStatus === "loading" ? "idle" : state.xhsCardExportStatus,
     xhsCardExportMessage: state.xhsCardExportStatus === "loading" ? "Previous image task restored. Continue or check results." : state.xhsCardExportMessage,
