@@ -57,8 +57,8 @@ const VISUAL_STYLE_REGISTRY = {
   "xiaohei-metaphor": {
     route: "ian-xiaohei-illustrations",
     character: "Xiaohei: a small black round stick-figure character with tiny white eyes. Xiaohei must be the main actor and must perform one concrete strange-but-clear metaphor action.",
-    styleBrief: "Ian Xiaohei article illustration: pure white background, minimal black ink linework, lots of whitespace, light red/orange/blue handwritten annotations, witty metaphor, not a poster.",
-    styleLock: "3:4 social image. One image explains one core metaphor/action. Main subject occupies 40%-60% of the canvas. At least 35% blank white space. Use at most 5-8 short handwritten Chinese labels.",
+    styleBrief: "Ian Xiaohei article illustration: clean white background, black ink linework with tasteful light red/orange/blue color accents, ONE clear witty metaphor scene with only a few supporting details that reinforce it, simple and elegant, clear at a glance, not a poster, not a busy collage.",
+    styleLock: "3:4 social image. One single clear core metaphor/action; a single Xiaohei is the one clear focal point — do NOT scatter multiple Xiaohei or several mini-scenes. Generous breathing room. About 4-6 short handwritten Chinese labels and only a few supporting props; clean, on-theme, readable at a glance, never cluttered.",
     negativePrompt: "No Juju dog, no human protagonist, no PPT, no dashboard, no formal flowchart, no cute children's illustration, no commercial stock illustration, no dense text, no gradient decoration.",
     qa: ["Xiaohei is visible", "one concrete metaphor action", "white background", "no poster/dashboard/PPT"],
     actions: {

@@ -183,7 +183,7 @@ function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVis
     `Style brief: ${contract.styleBrief}.`,
     `Negative prompt: ${contract.negativePrompt}.`,
     "Do not reuse unrelated content asset library, title formula library, user question library, or structure library visuals unless this selected topic is explicitly about those libraries.",
-    "Aesthetic quality: refined and comfortable to look at — one consistent restrained palette across the set, clear visual hierarchy, generous whitespace, one focal point per page, mobile-legible. Vary the layout from page to page so the set does not look monotonous."
+    "Aesthetic quality: clean, elegant, and clear at a glance (简洁大方、一目了然). ONE clear focal point / single scene that nails this page's theme, supported by only a few (about 3-5) meaningful details that reinforce that one point. Generous breathing room, strong visual hierarchy, mobile-legible. Do NOT crowd the canvas with many scattered objects, multiple protagonists, or several mini-scenes — clutter that splits the focus is worse than too little. Use tasteful light color accents (warm red/orange or soft blue) on a clean base, not flat black-and-white. Vary the layout from page to page so the set does not look monotonous."
   ].join(" ");
   const cardSpecs = {
     cover: { title: title || signal.coverText, text: signal.coverText, extra: `Only express ${signal.subject} and ${signal.result}.`, layout: "Cover layout: one bold headline, one strong hero focal element, lots of whitespace, magazine-cover feel.", prompt: `Cover page. Strong focal point: ${signal.subject} + ${signal.result}.` },
