@@ -1269,6 +1269,28 @@ function applyRemoteVisualManifest(manifest) {
   return true;
 }
 
+function renderPrecheckPanel() {
+  const locked = !state.copyConfirmed;
+  const loading = state.precheckStatus === "loading";
+  const r = state.precheckResult || null;
+  const labelMap = { HP: "钩子", ER: "痛点共鸣", SV: "收藏价值", IV: "增量价值/存在感", SP: "具体可信", HT: "人味", CV: "转化" };
+  const weakest = Array.isArray(r?.weakest) ? r.weakest.map((c) => labelMap[c] || c) : [];
+  const fixes = Array.isArray(r?.fixes) ? r.fixes : [];
+  const flags = Array.isArray(r?.honest_flags) ? r.honest_flags : [];
+  return `<div class="precheck-panel" style="border:1px solid #d8d8ea;border-radius:10px;padding:14px;margin:12px 0;background:#fbfbff;">
+    <b>发布前判断（这篇发出去行不行）</b>
+    <div style="color:#6a6a85;font-size:13px;margin:4px 0 8px;">发之前先让系统按这个账号的标准盲判一遍：哪里强、哪里弱、该改哪几句。</div>
+    <button class="primary" ${locked || loading ? "disabled" : ""} data-run-precheck>${loading ? "判断中…" : "做发布前判断"}</button>
+    ${state.precheckMessage ? `<div class="status-strip ${state.precheckStatus === "error" ? "" : "success"}" style="margin-top:8px;">${escapeHtml(state.precheckMessage)}</div>` : ""}
+    ${r ? `
+      <div style="margin-top:10px;font-size:14px;line-height:1.5;"><b>总评：</b>${escapeHtml(r.verdict || "")}</div>
+      ${weakest.length ? `<div style="margin-top:6px;font-size:13px;"><b>最该补：</b>${weakest.map((w) => `<span style="display:inline-block;background:#ececf6;border-radius:6px;padding:2px 8px;margin:2px;">${escapeHtml(w)}</span>`).join("")}</div>` : ""}
+      ${fixes.length ? `<div style="margin-top:6px;font-size:13px;"><b>具体改哪几句：</b><ol style="margin:4px 0 0 18px;padding:0;">${fixes.map((f) => `<li style="margin:2px 0;">${escapeHtml(f)}</li>`).join("")}</ol></div>` : ""}
+      ${flags.length ? `<div style="margin-top:6px;font-size:13px;color:#b4231f;"><b>⚠️ 发之前先改掉：</b>${flags.map((f) => escapeHtml(f)).join("；")}</div>` : ""}
+    ` : ""}
+  </div>`;
+}
+
 function renderCoverPanel() {
   const locked = !state.copyConfirmed;
   const loading = state.coverStatus === "loading";
@@ -1309,6 +1331,7 @@ function renderProductionStep() {
       <article class="production-card ${locked ? "locked" : ""}"><b>${zh("&#20316;&#22270;&#20013;&#24515;")}</b><span>${zh("&#36825;&#37324;&#26159;&#23567;&#40657;&#12289;Juju&#12289;&#24402;&#34255;&#12289;&#23453;&#29577;&#30340;&#20837;&#21475;&#12290;&#28857;&#29983;&#25104;&#21518;&#65292;43 &#20250;&#25353;&#24403;&#21069;&#24179;&#21488;&#21644;&#24403;&#21069;&#25991;&#26696;&#30495;&#20986;&#22270;&#12290;")}</span></article>
     </div>
     <div class="visual-recommendation"><b>${zh("&#24314;&#35758;&#37197;&#22270;&#36335;&#32447;")}: ${escapeHtml(visualRouteNameClean(rec.id))}</b><span>${escapeHtml(rec.reason)}</span>${rec.id !== state.visualStyle ? `<button type="button" class="secondary" data-visual-style="${escapeHtml(rec.id)}">${zh("&#20999;&#25442;&#21040;&#25512;&#33616;&#36335;&#32447;")}</button>` : `<em>${zh("&#24050;&#20351;&#29992;&#25512;&#33616;&#36335;&#32447;")}</em>`}</div>
+    ${renderPrecheckPanel()}
     ${renderVisualRoutePickerClean(locked, rec.id)}
     ${(!isWechat && !isVideo && !isMoments) ? renderCoverPanel() : ""}
     ${renderCleanXhsCardPreview()}
@@ -1385,6 +1408,7 @@ function bindWorkAreaActions() {
   });
   byId("workArea")?.querySelector("[data-collect-x]")?.addEventListener("click", () => collectXAccounts());
   byId("workArea")?.querySelector("[data-generate-cover]")?.addEventListener("click", () => generateCoverFromContent());
+  byId("workArea")?.querySelector("[data-run-precheck]")?.addEventListener("click", () => generateContentPrecheck());
   byId("workArea")?.querySelector("[data-read-materials]")?.addEventListener("click", () => readMaterials());
   byId("workArea")?.querySelectorAll("[data-material-scope]").forEach((button) => {
     button.addEventListener("click", () => {

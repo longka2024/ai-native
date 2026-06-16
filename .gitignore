@@ -70,3 +70,4 @@ __pycache__/
 # Temp screenshots and scratch files
 apps/command-center-prototype/temp_screenshot*.png
 tieba_sync2.txt
+.codex-import/

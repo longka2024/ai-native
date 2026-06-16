@@ -1,6 +1,40 @@
 // rewrite-engine.js — 文案生成、评分、优化 + 三层编辑审查循环
 // 依赖: state-manager.js, config.js, utils.js, copy-manager.js
 
+// 发布前判断（precheck-xhs 盲评分内化）：确认文案后，按账号 rubric 盲判这篇行不行
+async function generateContentPrecheck() {
+  const title = state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "";
+  const body = confirmedCopyText() || state.draft || "";
+  if (!title || body.replace(/\s+/g, "").length < 20) {
+    state.precheckStatus = "error";
+    state.precheckMessage = "请先生成并确认正文——发布前判断要看已写好的标题+正文。";
+    renderToday();
+    return;
+  }
+  state.precheckStatus = "loading";
+  state.precheckResult = null;
+  state.precheckMessage = "正在做发布前判断…";
+  renderToday();
+  try {
+    const res = await fetch(apiPath("/api/skills/run"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ skill: "precheck-xhs", content: `标题：${title}\n\n正文：${body}` }),
+    });
+    const j = await res.json().catch(() => ({}));
+    const r = j?.result || {};
+    if (!j.ok || !r.verdict) throw new Error(j.message || j.error || "判断失败");
+    state.precheckResult = r;
+    state.precheckStatus = "done";
+    state.precheckMessage = "";
+    renderToday();
+  } catch (error) {
+    state.precheckStatus = "error";
+    state.precheckMessage = `发布前判断失败：${error.message}`;
+    renderToday();
+  }
+}
+
 async function generateSopDraft() {
   if (!state.selectedTitle || !selectedTopic()) return;
   if (state.draftStatus === "loading") return;

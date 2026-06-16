@@ -138,6 +138,26 @@ const SKILL_OUTPUT_SPECS = {
       }
     },
   },
+
+  'precheck-xhs': {
+    model: 'main',          // 盲评分要稳要准，用强模型
+    maxTokens: 2000,
+    temperature: 0.3,       // 低温，打分尽量稳定可复盘
+    outputInstruction: `
+## 本次任务
+
+对上面的「标题 + 正文草稿」做发布前判断：按 SKILL 里的小红书 7 维 rubric 各打 0-5 分（只看草稿本身，忽略任何实绩/历史数字），给综合分、最弱 2-3 维、和「具体改哪几句」的建议。
+
+**输出格式要求：JSON，不要 Markdown 代码块**（schema 见 SKILL.md Phase 输出段）`,
+    parseResponse: (text) => {
+      try {
+        const clean = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
+        return JSON.parse(clean);
+      } catch {
+        return { dimensions: {}, composite: 0, verdict: text.slice(0, 200), weakest: [], fixes: [], honest_flags: [] };
+      }
+    },
+  },
 };
 
 // ─── 读取 SKILL.md，剥离 YAML 前置元数据 ────────────────────────────────

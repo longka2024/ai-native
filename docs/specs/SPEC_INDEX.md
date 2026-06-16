@@ -136,6 +136,20 @@
   - 本期新增：cover-replicator 人像对标封面接 UI（个人形象/IP 号路径，可上传人像+对标图）。
   - 不做图片持久化存储（留单独 spec，blocked OSS key）；不改 43 色彩小程序出图（仅兜底）；不换 gpt-image-2 模型；内容号封面零上传、不抄对标帖。
 
+### 发布前判断（2026-06-17，cheat 闭环融合第 1 刀）
+
+- 文件：`docs/specs/2026-06-17-precheck-blind-score-spec.md`
+- 触发说法：
+  - "发布前判断" / "这篇发出去行不行"
+  - "盲评分" / "教练点评"
+  - "越改越好第一刀"
+- 开发边界：
+  - 内化 cheat-score channel-B 盲评分：只看 草稿+该账号 rubric，出各维 0-5 + 综合 + 弱项 + 改句建议。
+  - 小红书 7 维种子 rubric（含北极星「增量价值」）；每账号一份、存 PG；冷启动等权。
+  - 工作台「发布前判断」面板，全大白话、不露 rubric/盲评分/cheat 黑话。
+  - 本刀不做 retro/bump/跨模型审计（留后续刀）；判断落库不可变（持久化与 retro 同期补）。
+- 配套：`docs/strategy/cheat-on-content-productization-digest.md`（引擎消化）、`docs/strategy/codex-techbase-reconciliation.md`（技术基座总账）。
+
 ## 使用规则
 
 1. 开发前先读 spec。
