@@ -4563,6 +4563,7 @@ async function generateSopRewriteDraft(payload = {}) {
   const commentDrivenStrategy = buildCommentDrivenCopyStrategy(payload);
   const sourceRawText = asText(payload.topic?.content || payload.sourcePost?.content || payload.sourceTopic?.content);
   const verbatimAnchors = extractVerbatimAnchors(sourceRawText);
+  const sourceLight = sourceRawText.replace(/\s+/g, '').length < 60;
   const system = [
     '你是 Longka AI Native 内容生产系统的资深小红书/短视频内容策划。',
     '你必须严格按”爆款采集分析 SOP：从爬虫样本到自己的内容框架”工作。',
@@ -4576,6 +4577,9 @@ async function generateSopRewriteDraft(payload = {}) {
     '硬约束：xhsCopy.title 必须逐字使用 payload.selectedTitle，禁止模型自拟新标题。',
     '硬约束：正文必须围绕 payload.topic/sourcePost 的 title、content、pain、comments 写，不得跳到无关案例、无关行业或无关主题。',
     '硬约束：除非源头素材明确提供真实经历，不得虚构”我上周帮客户””我见过一个客户””医生说”等第一人称或权威案例。',
+    sourceLight
+      ? '注意：本次源头素材很薄（基本只有标题，没有真实正文、案例或数据）。请写“通用但可执行”的第二人称建议——用普适方法、步骤清单、常见误区、注意事项来支撑正文，把读者当“你”来讲。绝对不要编造第一人称客户案例、具体客户、虚构数字、权威背书或个人战绩；宁可写得朴实通用，也不要编。'
+      : '',
     '硬约束：小红书正文要像真实运营者写给读者的口语内容，少用”首先/其次/最后/其实根源就一个/正确的废话”等 AI 腔连接。',
     verbatimAnchors.length >= 2
       ? `硬约束【降低AI检测】：必须从 sourceEvidence.verbatimAnchors 中选取至少 2 个短语，原文一字不改地嵌入正文段落中（可用破折号引出或自然融入叙述，不要加引号）。不可跳过此规则。`
@@ -4673,19 +4677,18 @@ async function generateSopRewriteDraft(payload = {}) {
       payload.sourceTopic?.content,
       ...(collectPayloadComments(payload) || []),
     ].map(asText).join(' ');
+    // 只拦"真正的编造"：具体第一人称客户案例 / 假指标 / 权威背书。
+    // 不再拦"姐妹/宝妈/上周/前几天/瞬间/亲测有效/立刻提升/我试了"等小红书常用词（会误杀正常文案）。
     const fictionalPhrases = [
-      '我有个朋友', '我有一个朋友', '我有个客户', '我有一个客户', '我收到私信', '我见过客户',
-      '我让她改', '我让他改', '我帮客户', '我一开始', '姐妹', '评论区有姐妹',
-      '我见过太多人', '我自己的账号', '我自己的内容', '我自己的经验',
-      '医生说', '专家说', '宝妈', '上周', '前几天',
+      '我有个朋友', '我有一个朋友', '我有个客户', '我有一个客户', '我收到私信',
+      '我让她改', '我让他改', '我帮客户', '我帮一个', '我帮了一',
+      '我自己的账号', '我自己的内容', '我自己的经验',
+      '医生说', '专家说',
     ];
     const fictionalRegexes = [/我爬了\s*\d+/, /我发布了?\s*\d+/, /我.{0,8}从\s*0\s*做到/, /我.{0,8}做到\s*\d+/, /涨到\s*\d+/, /曝光\s*\d+/];
-    const unsupportedExperiencePhrases = ['我试了', '我总结出', '亲测有效', '立刻提升', '瞬间', '效果立竿见影'];
     const hasFictionalClaim = fictionalPhrases.some((phrase) => body.includes(phrase))
-      || unsupportedExperiencePhrases.some((phrase) => body.includes(phrase))
       || fictionalRegexes.some((pattern) => pattern.test(body));
     const sourceHasFictionalClaim = fictionalPhrases.some((phrase) => sourceText.includes(phrase))
-      || unsupportedExperiencePhrases.some((phrase) => sourceText.includes(phrase))
       || fictionalRegexes.some((pattern) => pattern.test(sourceText));
     if (hasFictionalClaim && !sourceHasFictionalClaim) {
       return {
