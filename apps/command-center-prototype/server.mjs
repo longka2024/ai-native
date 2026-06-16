@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { collectorHealth, confirmContentAsset, deleteCollectionRun, importLocalPlatformBatch, initCollectorHub, loadHot30Samples, loadLatestXBatch, loadRecentCollectionBatches, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch } from './collector-hub.mjs';
 import { runSkill, listSkills } from './skills-runner.mjs';
+import { kieEnabled, kieStartXiaoheiJob, kieXiaoheiJobStatus } from './kie-image.mjs';
 
 // 自动加载同目录下的 .env 文件（不依赖 dotenv 包）
 try {
@@ -1197,6 +1198,28 @@ createServer(async (req, res) => {
       const payload = await readJson(req);
       const cards = Array.isArray(payload.cards) ? payload.cards.slice(0, 5) : [];
       if (!cards.length) return sendJson(res, { ok: false, error: 'missing_cards', message: '没有可生成的 5 张配图 brief。' }, 400);
+      if (kieEnabled()) {
+        try {
+          const job = await kieStartXiaoheiJob(payload);
+          const files = job.cards.filter((c) => c.url).map((c) => ({ page: c.page, url: c.url, publicPath: c.url, style: job.style }));
+          return sendJson(res, {
+            ok: true,
+            jobId: job.jobId,
+            status: job.status,
+            manifest: {
+              renderer: `kie-gpt-image-2-${job.style}`,
+              jobId: job.jobId,
+              count: files.length,
+              files,
+              publicFiles: files.map((f) => f.url),
+              style: job.style,
+              platform: job.platform,
+            },
+          }, 202);
+        } catch (error) {
+          return sendJson(res, { ok: false, error: 'kie_start_failed', message: String(error.message || error) }, 502);
+        }
+      }
       const endpoint = process.env.LONGKA_43_XIAOHEI_START_ENDPOINT || 'http://43.135.149.55:3050/api/longka/xhs-xiaohei-cards/start';
       const publicBase = (process.env.LONGKA_43_PUBLIC_BASE || 'http://43.135.149.55:3050').replace(/\/$/, '');
       const upstream = await fetch(endpoint, {
@@ -1251,6 +1274,26 @@ createServer(async (req, res) => {
       const jobId = url.searchParams.get('jobId') || '';
       const total = url.searchParams.get('total') || '5';
       if (!jobId) return sendJson(res, { ok: false, error: 'missing_job_id', message: '缺少 jobId。' }, 400);
+      if (kieEnabled()) {
+        const job = await kieXiaoheiJobStatus(jobId);
+        const files = job ? job.cards.filter((c) => c.url).map((c) => ({ page: c.page, url: c.url, publicPath: c.url, style: job.style })) : [];
+        return sendJson(res, {
+          ok: true,
+          jobId: job ? job.jobId : jobId,
+          status: job ? job.status : 'idle',
+          total: job ? job.total : Number(total),
+          failed: job ? job.cards.filter((c) => c.state === 'fail').map((c) => ({ page: c.page, message: c.error })) : [],
+          manifest: {
+            renderer: `kie-gpt-image-2-${job ? job.style : ''}`,
+            jobId: job ? job.jobId : jobId,
+            count: files.length,
+            files,
+            publicFiles: files.map((f) => f.url),
+            style: job ? job.style : '',
+            platform: job ? job.platform : '',
+          },
+        });
+      }
       const endpoint = process.env.LONGKA_43_XIAOHEI_STATUS_ENDPOINT || 'http://43.135.149.55:3050/api/longka/xhs-xiaohei-cards/status';
       const publicBase = (process.env.LONGKA_43_PUBLIC_BASE || 'http://43.135.149.55:3050').replace(/\/$/, '');
       const upstream = await fetch(`${endpoint}?jobId=${encodeURIComponent(jobId)}&total=${encodeURIComponent(total)}`);

@@ -1235,8 +1235,7 @@ function manifestMatchesCurrentVisual(manifest = state.xhsCardManifest) {
   if (style && style !== state.visualStyle) return false;
   const files = Array.isArray(manifest.files) ? manifest.files : [];
   if (files.some((file) => String(file.style || "") && String(file.style) !== state.visualStyle)) return false;
-  const publicFiles = Array.isArray(manifest.publicFiles) ? manifest.publicFiles : [];
-  if (publicFiles.some((url) => !String(url).includes(state.visualStyle))) return false;
+  // 注：不再要求图片 URL 里包含风格名——Kie 出图的 URL 不含风格名，靠 manifest.style / file.style 判断即可。
   return true;
 }
 
