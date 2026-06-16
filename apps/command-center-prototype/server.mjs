@@ -1276,23 +1276,56 @@ createServer(async (req, res) => {
       if (!jobId) return sendJson(res, { ok: false, error: 'missing_job_id', message: '缺少 jobId。' }, 400);
       if (kieEnabled()) {
         const job = await kieXiaoheiJobStatus(jobId);
-        const files = job ? job.cards.filter((c) => c.url).map((c) => ({ page: c.page, url: c.url, publicPath: c.url, style: job.style })) : [];
-        return sendJson(res, {
-          ok: true,
-          jobId: job ? job.jobId : jobId,
-          status: job ? job.status : 'idle',
-          total: job ? job.total : Number(total),
-          failed: job ? job.cards.filter((c) => c.state === 'fail').map((c) => ({ page: c.page, message: c.error })) : [],
-          manifest: {
-            renderer: `kie-gpt-image-2-${job ? job.style : ''}`,
-            jobId: job ? job.jobId : jobId,
-            count: files.length,
-            files,
-            publicFiles: files.map((f) => f.url),
-            style: job ? job.style : '',
-            platform: job ? job.platform : '',
-          },
-        });
+        if (job) {
+          const kieFiles = job.cards.filter((c) => c.url).map((c) => ({ page: c.page, url: c.url, publicPath: c.url, style: job.style }));
+          const slowMs = Number(process.env.KIE_FALLBACK_MS || 100000);
+          const fb43Base = (process.env.LONGKA_43_PUBLIC_BASE || 'http://43.135.149.55:3050').replace(/\/$/, '');
+          // Kie 慢（>90s 未出图）→ 自动用同样的卡起一个 43 任务兜底（cover 卡含 imagePrompt → 43 passthrough 出同款封面）
+          if (!kieFiles.length && job.status === 'running' && job.payload && !job.fb43JobId && (Date.now() - job.startedAt) > slowMs) {
+            try {
+              const startEp = process.env.LONGKA_43_XIAOHEI_START_ENDPOINT || 'http://43.135.149.55:3050/api/longka/xhs-xiaohei-cards/start';
+              const p = job.payload;
+              const up = await fetch(startEp, {
+                method: 'POST', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({
+                  title: p.title || '', body: p.body || '', jobId: `${jobId}-fb43`,
+                  style: p.style || p.visualStyle || '', visualStyle: p.visualStyle || p.style || '',
+                  visualStyleTitle: p.visualStyleTitle || '', visualRoute: p.visualRoute || p.route || '', route: p.visualRoute || p.route || '',
+                  visualCharacter: p.visualCharacter || '', styleBrief: p.styleBrief || '', styleLock: p.styleLock || '', negativePrompt: p.negativePrompt || '',
+                  platform: p.platform || p.targetPlatform || '', targetPlatform: p.targetPlatform || p.platform || '',
+                  cards: Array.isArray(p.cards) ? p.cards.slice(0, 5) : [],
+                }),
+              });
+              const r = await up.json().catch(() => ({}));
+              if (up.ok && r.ok && r.jobId) job.fb43JobId = r.jobId;
+            } catch { /* 43 起任务失败，下轮再试 */ }
+          }
+          // 已起 43 兜底 → 优先看 43 是否出图（43 通常更快）
+          if (job.fb43JobId) {
+            try {
+              const statusEp = process.env.LONGKA_43_XIAOHEI_STATUS_ENDPOINT || 'http://43.135.149.55:3050/api/longka/xhs-xiaohei-cards/status';
+              const up = await fetch(`${statusEp}?jobId=${encodeURIComponent(job.fb43JobId)}&total=${encodeURIComponent(job.total)}`);
+              const r = await up.json().catch(() => ({}));
+              const f43 = normalizeRemoteImageFiles(r.files || [], fb43Base);
+              if (f43.length) {
+                return sendJson(res, {
+                  ok: true, jobId, status: 'done', total: job.total, failed: [],
+                  manifest: { renderer: `43-fallback-${job.style}`, jobId, count: f43.length, files: f43, publicFiles: f43.map((f) => f.url), style: job.style, platform: job.platform },
+                });
+              }
+            } catch { /* 43 查询失败，回落 Kie 状态 */ }
+          }
+          return sendJson(res, {
+            ok: true, jobId: job.jobId, status: job.status, total: job.total,
+            failed: job.cards.filter((c) => c.state === 'fail').map((c) => ({ page: c.page, message: c.error })),
+            manifest: {
+              renderer: `kie-gpt-image-2-${job.style}`, jobId: job.jobId, count: kieFiles.length,
+              files: kieFiles, publicFiles: kieFiles.map((f) => f.url), style: job.style, platform: job.platform,
+              fb43: job.fb43JobId ? 'pending' : undefined,
+            },
+          });
+        }
+        // jobId 不在 Kie 任务表 → 可能是直接的 43 任务，落到下面 43 代理处理
       }
       const endpoint = process.env.LONGKA_43_XIAOHEI_STATUS_ENDPOINT || 'http://43.135.149.55:3050/api/longka/xhs-xiaohei-cards/status';
       const publicBase = (process.env.LONGKA_43_PUBLIC_BASE || 'http://43.135.149.55:3050').replace(/\/$/, '');
@@ -4580,7 +4613,8 @@ async function generateSopRewriteDraft(payload = {}) {
     sourceLight
       ? '注意：本次源头素材很薄（基本只有标题，没有真实正文、案例或数据）。请写“通用但可执行”的第二人称建议——用普适方法、步骤清单、常见误区、注意事项来支撑正文，把读者当“你”来讲。绝对不要编造第一人称客户案例、具体客户、虚构数字、权威背书或个人战绩；宁可写得朴实通用，也不要编。'
       : '',
-    '硬约束：小红书正文要像真实运营者写给读者的口语内容，少用”首先/其次/最后/其实根源就一个/正确的废话”等 AI 腔连接。',
+    '硬约束【大白话·诚实语气】：正文要像一个真实的人在跟朋友唠嗑、随手发小红书，不是写范文、不是写公众号范本。用短句、口语、大白话；可以有“说实话/其实/我跟你讲/反正/对吧”这类口头表达，允许不完美、半截话、轻微口语重复。读起来要“像真人在诚实地说”，而不是“排版工整、辞藻漂亮”。',
+    '硬约束【杀AI味】：禁止工整排比、禁止整齐编号清单、禁止“首先/其次/最后”、禁止“赋能/闭环/抓手/底层逻辑/综上/值得注意的是/在这个信息爆炸的时代”等 AI 腔词，禁止金句对仗收尾和空泛升华、喊口号。宁可朴实直白、甚至有点啰嗦，也不要工整漂亮的 AI 范文。多写具体真实的细节、数字、场景，少写泛泛的概括和正确的废话。',
     verbatimAnchors.length >= 2
       ? `硬约束【降低AI检测】：必须从 sourceEvidence.verbatimAnchors 中选取至少 2 个短语，原文一字不改地嵌入正文段落中（可用破折号引出或自然融入叙述，不要加引号）。不可跳过此规则。`
       : '',
@@ -4628,7 +4662,7 @@ async function generateSopRewriteDraft(payload = {}) {
         translation: '怎么翻译成客户自己的业务',
         publishable: '今天能发布什么',
       },
-      xhsCopy: '完整小红书图文，字段为 title/body/imagePlan/tags。body 控制在 600-900 中文字，必须像真实运营稿，不要写内部分析腔。',
+      xhsCopy: '完整小红书图文，字段为 title/body/imagePlan/tags。body 控制在 600-900 中文字，必须是大白话口语稿，像真人随手发小红书在诚实分享，不要排版工整的范文腔、内部分析腔或 AI 腔。',
       wechatArticle: 'When the selected platform is WeChat/public-account long article, return wechatArticle: { title, body, imageInsertionPlan }. Do not stretch word count as KPI. Use a strong article structure: hook, problem definition, evidence or scene, method, action entry. Use natural length based on logic, usually 700-1400 Chinese characters. imageInsertionPlan must say where P1-P5 images fit by section and why.',
       structureRequirement: '正文必须按 contentStrategy.selectedAngle 写，不同标题换正文结构。不要每次都写“四种类型逐条科普”。',
       commentRequirement: '正文必须明显回应 contentStrategy.selectedQuestion，并自然吸收 1-2 个评论区追问。',

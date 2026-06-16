@@ -1269,6 +1269,20 @@ function applyRemoteVisualManifest(manifest) {
   return true;
 }
 
+function renderCoverPanel() {
+  const locked = !state.copyConfirmed;
+  const loading = state.coverStatus === "loading";
+  const hooks = Array.isArray(state.coverHooks) ? state.coverHooks : [];
+  return `<div class="cover-panel" style="border:1px solid #e6ddd0;border-radius:10px;padding:14px;margin:12px 0;background:#fffdf8;">
+    <b>小红书封面（独立生成，不用配套图第一页）</b>
+    <div style="color:#7a6a55;font-size:13px;margin:4px 0 8px;">从已确认的标题+正文自动提炼诚实钩子，出一张专门封面。封面+标题是点击率第一闸。</div>
+    <button class="primary" ${locked || loading ? "disabled" : ""} data-generate-cover>${loading ? "正在生成封面…" : "生成封面"}</button>
+    ${state.coverMessage ? `<div class="status-strip ${state.coverStatus === "error" ? "" : "success"}" style="margin-top:8px;">${escapeHtml(state.coverMessage)}</div>` : ""}
+    ${hooks.length ? `<div style="margin-top:8px;font-size:13px;"><b>封面钩子候选：</b>${hooks.map((h) => `<span style="display:inline-block;background:#f3ece0;border-radius:6px;padding:2px 8px;margin:2px;">${escapeHtml(h)}</span>`).join("")}</div>` : ""}
+    ${state.coverImage ? `<div style="margin-top:10px;"><a href="${escapeHtml(state.coverImage)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(state.coverImage)}" alt="封面" style="max-width:300px;border-radius:8px;border:1px solid #e6ddd0;"></a></div>` : ""}
+  </div>`;
+}
+
 function renderProductionStep() {
   const locked = !state.copyConfirmed;
   ensureXhsCardPlan();
@@ -1296,6 +1310,7 @@ function renderProductionStep() {
     </div>
     <div class="visual-recommendation"><b>${zh("&#24314;&#35758;&#37197;&#22270;&#36335;&#32447;")}: ${escapeHtml(visualRouteNameClean(rec.id))}</b><span>${escapeHtml(rec.reason)}</span>${rec.id !== state.visualStyle ? `<button type="button" class="secondary" data-visual-style="${escapeHtml(rec.id)}">${zh("&#20999;&#25442;&#21040;&#25512;&#33616;&#36335;&#32447;")}</button>` : `<em>${zh("&#24050;&#20351;&#29992;&#25512;&#33616;&#36335;&#32447;")}</em>`}</div>
     ${renderVisualRoutePickerClean(locked, rec.id)}
+    ${(!isWechat && !isVideo && !isMoments) ? renderCoverPanel() : ""}
     ${renderCleanXhsCardPreview()}
     <div class="production-grid">
       <article class="production-card ${locked ? "locked" : ""}">
@@ -1369,6 +1384,7 @@ function bindWorkAreaActions() {
     setStep(3);
   });
   byId("workArea")?.querySelector("[data-collect-x]")?.addEventListener("click", () => collectXAccounts());
+  byId("workArea")?.querySelector("[data-generate-cover]")?.addEventListener("click", () => generateCoverFromContent());
   byId("workArea")?.querySelector("[data-read-materials]")?.addEventListener("click", () => readMaterials());
   byId("workArea")?.querySelectorAll("[data-material-scope]").forEach((button) => {
     button.addEventListener("click", () => {

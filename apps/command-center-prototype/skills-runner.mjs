@@ -15,6 +15,36 @@ const SKILLS_DIR = join(homedir(), '.claude', 'skills');
 
 // ─── 技能输出规范（每个技能对应的输出格式指令）───────────────────────────
 const SKILL_OUTPUT_SPECS = {
+  'cover-from-content': {
+    model: 'main',
+    maxTokens: 1500,
+    temperature: 0.7,
+    outputInstruction: `
+## 本次任务
+
+通读上面的「标题 + 正文」，按 SKILL 方法做一张独立小红书封面：从正文提炼**诚实钩子**(不贩卖焦虑)，再产出一段**真实拍摄感**的封面生图提示词(无人脸、米金大字、单焦点)。
+
+**输出格式要求：JSON，不要 Markdown 代码块**
+
+\`\`\`
+{
+  "coverHookOptions": ["诚实钩子1", "诚实钩子2", "诚实钩子3"],
+  "coverPrompt": "可直接喂 gpt-image-2 的封面提示词，用 coverHookOptions[0] 作主钩子，真实拍摄感、无人脸、米金大字、一个具象物、单焦点、手机端可读",
+  "archetype": "大数字 | 痛点提问 | 认知差 | 清单",
+  "aspectRatio": "3:4",
+  "notes": "选了哪个钩子和具象物，一句话"
+}
+\`\`\``,
+    parseResponse: (text) => {
+      try {
+        const clean = text.replace(/^\`\`\`json\s*/i, '').replace(/^\`\`\`\s*/i, '').replace(/\`\`\`$/i, '').trim();
+        return JSON.parse(clean);
+      } catch {
+        return { coverHookOptions: [], coverPrompt: '', notes: text.slice(0, 200) };
+      }
+    },
+  },
+
   'humanizer-zh': {
     model: 'main',          // 结构层改写需要强模型，fast 模型只会做词汇替换
     maxTokens: 4000,

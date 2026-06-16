@@ -67,7 +67,7 @@ export async function kieStartXiaoheiJob(payload) {
   const cards = (Array.isArray(payload.cards) ? payload.cards : []).slice(0, 5);
   const rawId = String(payload.jobId || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 72);
   const jobId = rawId || `longka-kie-${style}-${Date.now()}`;
-  const job = { jobId, status: 'running', style, platform, total: cards.length, cards: [], startedAt: Date.now(), updatedAt: Date.now() };
+  const job = { jobId, status: 'running', style, platform, total: cards.length, cards: [], startedAt: Date.now(), updatedAt: Date.now(), payload, fb43JobId: '' };
 
   job.cards = await Promise.all(cards.map(async (card, index) => {
     const page = Number(card.page || index + 1);

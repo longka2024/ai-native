@@ -597,6 +597,80 @@ async function generateXiaoheiCards() {
   renderToday();
 }
 
+async function generateCoverFromContent() {
+  const title = state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "";
+  const body = confirmedCopyText() || state.draft || "";
+  if (!title || body.replace(/\s+/g, "").length < 20) {
+    state.coverStatus = "error";
+    state.coverMessage = "请先生成并确认正文——封面要从已写好的标题+正文里提炼。";
+    renderToday();
+    return;
+  }
+  const visual = currentVisualStyle();
+  state.coverStatus = "loading";
+  state.coverImage = "";
+  state.coverMessage = "正在从正文提炼封面钩子…";
+  renderToday();
+  try {
+    // 1) cover-from-content skill：提炼诚实钩子 + 封面提示词
+    const skRes = await fetch(apiPath("/api/skills/run"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ skill: "cover-from-content", content: `标题：${title}\n\n正文：${body}` }),
+    });
+    const sk = await skRes.json().catch(() => ({}));
+    const result = sk?.result || {};
+    const coverPrompt = String(result.coverPrompt || "");
+    state.coverHooks = Array.isArray(result.coverHookOptions) ? result.coverHookOptions : [];
+    if (!coverPrompt) throw new Error(sk.message || sk.error || "未能从正文生成封面提示词");
+    state.coverMessage = "钩子已提炼，正在出封面图…";
+    renderToday();
+    // 2) 喂 Kie 出封面（单图，独立任务，不污染内容卡 manifest）
+    const jobId = `cover-${visual.id}-${Date.now()}`;
+    const startRes = await fetch(apiPath("/api/xhs-cards/generate-xiaohei/start"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title, style: visual.id, visualStyle: visual.id,
+        platform: visualPlatformForCurrentTarget(), targetPlatform: visualPlatformForCurrentTarget(),
+        jobId,
+        cards: [{ page: 1, role: "cover", title, imagePrompt: coverPrompt }],
+      }),
+    });
+    const startJson = await startRes.json().catch(() => ({}));
+    if (!startRes.ok || !startJson.ok) throw new Error(startJson.message || startJson.error || `HTTP ${startRes.status}`);
+    const realJobId = startJson.jobId || jobId;
+    state.coverJobId = realJobId; // 存任务号：Kie 慢时超时也不丢，可点【查询封面】续查
+    renderToday();
+    // 3) 轮询（最多 ~7.5 分钟；Kie 排队拥堵时出图可能要 5 分钟以上）
+    for (let round = 0; round < 90; round += 1) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const stRes = await fetch(apiPath(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(realJobId)}&total=1`));
+      const st = await stRes.json().catch(() => ({}));
+      const url = (st?.manifest?.publicFiles || [])[0] || "";
+      if (url) {
+        state.coverImage = url;
+        state.coverStatus = "done";
+        state.coverJobId = "";
+        state.coverMessage = "封面已生成。可右键保存；想换风格或再来一版，切换风格后再点一次。";
+        renderToday();
+        return;
+      }
+      if (st.status === "error") throw new Error("封面出图失败");
+      state.coverMessage = `封面出图中…(${round + 1}/90，Kie 较慢时请耐心等)`;
+      renderToday();
+    }
+    // 超时不算失败：Kie 仍可能在后台出图，保留任务号供续查
+    state.coverStatus = "pending";
+    state.coverMessage = "Kie 当前较慢，封面还在出。任务已保存，过一会儿点【查询封面】就能取回，不用重出（省钱）。";
+    renderToday();
+  } catch (error) {
+    state.coverStatus = "error";
+    state.coverMessage = `封面生成失败：${error.message}`;
+    renderToday();
+  }
+}
+
 async function pollXiaoheiCards({ jobId, total, repairAttempts = 0 }) {
   lastPollRenderSignature = "";
   for (let round = 0; round < 180; round += 1) {
