@@ -9,6 +9,7 @@ import { promisify } from 'node:util';
 import { collectorHealth, confirmContentAsset, deleteCollectionRun, importLocalPlatformBatch, initCollectorHub, loadHot30Samples, loadLatestXBatch, loadRecentCollectionBatches, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch } from './collector-hub.mjs';
 import { runSkill, listSkills } from './skills-runner.mjs';
 import { kieEnabled, kieStartXiaoheiJob, kieXiaoheiJobStatus } from './kie-image.mjs';
+import { kieVideoEnabled, kieStartVideoJob, kieVideoJobStatus } from './kie-video.mjs';
 
 // 自动加载同目录下的 .env 文件（不依赖 dotenv 包）
 try {
@@ -1191,6 +1192,36 @@ createServer(async (req, res) => {
           model: result.model,
           style: result.style,
         },
+      });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/video-clip/start') {
+      if (!kieVideoEnabled()) return sendJson(res, { ok: false, error: 'kie_video_disabled', message: '视频出图未启用(KIE_API_KEY 未配置)。' }, 503);
+      const payload = await readJson(req);
+      const clips = Array.isArray(payload.clips) ? payload.clips.slice(0, 5) : [];
+      if (!clips.length) return sendJson(res, { ok: false, error: 'missing_clips', message: '没有可生成的视频片段 prompt。' }, 400);
+      try {
+        const job = await kieStartVideoJob(payload);
+        const files = job.clips.filter((c) => c.url).map((c) => ({ page: c.page, url: c.url }));
+        return sendJson(res, {
+          ok: true, jobId: job.jobId, status: job.status,
+          manifest: { renderer: `kie-video-${process.env.KIE_VIDEO_MODEL || 'bytedance-seedance-2'}`, jobId: job.jobId, count: files.length, files, publicFiles: files.map((f) => f.url), platform: job.platform, aspect: job.aspect },
+        }, 202);
+      } catch (error) {
+        return sendJson(res, { ok: false, error: 'kie_video_start_failed', message: String(error.message || error) }, 502);
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/video-clip/status') {
+      const jobId = url.searchParams.get('jobId') || '';
+      if (!jobId) return sendJson(res, { ok: false, error: 'missing_job_id', message: '缺少 jobId。' }, 400);
+      const job = await kieVideoJobStatus(jobId);
+      const files = job ? job.clips.filter((c) => c.url).map((c) => ({ page: c.page, url: c.url })) : [];
+      return sendJson(res, {
+        ok: true, jobId: job ? job.jobId : jobId, status: job ? job.status : 'idle',
+        total: job ? job.total : 0,
+        failed: job ? job.clips.filter((c) => c.state === 'fail').map((c) => ({ page: c.page, message: c.error })) : [],
+        manifest: { renderer: `kie-video-${process.env.KIE_VIDEO_MODEL || 'bytedance-seedance-2'}`, jobId: job ? job.jobId : jobId, count: files.length, files, publicFiles: files.map((f) => f.url), platform: job ? job.platform : '', aspect: job ? job.aspect : '' },
       });
     }
 

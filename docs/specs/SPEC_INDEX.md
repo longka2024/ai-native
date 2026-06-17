@@ -150,6 +150,19 @@
   - 本刀不做 retro/bump/跨模型审计（留后续刀）；判断落库不可变（持久化与 retro 同期补）。
 - 配套：`docs/strategy/cheat-on-content-productization-digest.md`（引擎消化）、`docs/strategy/codex-techbase-reconciliation.md`（技术基座总账）。
 
+### 视频线（2026-06-17，Pixelle 口播 + Kie 片段）
+
+- 文件：`docs/specs/2026-06-17-video-line-spec.md`
+- 触发说法：
+  - "视频线" / "Pixelle" / "出视频"
+  - "口播视频" / "视频片段" / "Seedance"
+- 开发边界：
+  - Pixelle 当 **FastAPI 后端服务**接入(只用 api、不开 streamlit):Longka 调 async 出片→轮询→取 MP4。
+  - A1 先做(零媒体花费):static 模板 + DeepSeek + edge-tts 出口播 MP4 验证链路;A2 动态画面(Seedance/ARK 或 Kie);B 片段(kie-video.mjs)。
+  - 复用 Kie key/DeepSeek/edge-tts;不要 GPU/ComfyUI;客户端不暴露 Pixelle/Kie/ARK 内部名。
+  - 改 Pixelle 源码只允许加 provider 适配器,不动核心;MP4 持久化依赖 OSS(blocked),A1 先用本地/临时。
+- 配套:`docs/strategy/pixelle-video-integration-digest.md`(深挖结论)。
+
 ## 使用规则
 
 1. 开发前先读 spec。
