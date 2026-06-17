@@ -420,30 +420,60 @@ createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/fetch-article') {
       const { url: articleUrl } = await readJson(req);
       if (!articleUrl) return sendJson(res, { ok: false, error: 'missing_url' }, 400);
-      try {
+      // 海外站 122 抓不到（国内网络墙）→ 转 43（纽约）抓回。国内站 122 直抓（快）。
+      const fetch43Base = (process.env.LONGKA_43_FETCH_BASE || 'http://43.135.149.55:8870').replace(/\/$/, '');
+      const OVERSEAS = /(^|\.)(x\.com|twitter\.com|t\.co|medium\.com|nytimes\.com|bbc\.|reddit\.com|youtube\.com|youtu\.be|github\.com|substack\.com|techcrunch\.com|theverge\.com|bloomberg\.com|wsj\.com|ft\.com|producthunt\.com|ycombinator)/i;
+      // 登录墙识别：抓到的是登录/验证页（不是真正文）就当失败，绝不拿登录页冒充正文
+      const isLoginWall = (title, body) => /登录|扫码|验证码|安全验证|\blog ?in\b|sign[\s-]?in|captcha|人机验证/i.test(String(title || '')) && String(body || '').length < 1500;
+      // 122 本地直抓（适合国内可公开访问的站）
+      async function fetchDirect() {
         const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 15000);
-        const resp = await fetch(articleUrl, {
-          signal: ctrl.signal,
-          redirect: 'follow',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-          },
-        });
-        clearTimeout(timer);
-        if (!resp.ok) return sendJson(res, { ok: false, error: `HTTP ${resp.status}` }, 502);
-        const html = await resp.text();
-        // 提取标题
-        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-        const title = titleMatch ? titleMatch[1].trim() : '';
-        // 去标签取正文
-        const body = extractArticleText(html);
-        return sendJson(res, { ok: true, title, body, url: articleUrl });
-      } catch (error) {
-        return sendJson(res, { ok: false, error: error.message }, 502);
+        const timer = setTimeout(() => ctrl.abort(), 9000);
+        try {
+          const resp = await fetch(articleUrl, {
+            signal: ctrl.signal, redirect: 'follow',
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            },
+          });
+          clearTimeout(timer);
+          if (!resp.ok) return null;
+          const html = await resp.text();
+          const m = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+          const body = extractArticleText(html);
+          const title = m ? m[1].trim() : '';
+          if (isLoginWall(title, body)) return null;
+          const images = extractArticleImages(html, articleUrl);
+          return (body && body.length > 80) ? { ok: true, title, body, images, url: articleUrl, via: '122' } : null;
+        } catch { clearTimeout(timer); return null; }
       }
+      // 转 43（纽约）抓海外正文
+      async function fetchVia43() {
+        try {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 26000);
+          const resp = await fetch(`${fetch43Base}/`, {
+            method: 'POST', signal: ctrl.signal,
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ url: articleUrl }),
+          });
+          clearTimeout(timer);
+          if (!resp.ok) return null;
+          const j = await resp.json().catch(() => null);
+          if (!j || !j.ok || !j.body || j.body.length <= 80) return null;
+          if (isLoginWall(j.title, j.body)) return null;
+          return { ok: true, title: j.title || '', body: j.body, images: Array.isArray(j.images) ? j.images : [], url: articleUrl, via: '43-ny' };
+        } catch { return null; }
+      }
+      let host = '';
+      try { host = new URL(articleUrl).hostname; } catch {}
+      const overseasFirst = OVERSEAS.test(host);
+      let result = overseasFirst ? await fetchVia43() : await fetchDirect();
+      if (!result) result = overseasFirst ? await fetchDirect() : await fetchVia43();
+      if (result) return sendJson(res, result);
+      return sendJson(res, { ok: false, error: '正文抓取失败：国内直抓与海外中转都没拿到（可能需登录或源站拒绝）' }, 502);
     }
 
     if (req.method === 'GET' && url.pathname === '/api/customer-profile') {
@@ -5372,6 +5402,24 @@ function serveStatic(pathname, res) {
 }
 
 // HTML 正文提取：去标签、去脚本样式、整理纯文本
+// 从已抓到的 HTML 里提取相关图片 URL（不下载图片本身，零带宽负担），供封面/配图做参考
+function extractArticleImages(html, baseUrl) {
+  const out = [];
+  const push = (u) => {
+    if (!u) return;
+    try { u = new URL(u, baseUrl).href; } catch { return; }
+    if (!/^https?:\/\//i.test(u)) return;
+    if (/\.svg(\?|$)|sprite|icon|logo|avatar|favicon|placeholder|blank|1x1|spacer|loading|pixel\.|\/ads?\//i.test(u)) return;
+    if (!out.includes(u)) out.push(u);
+  };
+  const s = String(html || '');
+  for (const m of s.matchAll(/<meta[^>]+(?:property|name)=["'](?:og:image(?::url)?|twitter:image(?::src)?)["'][^>]*content=["']([^"']+)["']/gi)) push(m[1]);
+  for (const m of s.matchAll(/<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image|twitter:image)["']/gi)) push(m[1]);
+  for (const m of s.matchAll(/<img[^>]+(?:data-src|data-original|src)=["']([^"']+)["']/gi)) push(m[1]);
+  for (const m of s.matchAll(/<img[^>]+srcset=["']([^"', ]+)/gi)) push(m[1]);
+  return out.slice(0, 4); // 只留主图+少量备选，绝不全抓
+}
+
 function extractArticleText(html) {
   if (!html) return '';
   // 去掉 script / style / nav / header / footer / iframe / noscript

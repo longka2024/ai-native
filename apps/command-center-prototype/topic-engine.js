@@ -357,6 +357,22 @@ async function loadHot30State() {
 }
 
 // 信号驱动采集：用 TrendRadar 信号原文 URL → 内置 fetch 免费抓取新闻正文
+// 需登录才能看正文的国内平台：内置 fetch 和 XCrawl 都抓不到（只会拿到登录页），
+// 且这些平台的关键词搜索是封号高危动作（退出搜索保号）——这里不自动抓，给诚实提示走 hot30。
+function isLoginWalledCnPlatform(url) {
+  return /zhihu\.com|weibo\.(com|cn)|xiaohongshu\.com|xhslink\.com|douyin\.com|kuaishou\.com|bilibili\.com/i.test(String(url || ""));
+}
+function loginWalledPlatformName(url) {
+  const u = String(url || "");
+  if (/zhihu\.com/i.test(u)) return "知乎";
+  if (/weibo\./i.test(u)) return "微博";
+  if (/xiaohongshu\.com|xhslink/i.test(u)) return "小红书";
+  if (/douyin\.com/i.test(u)) return "抖音";
+  if (/kuaishou\.com/i.test(u)) return "快手";
+  if (/bilibili\.com/i.test(u)) return "B站";
+  return "该平台";
+}
+
 async function loadSignalSearchState() {
   try {
     const title = (state.signalKeywords || state.signalSearchQuery || "").trim();
@@ -380,7 +396,11 @@ async function loadSignalSearchState() {
         const result = await res.json();
         if (result.ok && result.body && result.body.length > 50) {
           const bodyLen = result.body.length;
-          log(`信号原文抓取成功：${result.title || title}（正文 ${bodyLen} 字符）`);
+          const refImgs = Array.isArray(result.images) ? result.images : [];
+          log(`信号原文抓取成功：${result.title || title}（正文 ${bodyLen} 字符${refImgs.length ? `，带 ${refImgs.length} 张真实参考图` : ""}）`);
+          // 抓回的真实图存为“封面参考图候选”（可选用，默认不选）
+          state.referenceImages = refImgs;
+          state.selectedReferenceImage = "";
           const contentSamples = [{
             id: `signal-${signalUrl.slice(0, 40).replace(/[^a-zA-Z0-9]/g, "-")}`,
             title: result.title || title,
@@ -390,6 +410,7 @@ async function loadSignalSearchState() {
             collectionStatus: "real",
             hot30Score: 100,
             metrics: { chars: bodyLen },
+            referenceImages: refImgs,
           }];
           return { contentSamples, rawMaterials: [], candidates: [], assets: [] };
         }
@@ -403,7 +424,10 @@ async function loadSignalSearchState() {
     }
     // XCrawl js_render 抓取 JS 渲染页面（微博/头条等平台 URL）
     // 仅在有 signalUrl 时使用，XCrawl 处理 JS 页面比内置 fetch 强
-    if (signalUrl) {
+    if (signalUrl && isLoginWalledCnPlatform(signalUrl)) {
+      // 知乎/微博/小红书等需登录站：XCrawl 也抓不到（只会拿到登录页），别空跑，直接走 hot30
+      log(`${loginWalledPlatformName(signalUrl)}需登录才能看正文，内置/海外中转都拿不到，已跳过抓取，转用素材库。建议：这条改用「设置→上传爆款素材」按行业入库，或换可公开抓取的信号。`);
+    } else if (signalUrl) {
       state.assetStatus = "正在用 XCrawl 抓取 JS 页面";
       renderToday();
       try {
