@@ -253,25 +253,10 @@ function extractVisualTopicSignals({ copy = "", topic = {}, title = "", lines = 
 function renderCleanXhsCardPreview() {
   const cards = ensureXhsCardPlan();
   if (!cards.length) return `<div class="empty-state"><b>${zh("&#35831;&#20808;&#30830;&#35748;&#25991;&#26696;")}</b><span>${zh("&#30830;&#35748;&#25991;&#26696;&#21518;&#65292;&#25165;&#20250;&#29983;&#25104;&#21487;&#25191;&#34892;&#30340;&#20986;&#22270; brief&#12290;")}</span></div>`;
-  const hasRealImages = Array.isArray(currentVisualManifest()?.publicFiles) && currentVisualManifest().publicFiles.length > 0;
-  const visual = currentVisualStyle();
+  const realFiles = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
   return `<div class="xhs-card-preview-panel">
-    <div class="visual-workspace-head">
-      <div>
-        <b>${zh("&#24403;&#21069;&#20986;&#22270;&#20869;&#23481;")}</b>
-        <span>${zh("&#24050;&#32465;&#23450;")}: ${escapeHtml(state.selectedTitle || selectedTopic()?.theme || "no title")} / ${escapeHtml(visualRouteNameClean(state.visualStyle))}</span>
-      </div>
-      <em>${escapeHtml(visual.route || visual.id)}</em>
-    </div>
-    ${hasRealImages ? "" : `<div class="status-strip warn">${zh("&#36825;&#37324;&#20808;&#25226;&#25991;&#26696;&#25286;&#25104; 5 &#39029;&#21487;&#25191;&#34892;&#20986;&#22270; brief&#12290;&#26368;&#32456;&#33021;&#21457;&#24067;&#30340;&#32467;&#26524;&#65292;&#20197; 43 &#36820;&#22238;&#30340;&#30495;&#23454;&#22270;&#29255;&#20026;&#20934;&#12290;")}</div>`}
-    ${renderCurrentCopyForImage()}
-    ${renderIllustrationDirectorPanel()}
     ${renderXhsGeneratedGallery()}
-    <details class="xhs-carousel-plan" ${hasRealImages ? "" : "open"}>
-      <summary>${zh("&#26597;&#30475; 5 &#39029;&#20986;&#22270; brief")}</summary>
-      ${cards.map((card, index) => `<div><span>P${index + 1}</span><strong>${escapeHtml(card.role)}</strong><em>${escapeHtml(card.carouselJob || card.visualBrief || "brief")}</em></div>`).join("")}
-    </details>
-    ${currentVisualManifest() ? `<div class="status-strip success">${zh("&#24050;&#29983;&#25104;")}: ${escapeHtml(currentVisualManifest().count || cards.length)} ${zh("&#24352;")} / ${escapeHtml(currentVisualManifest().jobId || currentVisualManifest().outputDir || "")}</div>` : ""}
+    ${realFiles.length ? `<div class="status-strip success">${zh("&#24050;&#29983;&#25104;")}: ${escapeHtml(realFiles.length)} ${zh("&#24352;")}</div>` : ""}
     ${state.xhsCardExportMessage ? `<div class="status-strip ${state.xhsCardExportStatus === "error" ? "warn" : ""}">${escapeHtml(state.xhsCardExportMessage)}</div>` : ""}
   </div>`;
 }
@@ -334,7 +319,7 @@ function renderCurrentCopyForImage() {
 }
 function renderXhsGeneratedGallery() {
   const files = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
-  const isXiaohei = String(state.xhsCardManifest?.renderer || "").includes("43-gpt-image-2-xiaohei");
+  const isXiaohei = /gpt-image-2|43-fallback/.test(String(state.xhsCardManifest?.renderer || ""));
   if (files.length) {
     const done = Number(state.xhsCardProgress?.done || files.length || 0);
     const total = Number(state.xhsCardProgress?.total || 5);
@@ -342,8 +327,8 @@ function renderXhsGeneratedGallery() {
     const styleName = visualRouteNameClean(state.visualStyle);
     return `<div class="xhs-generated-gallery">
       <div class="xhs-generated-head">
-        <b>${escapeHtml(styleName)} ${zh("&#30495;&#23454;&#20986;&#22270;&#32467;&#26524;")}</b>
-        <span>${isLoading ? `43 ${zh("&#21518;&#21488;&#36824;&#22312;&#29983;&#25104;")}: ${done}/${total}${zh("&#24352;&#12290;&#24050;&#29983;&#25104;&#30340;&#22270;&#29255;&#20808;&#26174;&#31034;&#65292;&#21487;&#28857;&#24320;&#26816;&#26597;&#21407;&#22270;&#12290;")}` : zh("&#22270;&#29255;&#26469;&#33258; 43 &#20986;&#22270;&#26381;&#21153;&#65292;&#21487;&#28857;&#20987;&#25171;&#24320;&#21407;&#22270;&#26816;&#26597;&#12290;")}</span>
+        <b>${escapeHtml(styleName)} 出图结果</b>
+        <span>${isLoading ? `正在生成: ${done}/${total} 张。已生成的先显示，可点开看大图。` : "图片已生成，点开可看大图。"}</span>
       </div>
       <div class="xhs-generated-grid ${isLoading ? "partial" : ""}">
         ${files.map((file, index) => {
@@ -361,7 +346,7 @@ function renderXhsGeneratedGallery() {
     const done = Number(state.xhsCardProgress?.done || files.length || 0);
     const total = Number(state.xhsCardProgress?.total || 5);
     return `<div class="xhs-generated-empty loading">
-      <b>43 正在生成配图</b>
+      <b>正在生成配图</b>
       <span>正在逐张生成：${done}/${total}。已生成的图片会先保留，避免整批超时后全部丢失。</span>
       ${files.length ? `<div class="xhs-generated-grid partial">
         ${files.map((file, index) => {
@@ -383,15 +368,15 @@ function renderXhsGeneratedGallery() {
   }
   if (!files.length) {
     return `<div class="xhs-generated-empty">
-      <b>还没有生成配图</b>
-      <span>确认当前文案后，点击生成配图。这里会直接显示 43 返回的真实图片。</span>
-      <button class="secondary" type="button" data-restore-latest-xiaohei>查询当前主题已生成图片</button>
+      <b>还没有出图</b>
+      <span>确认文案后，点上面的【生成图文卡】，生成好的图会显示在这里。</span>
+      <button class="secondary" type="button" data-restore-latest-xiaohei>查询这个主题已生成的图</button>
     </div>`;
   }
   return `<div class="xhs-generated-gallery">
     <div class="xhs-generated-head">
-      <b>${isXiaohei ? "43 真实出图结果" : "拆页方案导出结果"}</b>
-      <span>${isXiaohei ? "这些图片来自 43 出图服务，可点击打开原图检查。" : "这些只是页面方案 PNG，不是最终配图成品。"}</span>
+      <b>${isXiaohei ? "出图结果" : "拆页方案导出结果"}</b>
+      <span>${isXiaohei ? "图片已生成，点开可看大图。" : "这些只是页面方案 PNG，不是最终配图成品。"}</span>
     </div>
     <div class="xhs-generated-grid">
       ${files.map((file, index) => {
@@ -516,7 +501,7 @@ async function generateXiaoheiCards() {
   if (!state.copyConfirmed) {
     state.xhsCardExportStatus = "error";
     state.xhsCardOperation = "visual";
-    state.xhsCardExportMessage = "请先在第 9 步确认文案。确认后，作图按钮才会真正调用 43 出图服务。";
+    state.xhsCardExportMessage = "请先在第 9 步确认文案。确认后，作图按钮才会真正出图。";
     renderToday();
     return;
   }
@@ -524,7 +509,7 @@ async function generateXiaoheiCards() {
   if (!cards.length) {
     state.xhsCardExportStatus = "error";
     state.xhsCardOperation = "visual";
-    state.xhsCardExportMessage = "当前文案还没有拆成可出图的 brief，无法启动 43 出图。请先确认文案或重新生成文案。";
+    state.xhsCardExportMessage = "当前文案还没有拆成可出图的 brief，无法出图。请先确认文案或重新生成文案。";
     renderToday();
     return;
   }
@@ -536,9 +521,9 @@ async function generateXiaoheiCards() {
   state.xhsCardOperation = "visual";
   state.xhsCardProgress = { done: 0, total: cards.length };
   state.xhsCardAsyncJobId = state.xhsCardJobBase;
-  state.xhsCardExportMessage = `43 正在启动${visualRouteNameClean(visual.id)}出图任务，页面会自动轮询结果。`;
+  state.xhsCardExportMessage = `正在生成${visualRouteNameClean(visual.id)}出图任务，页面会自动轮询结果。`;
   state.xhsCardManifest = {
-    renderer: `43-gpt-image-2-${visual.id}-async`,
+    renderer: `pending-${visual.id}`,
     count: 0,
     files: [],
     publicFiles: [],
@@ -591,7 +576,7 @@ async function generateXiaoheiCards() {
     state.xhsCardOperation = "visual";
     state.xhsCardProgress = null;
     const count = state.xhsCardManifest?.count || 0;
-    state.xhsCardExportMessage = `43 ${visualRouteNameClean(visual.id)}出图中断：${error.message}。已生成 ${count} 张会保留显示，未生成的不冒充成品。`;
+    state.xhsCardExportMessage = `${visualRouteNameClean(visual.id)}出图中断：${error.message}。已生成 ${count} 张会保留显示，未生成的不冒充成品。`;
     if (!count) state.xhsCardManifest = null;
   }
   renderToday();
@@ -657,12 +642,12 @@ async function generateCoverFromContent() {
         return;
       }
       if (st.status === "error") throw new Error("封面出图失败");
-      state.coverMessage = `封面出图中…(${round + 1}/90，Kie 较慢时请耐心等)`;
+      state.coverMessage = `封面出图中…(${round + 1}/90，较慢时请耐心等)`;
       renderToday();
     }
     // 超时不算失败：Kie 仍可能在后台出图，保留任务号供续查
     state.coverStatus = "pending";
-    state.coverMessage = "Kie 当前较慢，封面还在出。任务已保存，过一会儿点【查询封面】就能取回，不用重出（省钱）。";
+    state.coverMessage = "出图服务较慢，封面还在出。任务已保存，过一会儿点【查询封面】就能取回，不用重出（省钱）。";
     renderToday();
   } catch (error) {
     state.coverStatus = "error";
@@ -682,18 +667,18 @@ async function pollXiaoheiCards({ jobId, total, repairAttempts = 0 }) {
     if (count >= total) {
       state.xhsCardExportStatus = "done";
       state.xhsCardProgress = null;
-      state.xhsCardExportMessage = `43 已生成 ${count} 张${visualRouteNameClean(state.visualStyle)}，下面可以逐张打开检查。`;
+      state.xhsCardExportMessage = `已生成 ${count} 张${visualRouteNameClean(state.visualStyle)}，下面可以逐张打开检查。`;
       renderToday();
       return;
     }
     state.xhsCardProgress = { done: count, total };
-    state.xhsCardExportMessage = `43 后台出图中：已完成 ${count}/${total} 张。你可以停留等待，也可以稍后继续查询。`;
+    state.xhsCardExportMessage = `正在出图：已完成 ${count}/${total} 张。你可以停留等待，也可以稍后继续查询。`;
     const failedPages = Array.isArray(result.failed) ? result.failed.map((item) => Number(item.page || 0)).filter(Boolean) : [];
     if (["partial", "error"].includes(result.status) && count > 0 && count + failedPages.length >= total) {
       if (repairAttempts < 2 && state.xhsCardStartPayload) {
         state.xhsCardExportStatus = "loading";
         state.xhsCardProgress = { done: count, total };
-        state.xhsCardExportMessage = `43 当前只完成 ${count}/${total} 张，系统正在自动补齐缺页${failedPages.length ? ` P${failedPages.join("/P")}` : ""}，补齐前不会保存为完成作品。`;
+        state.xhsCardExportMessage = `当前只完成 ${count}/${total} 张，系统正在自动补齐缺页${failedPages.length ? ` P${failedPages.join("/P")}` : ""}，补齐前不会保存为完成作品。`;
         renderToday();
         const repairRes = await fetch(apiPath("/api/xhs-cards/generate-xiaohei/start"), {
           method: "POST",
@@ -707,7 +692,7 @@ async function pollXiaoheiCards({ jobId, total, repairAttempts = 0 }) {
       }
       state.xhsCardExportStatus = "error";
       state.xhsCardProgress = null;
-      state.xhsCardExportMessage = `43 当前已生成 ${count}/${total} 张${failedPages.length ? `，缺 P${failedPages.join("/P")}` : ""}。请再次点击出图按钮补齐缺页，补齐前不能保存为已完成作品。`;
+      state.xhsCardExportMessage = `当前已生成 ${count}/${total} 张${failedPages.length ? `，缺 P${failedPages.join("/P")}` : ""}。请再次点击出图按钮补齐缺页，补齐前不能保存为已完成作品。`;
       renderToday();
       return;
     }
@@ -730,7 +715,7 @@ async function restoreLatestXiaoheiCards() {
   state.xhsCardOperation = "xiaohei";
   state.xhsCardAsyncJobId = jobId;
   state.xhsCardJobBase = jobId;
-  state.xhsCardExportMessage = `正在从 43 恢复当前主题的图片：${jobId}`;
+  state.xhsCardExportMessage = `正在恢复当前主题的图片：${jobId}`;
   renderToday();
   try {
     const res = await fetch(apiPath(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=5`));

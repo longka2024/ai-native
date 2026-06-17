@@ -134,6 +134,23 @@ function confirmedCopyText() {
   return normalizeCopyText(confirmed?.copy || activeCopyText());
 }
 
+// 就地保存文案修改：在制作页直接改完即存，不用回退到确认步（符合人性）
+function saveInlineCopyEdit(text) {
+  const t = normalizeCopyText(text || "");
+  if (!t) return false;
+  state.draft = t;
+  if (state.confirmedCopyVersionId && state.copyVersions.some((v) => v.id === state.confirmedCopyVersionId)) {
+    state.copyVersions = state.copyVersions.map((v) => (v.id === state.confirmedCopyVersionId ? { ...v, copy: t } : v));
+  }
+  // 文案改了，旧的发布前判断作废
+  state.precheckResult = null;
+  state.precheckStatus = "idle";
+  state.precheckMessage = "";
+  state.copyEditNote = "已保存。可重新做发布前判断，或直接往下出图。";
+  renderToday();
+  return true;
+}
+
 function cleanPublishBodyForCopy(raw = "") {
   const text = normalizeCopyText(raw);
   const lines = text.split(/\n/);

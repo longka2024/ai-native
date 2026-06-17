@@ -713,7 +713,7 @@ function renderProductionStepLegacyVisualRoutes() {
   ensureXhsCardPlan();
   const visual = currentVisualStyle();
   const primaryLabel = visual.id === "xiaohei-metaphor" ? "生成小黑漫画图" : "生成当前风格配图";
-  const loadingLabel = "43 正在生成...";
+  const loadingLabel = "正在生成...";
   return `<section class="work-card">
     ${cardHead("小红书图文成稿", "确认文案后，按配图导演建议生成小红书轮播配图，并在本页直接回显结果。")}
     ${renderCleanXhsCardPreview()}
@@ -1100,7 +1100,7 @@ function renderProductionStepLegacyCleanRoutes() {
       <article class="production-card ${locked ? "locked" : ""}">
         <b>${escapeHtml(visualRouteName(state.visualStyle))}</b>
         <span>${escapeHtml(visualProductionCopy(state.visualStyle))}</span>
-        <button class="primary" ${locked || isLoading ? "disabled" : ""} data-generate-xiaohei-cards>${isLoading && state.xhsCardOperation === "xiaohei" ? "43 正在生成图片..." : primaryVisualActionLabel(state.visualStyle)}</button>
+        <button class="primary" ${locked || isLoading ? "disabled" : ""} data-generate-xiaohei-cards>${isLoading && state.xhsCardOperation === "xiaohei" ? "正在生成图片..." : primaryVisualActionLabel(state.visualStyle)}</button>
         <button class="secondary" ${locked || isLoading ? "disabled" : ""} data-export-xhs-cards>${isLoading && state.xhsCardOperation === "plan" ? "正在导出拆页方案..." : "导出当前风格拆页方案"}</button>
       </article>
       <article class="production-card ${locked ? "locked" : ""}">
@@ -1162,7 +1162,7 @@ function renderVisualRoutePicker(locked) {
 }
 
 function visualProductionCopy(styleId) {
-  if (styleId === "xiaohei-metaphor") return "调用 43 小黑真实出图，生成带场景隐喻的漫画图。适合当前演示闭环。";
+  if (styleId === "xiaohei-metaphor") return "生成带场景隐喻的小黑漫画图。";
   if (styleId === "juju-organizing") return "按卷卷整理研究所风格，把当前文案变成白底纸面手绘方法图；适合方法论、小红书知识卡和公众号正文插图。";
   if (styleId === "guizang-editorial") return "按归藏杂志风拆成高级图文卡，适合方法论和系统感展示。";
   return "按宝玉小红书知识卡拆页，适合清单、步骤和收藏型内容。";
@@ -1210,7 +1210,7 @@ function visualRouteNameClean(styleId) {
 }
 
 function visualProductionCopyClean(styleId) {
-  if (styleId === "xiaohei-metaphor") return zh("&#35843;&#29992; 43 &#23567;&#40657;&#30495;&#20986;&#22270;&#65292;&#29983;&#25104; 5 &#24352;&#24102;&#22330;&#26223;&#38544;&#21947;&#30340;&#28459;&#30011;&#22270;&#12290;&#36866;&#21512;&#24403;&#21069;&#28436;&#31034;&#38381;&#29615;&#12290;");
+  if (styleId === "xiaohei-metaphor") return zh("&#23567;&#40657;&#30495;&#20986;&#22270;&#65292;&#29983;&#25104; 5 &#24352;&#24102;&#22330;&#26223;&#38544;&#21947;&#30340;&#28459;&#30011;&#22270;&#12290;&#36866;&#21512;&#24403;&#21069;&#28436;&#31034;&#38381;&#29615;&#12290;");
   if (styleId === "juju-organizing") return zh("&#25353;&#21367;&#21367;&#25972;&#29702;&#30740;&#31350;&#25152;&#39118;&#26684;&#65292;&#25226;&#24403;&#21069;&#25991;&#26696;&#21464;&#25104;&#30333;&#24213;&#32440;&#38754;&#25163;&#32472;&#26041;&#27861;&#22270;&#65307;&#36866;&#21512;&#26041;&#27861;&#35770;&#12289;&#23567;&#32418;&#20070;&#30693;&#35782;&#21345;&#21644;&#20844;&#20247;&#21495;&#27491;&#25991;&#25554;&#22270;&#12290;");
   if (styleId === "guizang-editorial") return zh("&#25353;&#24402;&#34255;&#26434;&#24535;&#39118;&#25286;&#25104;&#39640;&#32423;&#22270;&#25991;&#21345;&#65292;&#36866;&#21512;&#32473;&#25237;&#36164;&#20154;&#30475;&#26041;&#27861;&#35770;&#21644;&#31995;&#32479;&#24863;&#12290;&#24403;&#21069;&#20808;&#23548;&#20986;&#25286;&#39029;&#26041;&#26696;&#65292;&#21518;&#32493;&#25509;&#30495;&#22270;&#26381;&#21153;&#12290;");
   return zh("&#25353;&#23453;&#29577;&#23567;&#32418;&#20070;&#30693;&#35782;&#21345;&#25286;&#39029;&#65292;&#36866;&#21512;&#28165;&#21333;&#12289;&#27493;&#39588;&#21644;&#25910;&#34255;&#22411;&#20869;&#23481;&#12290;&#24403;&#21069;&#20808;&#23548;&#20986;&#25286;&#39029;&#26041;&#26696;&#65292;&#21518;&#32493;&#25509;&#30495;&#22270;&#26381;&#21153;&#12290;");
@@ -1261,12 +1261,29 @@ function applyRemoteVisualManifest(manifest) {
   if (count >= total) {
     state.xhsCardExportStatus = "done";
     state.xhsCardProgress = null;
-    state.xhsCardExportMessage = `43 已生成 ${count} 张${visualRouteNameClean(state.visualStyle)}，下面可以逐张打开检查。`;
+    state.xhsCardExportMessage = `已生成 ${count} 张${visualRouteNameClean(state.visualStyle)}，下面可以逐张打开检查。`;
   } else if (count > 0 && state.xhsCardExportStatus === "loading") {
     state.xhsCardProgress = { done: count, total };
-    state.xhsCardExportMessage = `43 后台出图中：已完成 ${count}/${total} 张。已生成的图片会先显示。`;
+    state.xhsCardExportMessage = `正在出图：已完成 ${count}/${total} 张。已生成的图片会先显示。`;
   }
   return true;
+}
+
+function renderPrecheckResults() {
+  const r = state.precheckResult || null;
+  const labelMap = { HP: "钩子", ER: "痛点共鸣", SV: "收藏价值", IV: "增量价值/存在感", SP: "具体可信", HT: "人味", CV: "转化" };
+  const weakest = Array.isArray(r?.weakest) ? r.weakest.map((c) => labelMap[c] || c) : [];
+  const fixes = Array.isArray(r?.fixes) ? r.fixes : [];
+  const flags = Array.isArray(r?.honest_flags) ? r.honest_flags : [];
+  let html = "";
+  if (state.precheckMessage) html += `<div class="status-strip ${state.precheckStatus === "error" ? "" : "success"}" style="margin-top:8px;">${escapeHtml(state.precheckMessage)}</div>`;
+  if (r) html += `<div style="margin-top:10px;font-size:14px;line-height:1.55;background:#fbfbff;border:1px solid #d8d8ea;border-radius:8px;padding:11px 13px;">
+      <div><b>发布前判断：</b>${escapeHtml(r.verdict || "")}</div>
+      ${weakest.length ? `<div style="margin-top:6px;font-size:13px;"><b>最该补：</b>${weakest.map((w) => `<span style="display:inline-block;background:#ececf6;border-radius:6px;padding:2px 8px;margin:2px;">${escapeHtml(w)}</span>`).join("")}</div>` : ""}
+      ${fixes.length ? `<div style="margin-top:6px;font-size:13px;"><b>具体改哪几句（在上面文案里改完点保存）：</b><ol style="margin:4px 0 0 18px;padding:0;">${fixes.map((f) => `<li style="margin:2px 0;">${escapeHtml(f)}</li>`).join("")}</ol></div>` : ""}
+      ${flags.length ? `<div style="margin-top:6px;font-size:13px;color:#b4231f;"><b>⚠️ 发之前先改掉：</b>${flags.map((f) => escapeHtml(f)).join("；")}</div>` : ""}
+    </div>`;
+  return html;
 }
 
 function renderPrecheckPanel() {
@@ -1324,26 +1341,39 @@ function renderProductionStep() {
         ? zh("&#26379;&#21451;&#22280;&#20063;&#38656;&#35201;&#37197;&#22270;&#65292;&#20294;&#35201;&#26356;&#33258;&#28982;&#12289;&#26356;&#20687;&#20154;&#30340;&#26085;&#24120;&#34920;&#36798;&#65292;&#19981;&#35201;&#22826;&#20687;&#28023;&#25253;&#12290;")
         : zh("&#23567;&#32418;&#20070;&#38656;&#35201; 5 &#24352;&#22270;&#25991;&#36718;&#25773;&#65292;&#27599;&#24352;&#19968;&#20010;&#35270;&#35273;&#37325;&#28857;&#12290;");
   return `<section class="work-card">
-    ${cardHead(`${escapeHtml(currentTarget().title)} ${zh("&#21046;&#20316;&#20013;&#24515;")}`, zh("&#31532;10&#27493;&#26159;&#24179;&#21488;&#25991;&#26696; + &#20316;&#22270;&#20013;&#24515; + &#24050;&#29983;&#25104;&#22270;&#29255;&#12290;&#23567;&#32418;&#20070;&#12289;&#20844;&#20247;&#21495;&#12289;&#26379;&#21451;&#22280;&#12289;&#25238;&#38899;&#22270;&#25991;&#21495;&#37117;&#35201;&#33021;&#20174;&#36825;&#37324;&#20986;&#22270;&#12290;"))}
+    ${cardHead(`${escapeHtml(currentTarget().title)} ${zh("&#21046;&#20316;&#20013;&#24515;")}`, "先看/判断/改好文案，再按顺序：① 选配图风格 → ② 做封面 → ③ 出图。")}
     <div class="status-strip">${zh("&#24403;&#21069;&#27597;&#39064;")}: ${escapeHtml(topic?.theme || "-")} / ${zh("&#30446;&#26631;&#24179;&#21488;")}: ${escapeHtml(currentTarget().title)} / ${zh("&#24403;&#21069;&#35270;&#35273;")}: ${escapeHtml(visualRouteNameClean(state.visualStyle))}</div>
-    <div class="production-grid">
-      <article class="production-card ${locked ? "locked" : ""}"><b>${escapeHtml(currentTarget().title)} ${zh("&#25991;&#26696;")}</b><span>${escapeHtml(platformNote)}</span></article>
-      <article class="production-card ${locked ? "locked" : ""}"><b>${zh("&#20316;&#22270;&#20013;&#24515;")}</b><span>${zh("&#36825;&#37324;&#26159;&#23567;&#40657;&#12289;Juju&#12289;&#24402;&#34255;&#12289;&#23453;&#29577;&#30340;&#20837;&#21475;&#12290;&#28857;&#29983;&#25104;&#21518;&#65292;43 &#20250;&#25353;&#24403;&#21069;&#24179;&#21488;&#21644;&#24403;&#21069;&#25991;&#26696;&#30495;&#20986;&#22270;&#12290;")}</span></article>
+    <div class="current-copy-panel" style="border:1px solid #e6ddd0;border-radius:10px;padding:16px;margin:12px 0;background:#fff;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+        <b style="font-size:16px;">当前文案（${escapeHtml(currentTarget().title)}）</b>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="primary" ${locked || state.precheckStatus === "loading" ? "disabled" : ""} data-run-precheck>${state.precheckStatus === "loading" ? "判断中…" : "做发布前判断"}</button>
+          <button class="secondary" ${locked ? "disabled" : ""} data-save-inline-copy>保存修改</button>
+        </div>
+      </div>
+      <div style="color:#7a6a55;font-size:12px;margin:6px 0 8px;">${escapeHtml(platformNote)} · 点【做发布前判断】看这篇行不行；有问题就在下面改完点【保存修改】，不用回上一步。觉得行直接往下出图。</div>
+      ${copy ? `<textarea data-inline-copy style="width:100%;box-sizing:border-box;min-height:200px;max-height:420px;background:#faf7f1;border:1px solid #e6ddd0;border-radius:8px;padding:12px;font-size:13px;line-height:1.7;font-family:inherit;resize:vertical;">${escapeHtml(copy)}</textarea>
+      ${state.copyEditNote ? `<div style="color:#2e7d32;font-size:12px;margin-top:6px;">${escapeHtml(state.copyEditNote)}</div>` : ""}
+      ${renderPrecheckResults()}` : `<div class="status-strip">还没确认文案，请先在上一步确认这版文案。</div>`}
     </div>
-    <div class="visual-recommendation"><b>${zh("&#24314;&#35758;&#37197;&#22270;&#36335;&#32447;")}: ${escapeHtml(visualRouteNameClean(rec.id))}</b><span>${escapeHtml(rec.reason)}</span>${rec.id !== state.visualStyle ? `<button type="button" class="secondary" data-visual-style="${escapeHtml(rec.id)}">${zh("&#20999;&#25442;&#21040;&#25512;&#33616;&#36335;&#32447;")}</button>` : `<em>${zh("&#24050;&#20351;&#29992;&#25512;&#33616;&#36335;&#32447;")}</em>`}</div>
-    ${renderPrecheckPanel()}
+
+    <h3 class="prod-section">① 选配图风格</h3>
+    <div class="visual-recommendation"><b>建议：${escapeHtml(visualRouteNameClean(rec.id))}</b><span>${escapeHtml(rec.reason)}</span>${rec.id !== state.visualStyle ? `<button type="button" class="secondary" data-visual-style="${escapeHtml(rec.id)}">换成推荐风格</button>` : `<em>✓ 已用推荐风格</em>`}</div>
     ${renderVisualRoutePickerClean(locked, rec.id)}
-    ${(!isWechat && !isVideo && !isMoments) ? renderCoverPanel() : ""}
-    ${renderCleanXhsCardPreview()}
+
+    ${(!isWechat && !isVideo && !isMoments) ? `<h3 class="prod-section">② 做封面（小红书第一闸）</h3>${renderCoverPanel()}` : ""}
+
+    <h3 class="prod-section">${(!isWechat && !isVideo && !isMoments) ? "③" : "②"} 生成图文卡（5 张轮播）</h3>
     <div class="production-grid">
       <article class="production-card ${locked ? "locked" : ""}">
         <b>${escapeHtml(visualRouteNameClean(state.visualStyle))}</b>
         <span>${escapeHtml(visualProductionCopyClean(state.visualStyle))}</span>
-        <button class="primary" ${locked || isLoading ? "disabled" : ""} data-generate-xiaohei-cards>${isLoading ? "43 generating..." : escapeHtml(primaryVisualActionLabelClean(state.visualStyle))}</button>
-        <button class="secondary" ${locked || isLoading ? "disabled" : ""} data-export-xhs-cards>${zh("&#23548;&#20986;&#24403;&#21069;&#39118;&#26684;&#25286;&#39029;&#26041;&#26696;")}</button>
+        <button class="primary" ${locked || isLoading ? "disabled" : ""} data-generate-xiaohei-cards>${isLoading ? "出图中…" : escapeHtml(primaryVisualActionLabelClean(state.visualStyle))}</button>
+        <button class="secondary" ${locked || isLoading ? "disabled" : ""} data-export-xhs-cards>导出当前风格拆页方案</button>
       </article>
-      <article class="production-card ${locked ? "locked" : ""}"><b>${zh("&#19968;&#40060;&#22810;&#21507;&#22797;&#29992;")}</b><span>${zh("&#22270;&#25991;&#23436;&#25104;&#21518;&#20445;&#23384;&#20026;&#27597;&#39064;&#36164;&#20135;&#65292;&#20877;&#20999;&#25442;&#25104;&#20844;&#20247;&#21495;&#38271;&#25991;&#12289;&#26379;&#21451;&#22280;&#25991;&#26696;&#12289;&#25238;&#38899;/&#35270;&#39057;&#21495;&#33050;&#26412;&#12290;")}</span><button class="primary" ${locked ? "disabled" : ""} data-step-target="12">${zh("&#20445;&#23384;&#20026;&#27597;&#39064;&#36164;&#20135;")}</button></article>
+      <article class="production-card ${locked ? "locked" : ""}"><b>完成后：一鱼多吃</b><span>图文存为母题资产后，可再切成公众号长文、朋友圈、抖音/视频号脚本。</span><button class="primary" ${locked ? "disabled" : ""} data-step-target="12">保存为母题资产</button></article>
     </div>
+    ${renderCleanXhsCardPreview()}
     ${isWechat ? renderWechatArticleImageLayout(copy) : ""}
     ${isVideo ? renderVideoProductionPreview(copy) : ""}
     ${files.length ? `<div class="status-strip success">${zh("&#24050;&#29983;&#25104;")} ${files.length} ${zh("&#24352;&#22270;&#29255;&#65292;&#21487;&#20197;&#23548;&#20986;&#25110;&#20445;&#23384;&#20026;&#27597;&#39064;&#36164;&#20135;&#12290;")}</div>` : ""}
@@ -1379,7 +1409,7 @@ function renderVisualRoutePickerClean(locked, recommendedId = "") {
     { id: "guizang-editorial", name: zh("&#24402;&#34255;&#26434;&#24535;"), use: zh("&#39640;&#32423;&#26434;&#24535;&#21644; Deck &#24863;&#65292;&#36866;&#21512;&#26041;&#27861;&#35770;&#12289;&#34892;&#19994;&#27934;&#23519;&#12290;"), base: "guizang-social-card / Open Design" },
     { id: "xhs-knowledge-card", name: zh("&#23453;&#29577;&#30693;&#35782;&#21345;"), use: zh("&#28165;&#21333;&#12289;&#27493;&#39588;&#12289;&#23545;&#27604;&#12289;&#25910;&#34255;&#22411;&#20869;&#23481;&#65292;&#19968;&#39029;&#19968;&#20010;&#37325;&#28857;&#12290;"), base: "baoyu-xhs-images / baoyu-infographic" },
   ];
-  return `<div class="visual-route-grid">${routes.map((item) => `<button type="button" class="visual-route-card ${item.id === state.visualStyle ? "active" : ""}" data-visual-style="${escapeHtml(item.id)}" ${locked ? "disabled" : ""}><b>${escapeHtml(item.name)}</b><span>${escapeHtml(item.use)}</span><em>${item.id === recommendedId ? "recommended 路 " : ""}${escapeHtml(item.base)}</em></button>`).join("")}</div>`;
+  return `<div class="visual-route-grid">${routes.map((item) => `<button type="button" class="visual-route-card ${item.id === state.visualStyle ? "active" : ""}" data-visual-style="${escapeHtml(item.id)}" ${locked ? "disabled" : ""}><b>${escapeHtml(item.name)}</b><span>${escapeHtml(item.use)}</span>${item.id === recommendedId ? `<em>✓ 推荐</em>` : (item.id === state.visualStyle ? `<em>当前使用</em>` : "")}</button>`).join("")}</div>`;
 }
 
 function bindWorkAreaActions() {
@@ -1409,6 +1439,10 @@ function bindWorkAreaActions() {
   byId("workArea")?.querySelector("[data-collect-x]")?.addEventListener("click", () => collectXAccounts());
   byId("workArea")?.querySelector("[data-generate-cover]")?.addEventListener("click", () => generateCoverFromContent());
   byId("workArea")?.querySelector("[data-run-precheck]")?.addEventListener("click", () => generateContentPrecheck());
+  byId("workArea")?.querySelector("[data-save-inline-copy]")?.addEventListener("click", () => {
+    const ta = byId("workArea")?.querySelector("[data-inline-copy]");
+    if (ta) saveInlineCopyEdit(ta.value);
+  });
   byId("workArea")?.querySelector("[data-read-materials]")?.addEventListener("click", () => readMaterials());
   byId("workArea")?.querySelectorAll("[data-material-scope]").forEach((button) => {
     button.addEventListener("click", () => {
