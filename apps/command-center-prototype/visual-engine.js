@@ -624,7 +624,11 @@ async function generateCoverFromContent() {
       "clear visual hierarchy, generous negative space, single focal point, NOT a multi-panel layout, NOT a content list page.",
       coverAction,
     ].filter(Boolean).join(" ");
-    const coverBrief = styleLockedVisualBrief({ role: "cover", visualBrief: coverComposition }, visual);
+    const refImg = (state.selectedReferenceImage || "").trim();
+    const coverCompositionFull = refImg
+      ? `${coverComposition} 重要：参考图里是这个主题的真实产品/主体，封面里的产品必须严格按参考图的外形、比例、颜色来，不要换成别的样子；只把它融入封面构图并套上风格，不要改变产品本身。`
+      : coverComposition;
+    const coverBrief = styleLockedVisualBrief({ role: "cover", visualBrief: coverCompositionFull }, visual);
     state.coverMessage = "钩子已提炼，正在出封面图（按当前配图风格）…";
     renderToday();
     // 2) 喂 Kie 出封面（单图，独立任务，不污染内容卡 manifest）——带完整风格合约，封面随内页风格走
@@ -639,7 +643,8 @@ async function generateCoverFromContent() {
         styleLock: contract.styleLock, negativePrompt: contract.negativePrompt,
         platform: visualPlatformForCurrentTarget(), targetPlatform: visualPlatformForCurrentTarget(),
         jobId,
-        cards: [{ page: 1, role: "cover", title, visualBrief: coverBrief }],
+        referenceImageUrl: refImg,
+        cards: [{ page: 1, role: "cover", title, visualBrief: coverBrief, referenceImageUrl: refImg }],
       }),
     });
     const startJson = await startRes.json().catch(() => ({}));
@@ -836,6 +841,59 @@ function buildVideoClipStartPayload() {
   return { title, topicId: selectedTopic()?.id || jobId, jobId, platform, targetPlatform: platform, clips, _useFrames: useFrames };
 }
 
+// 把确认脚本切成分镜：按句/段落切，每镜一个画面意图，动态 1-6 镜（不硬凑）
+function buildVideoShots() {
+  const title = state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "";
+  const lines = String(confirmedCopyText() || "")
+    .split(/\n+/)
+    .map((s) => s.replace(/^(标题|正文|钩子|配图建议|标签)[:：\s]*/u, "").trim())
+    .filter((s) => s && s.length > 6)
+    .slice(0, 6);
+  const shots = lines.length ? lines : (title ? [title] : []);
+  return shots.map((scriptText, i) => ({ page: i + 1, scriptText, isCover: i === 0 }));
+}
+
+// 关键帧 brief：严格从这一镜的脚本句出画，套所选风格——不用通用模板套话，数字/事实忠实脚本
+function keyframeBriefForShot(shot, visual) {
+  const composition = [
+    "This is a single vertical short-video KEYFRAME (not a multi-panel card, not a content list).",
+    "Depict THIS exact line of the script in the chosen illustration style, one clear focal subject/scene, single focus, readable:",
+    `「${shot.scriptText}」.`,
+    "Stay faithful to this sentence's meaning; if it contains numbers/facts, render them exactly as written, do NOT invent or change numbers, do NOT add clickbait words.",
+    shot.isCover ? "Opening hook frame with a short bold title." : "A content-beat frame.",
+  ].join(" ");
+  return styleLockedVisualBrief({ role: shot.isCover ? "cover" : "scene", visualBrief: composition }, visual);
+}
+
+// 轮询关键帧出图，返回 page->url 映射
+async function pollKeyframeImages(jobId, total) {
+  for (let round = 0; round < 120; round += 1) {
+    await new Promise((r) => setTimeout(r, 5000));
+    const res = await fetch(apiPath(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=${total}`));
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || !result.ok) continue;
+    const files = Array.isArray(result.manifest?.files) ? result.manifest.files : [];
+    const done = files.filter((f) => f.url).length;
+    state.videoClipProgress = { done, total };
+    state.videoClipMessage = `第 1 步·按脚本出关键帧：已出 ${done}/${total} 张。`;
+    renderToday();
+    if (done >= total && total > 0) {
+      const map = {};
+      files.forEach((f) => { if (f.url) map[Number(f.page)] = f.url; });
+      return map;
+    }
+    if (result.status === "error" && done === 0) return {};
+  }
+  // 超时：返回已拿到的
+  const res = await fetch(apiPath(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=${total}`));
+  const result = await res.json().catch(() => ({}));
+  const files = Array.isArray(result.manifest?.files) ? result.manifest.files : [];
+  const map = {};
+  files.forEach((f) => { if (f.url) map[Number(f.page)] = f.url; });
+  return map;
+}
+
+// 视频片段 = 脚本→分镜→每镜出关键帧图(从脚本)→关键帧图生视频。文生模式则跳过出图直接按脚本出片。
 async function generateVideoClips() {
   if (!state.copyConfirmed) {
     state.videoClipStatus = "error";
@@ -843,35 +901,69 @@ async function generateVideoClips() {
     renderToday();
     return;
   }
-  const payload = buildVideoClipStartPayload();
-  if (!payload.clips.length) {
+  const shots = buildVideoShots();
+  if (!shots.length) {
     state.videoClipStatus = "error";
-    state.videoClipMessage = payload._useFrames
-      ? "没有可用的画面作为首帧。请先在上面生成封面/分镜图，或切到“按脚本直接出片”。"
-      : "脚本内容太少，无法切成视频片段。请先确认文案。";
+    state.videoClipMessage = "脚本内容太少，无法切成分镜。请先确认文案。";
     renderToday();
     return;
   }
-  const total = payload.clips.length;
+  const total = shots.length;
+  const visual = currentVisualStyle();
+  const platform = visualPlatformForCurrentTarget();
+  const jobId = buildCurrentVideoClipJobId();
+  const scriptMode = state.videoClipMode === "script";
   state.videoClipStatus = "loading";
-  state.videoClipJobId = payload.jobId;
+  state.videoClipJobId = jobId;
   state.videoClipProgress = { done: 0, total };
-  state.videoClipMessage = payload._useFrames
-    ? `正在把 ${total} 张画面做成动态片段，页面会自动等结果（出片较慢，请耐心等）。`
-    : `正在按脚本生成 ${total} 个视频片段，页面会自动等结果（出片较慢，请耐心等）。`;
   state.videoClipManifest = { count: 0, files: [], publicFiles: [] };
   renderToday();
   try {
-    const res = await fetch(apiPath("/api/video-clip/start"), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
+    let clips;
+    if (scriptMode) {
+      // 文生：不出关键帧，直接按每镜脚本出片
+      state.videoClipMessage = `正在按脚本生成 ${total} 个视频片段（文生），出片较慢请耐心等。`;
+      renderToday();
+      clips = shots.map((s) => ({ page: s.page, prompt: videoMotionPrompt(s.scriptText), duration: 5 }));
+    } else {
+      // 第 1 步：按脚本分镜出关键帧图（内容贴脚本、套风格、有真实参考图就用）
+      state.videoClipMessage = `第 1 步·按脚本出 ${total} 张关键帧（贴合每一镜内容）…`;
+      renderToday();
+      const refImg = (state.selectedReferenceImage || "").trim();
+      const contract = visualStyleContract(visual.id);
+      const kfJobId = `vidkf-${jobId}`;
+      const startKf = await fetch(apiPath("/api/xhs-cards/generate-xiaohei/start"), {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: state.selectedTitle || "", style: visual.id, visualStyle: visual.id,
+          visualStyleTitle: visual.title, visualRoute: contract.route, visualCharacter: contract.character,
+          styleBrief: contract.styleBrief, styleLock: contract.styleLock, negativePrompt: contract.negativePrompt,
+          platform, targetPlatform: platform, jobId: kfJobId, referenceImageUrl: refImg,
+          cards: shots.map((s) => ({ page: s.page, role: s.isCover ? "cover" : "scene", title: state.selectedTitle || "", visualBrief: keyframeBriefForShot(s, visual), referenceImageUrl: refImg })),
+        }),
+      });
+      const kfJson = await startKf.json().catch(() => ({}));
+      if (!startKf.ok || !kfJson.ok) throw new Error(kfJson.message || kfJson.error || "关键帧出图启动失败");
+      const realKfJobId = kfJson.jobId || kfJobId;
+      const frameMap = await pollKeyframeImages(realKfJobId, total);
+      const gotFrames = shots.filter((s) => frameMap[s.page]).length;
+      if (!gotFrames) throw new Error("关键帧没出来（出图服务慢或失败），可稍后再点一次");
+      // 第 2 步：关键帧图生视频（首帧驱动）
+      state.videoClipMessage = `第 2 步·关键帧已出 ${gotFrames}/${total} 张，正在按关键帧出视频片段…`;
+      renderToday();
+      clips = shots.filter((s) => frameMap[s.page]).map((s) => ({
+        page: s.page, imageUrl: frameMap[s.page], prompt: videoMotionPrompt(s.scriptText), duration: 5,
+      }));
+    }
+    const startRes = await fetch(apiPath("/api/video-clip/start"), {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: state.selectedTitle || "", jobId, platform, targetPlatform: platform, clips }),
     });
-    const result = await res.json().catch(() => ({}));
-    if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
-    state.videoClipJobId = result.jobId || payload.jobId;
+    const result = await startRes.json().catch(() => ({}));
+    if (!startRes.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${startRes.status}`);
+    state.videoClipJobId = result.jobId || jobId;
     if (result.manifest) state.videoClipManifest = result.manifest;
-    await pollVideoClips({ jobId: state.videoClipJobId, total });
+    await pollVideoClips({ jobId: state.videoClipJobId, total: clips.length });
   } catch (error) {
     state.videoClipStatus = "error";
     state.videoClipProgress = null;

@@ -56,6 +56,8 @@ const state = {
   videoClipProgress: null,
   videoClipManifest: null,
   optimizeDiff: null,
+  referenceImages: [],
+  selectedReferenceImage: "",
   finalWorks: [],
   archiveMessage: "",
   editingMetricsWorkId: "",

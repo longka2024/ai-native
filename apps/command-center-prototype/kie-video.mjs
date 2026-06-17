@@ -78,6 +78,7 @@ export async function kieStartVideoJob(payload) {
     const prompt = String(clip.prompt || clip.imagePrompt || clip.text || payload.prompt || '').slice(0, 20000);
     const duration = Math.min(15, Math.max(4, Number(clip.duration || defaultDuration)));
     const imageUrl = clip.imageUrl || clip.first_frame_url || '';
+    const lastImageUrl = clip.lastImageUrl || clip.last_frame_url || '';
     const input = {
       prompt,
       aspect_ratio: aspect,
@@ -85,7 +86,8 @@ export async function kieStartVideoJob(payload) {
       duration,
       generate_audio: Boolean(clip.generateAudio || payload.generateAudio || false),
     };
-    if (imageUrl) input.first_frame_url = imageUrl;
+    if (imageUrl) input.first_frame_url = imageUrl;       // 首关键帧
+    if (lastImageUrl) input.last_frame_url = lastImageUrl; // 尾关键帧（首尾帧模式，模型在两帧间补运动）
     const entry = { page, taskId: '', url: '', state: 'waiting', error: '' };
     try {
       entry.taskId = await createVideoTask(input);

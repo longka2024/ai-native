@@ -30,14 +30,19 @@ function parseResultUrls(resultJson) {
   }
 }
 
-async function createTask(prompt, aspectRatio) {
+async function createTask(prompt, aspectRatio, referenceImageUrl) {
+  // 有真实参考图 → 用图生图/编辑模型（按参考图出，更对版）；没有 → 纯文生图（原行为）
+  const hasRef = referenceImageUrl && /^https?:\/\//i.test(referenceImageUrl);
+  const model = hasRef
+    ? (process.env.KIE_IMAGE_EDIT_MODEL || 'seedream/4.5-edit')
+    : (process.env.KIE_IMAGE_MODEL || 'gpt-image-2-text-to-image');
+  const input = hasRef
+    ? { prompt, aspect_ratio: aspectRatio, image_urls: [referenceImageUrl] }
+    : { prompt, aspect_ratio: aspectRatio };
   const response = await fetch(`${JOBS_BASE}/createTask`, {
     method: 'POST',
     headers: authHeaders({ 'content-type': 'application/json' }),
-    body: JSON.stringify({
-      model: process.env.KIE_IMAGE_MODEL || 'gpt-image-2-text-to-image',
-      input: { prompt, aspect_ratio: aspectRatio },
-    }),
+    body: JSON.stringify({ model, input }),
   });
   const raw = await response.text();
   let data;
@@ -72,9 +77,10 @@ export async function kieStartXiaoheiJob(payload) {
   job.cards = await Promise.all(cards.map(async (card, index) => {
     const page = Number(card.page || index + 1);
     const prompt = String(card.imagePrompt || card.visualBrief || card.text || payload.title || '').slice(0, 4000);
+    const referenceImageUrl = card.referenceImageUrl || payload.referenceImageUrl || '';
     const entry = { page, taskId: '', url: '', state: 'waiting', error: '' };
     try {
-      entry.taskId = await createTask(prompt, aspect);
+      entry.taskId = await createTask(prompt, aspect, referenceImageUrl);
       entry.state = 'generating';
     } catch (error) {
       entry.state = 'fail';

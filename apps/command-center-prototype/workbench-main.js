@@ -95,6 +95,8 @@ function clearProductionState() {
   state.videoClipProgress = null;
   state.videoClipManifest = null;
   state.optimizeDiff = null;
+  state.referenceImages = [];
+  state.selectedReferenceImage = "";
 }
 
 function changeVisualStyle(styleId) {
@@ -556,7 +558,7 @@ function signalCardHtml(hit) {
     <div class="sc-title">${escapeHtml(hit.title)}</div>
     <div class="sc-actions">
       ${hit.url ? `<a class="sc-link" href="${escapeHtml(hit.url)}" target="_blank" rel="noopener">查看原文 ↗</a>` : `<span></span>`}
-      <button class="sc-btn" data-use-signal="${escapeHtml(hit.title)}" data-signal-kw="${escapeHtml(firstKw)}" data-signal-platform="${escapeHtml(hit.platform || "")}" data-signal-rank="${hit.rank || ""}" data-signal-url="${escapeHtml(hit.url || "")}">生成选题</button>
+      <button class="sc-btn" data-use-signal="${escapeHtml(hit.title)}" data-signal-kw="${escapeHtml(firstKw)}" data-signal-platform="${escapeHtml(hit.platform || "")}" data-signal-rank="${hit.rank || ""}" data-signal-url="${escapeHtml(hit.url || "")}" data-signal-summary="${escapeHtml(String(hit.summary || hit.desc || "").slice(0, 600))}">生成选题</button>
     </div>
   </div>`;
 }
@@ -885,23 +887,23 @@ function renderVideoProductionPreview(copy = "") {
   const isLoading = state.videoClipStatus === "loading";
   const mode = state.videoClipMode === "script" ? "script" : "frames";
   const locked = !state.copyConfirmed;
-  const genLabel = isLoading ? "出片中…" : (mode === "script" ? "按脚本生成视频片段" : "让画面动起来（生成视频片段）");
+  const genLabel = isLoading ? "出片中…" : (mode === "script" ? "按脚本直接出片段" : "按脚本出关键帧 → 生成视频片段");
   return `<div class="article-layout-preview">
-    <div class="title-group-head"><b>视频脚本预览</b><span>这里检查钩子、口播、分镜和字幕节奏。下面可以把画面做成动态视频片段。</span></div>
+    <div class="title-group-head"><b>视频脚本预览</b><span>这里检查钩子、口播、分镜和字幕节奏。下面把脚本切成分镜、按每一镜内容出关键帧，再做成视频。</span></div>
     <div class="asset-grid">
-      ${lines.map((line, index) => `<article class="asset-item"><b>${index === 0 ? "标题 / 钩子" : `段落 ${index}`}</b><span>${escapeHtml(line)}</span></article>`).join("")}
+      ${lines.map((line, index) => `<article class="asset-item"><b>${index === 0 ? "标题 / 钩子（第 1 镜）" : `第 ${index + 1} 镜`}</b><span>${escapeHtml(line)}</span></article>`).join("")}
     </div>
     <div class="video-clip-panel" style="margin-top:14px;border:1px solid #e6ddd0;border-radius:10px;padding:14px;background:#fff;">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
         <b style="font-size:15px;">生成视频片段</b>
         <div class="video-clip-mode" style="display:flex;gap:6px;">
-          <button type="button" class="ghost ${mode === "frames" ? "active" : ""}" data-video-clip-mode="frames" ${isLoading ? "disabled" : ""}>用已出的画面（默认）</button>
-          <button type="button" class="ghost ${mode === "script" ? "active" : ""}" data-video-clip-mode="script" ${isLoading ? "disabled" : ""}>按脚本直接出片</button>
+          <button type="button" class="ghost ${mode === "frames" ? "active" : ""}" data-video-clip-mode="frames" ${isLoading ? "disabled" : ""}>关键帧出片（默认·更对版）</button>
+          <button type="button" class="ghost ${mode === "script" ? "active" : ""}" data-video-clip-mode="script" ${isLoading ? "disabled" : ""}>纯文生出片</button>
         </div>
       </div>
       <div style="color:#7a6a55;font-size:12px;margin:6px 0 10px;">${mode === "frames"
-        ? `把上面【生成图文卡 / 封面】出好的画面做成动起来的短片段（当前可用画面：${frameCount} 张）。没有画面就先在上面出图，或切到“按脚本直接出片”。`
-        : "不依赖图片，直接按脚本每段生成一个短视频片段（更自由，但更花时间）。"}</div>
+        ? `把脚本切成分镜，<b>每一镜按它自己的内容出一张关键帧图</b>（贴脚本、套你选的配图风格，有真实参考图就用），再用关键帧做成视频——画面跟脚本对得上。`
+        : "不出图，直接按每一镜脚本生成短视频片段（更自由，但画面可控性差、更花时间）。"}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="primary" ${locked || isLoading ? "disabled" : ""} data-generate-video-clips>${escapeHtml(genLabel)}</button>
         <button class="secondary" ${isLoading ? "disabled" : ""} data-restore-video-clips>查询已生成片段</button>
@@ -1532,9 +1534,20 @@ function renderCoverPanel() {
   const locked = !state.copyConfirmed;
   const loading = state.coverStatus === "loading";
   const hooks = Array.isArray(state.coverHooks) ? state.coverHooks : [];
+  const refs = Array.isArray(state.referenceImages) ? state.referenceImages : [];
+  const sel = state.selectedReferenceImage || "";
+  const refStrip = refs.length ? `<div class="cover-ref-strip" style="margin:8px 0 10px;padding:10px;border:1px dashed #d9c9b0;border-radius:8px;background:#fffdf8;">
+      <div style="font-size:12px;color:#7a6a55;margin-bottom:6px;">真实参考图（可选）：从这条新闻里抓到的真实产品图。<b>选一张</b>，封面就照它出，免得画得不对版；<b>不选</b>就按文字自己出。</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        ${refs.map((u) => `<button type="button" data-pick-ref="${escapeHtml(u)}" style="padding:0;border:2px solid ${u === sel ? "#5b4a32" : "transparent"};border-radius:8px;background:none;cursor:pointer;line-height:0;"><img src="${escapeHtml(u)}" alt="参考" style="width:72px;height:72px;object-fit:cover;border-radius:6px;" loading="lazy" /></button>`).join("")}
+        <button type="button" class="ghost ${sel ? "" : "active"}" data-pick-ref="" style="${sel ? "" : "background:#5b4a32;color:#fff;border-color:#5b4a32;"}">不用参考图</button>
+      </div>
+      ${sel ? `<div style="font-size:12px;color:#2e7d32;margin-top:6px;">✓ 已选参考图，封面会按它出（更对版）。</div>` : ""}
+    </div>` : "";
   return `<div class="cover-panel" style="border:1px solid #e6ddd0;border-radius:10px;padding:14px;margin:12px 0;background:#fffdf8;">
     <b>小红书封面（独立生成，不用配套图第一页）</b>
     <div style="color:#7a6a55;font-size:13px;margin:4px 0 8px;">从已确认的标题+正文自动提炼诚实钩子，出一张专门封面。封面+标题是点击率第一闸。</div>
+    ${refStrip}
     <button class="primary" ${locked || loading ? "disabled" : ""} data-generate-cover>${loading ? "正在生成封面…" : "生成封面"}</button>
     ${state.coverMessage ? `<div class="status-strip ${state.coverStatus === "error" ? "" : "success"}" style="margin-top:8px;">${escapeHtml(state.coverMessage)}</div>` : ""}
     ${hooks.length ? `<div style="margin-top:8px;font-size:13px;"><b>封面钩子候选：</b>${hooks.map((h) => `<span style="display:inline-block;background:#f3ece0;border-radius:6px;padding:2px 8px;margin:2px;">${escapeHtml(h)}</span>`).join("")}</div>` : ""}
@@ -1661,6 +1674,9 @@ function bindWorkAreaActions() {
   });
   byId("workArea")?.querySelector("[data-collect-x]")?.addEventListener("click", () => collectXAccounts());
   byId("workArea")?.querySelector("[data-generate-cover]")?.addEventListener("click", () => generateCoverFromContent());
+  byId("workArea")?.querySelectorAll("[data-pick-ref]").forEach((b) => {
+    b.addEventListener("click", () => { state.selectedReferenceImage = b.dataset.pickRef || ""; renderToday(); });
+  });
   byId("workArea")?.querySelector("[data-run-precheck]")?.addEventListener("click", () => generateContentPrecheck());
   byId("workArea")?.querySelector("[data-optimize-by-precheck]")?.addEventListener("click", () => optimizeByPrecheck());
   byId("workArea")?.querySelector("[data-undo-optimize]")?.addEventListener("click", () => {

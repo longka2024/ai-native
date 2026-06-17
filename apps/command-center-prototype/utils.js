@@ -60,6 +60,7 @@ function styleLockedVisualBrief(card, visual) {
     `Style lock: ${contract.styleLock}.`,
     jujuGuard,
     xiaoheiGuard,
+    "Fact fidelity (hard rule): any number, amount, date, percentage, name or fact rendered in the image must match the source copy EXACTLY — do not alter, round, scale, or invent numbers (e.g. never turn 500亿 into 50亿); do not add clickbait words like 震惊/必看/震撼/吓人 unless they literally appear in the copy.",
     `Negative prompt: ${contract.negativePrompt}.`,
   ].filter(Boolean).join("\n");
   return allCards;
