@@ -35,6 +35,92 @@ async function generateContentPrecheck() {
   }
 }
 
+// 一键「帮我改好」：按发布前判断的结论，把当前文案整体改写成可直接发布的成稿。
+// 复用 DeepSeek 改写链（改写→编辑审查→去AI味→存版本）。真实细节只从已采集素材取，
+// 没有就留一个方括号占位让运营补，绝不虚构事实。改完自动确认为当前文案并重判一次。
+async function optimizeByPrecheck() {
+  const r = state.precheckResult;
+  if (!r || !r.verdict) {
+    state.precheckStatus = "error";
+    state.precheckMessage = "请先做一次发布前判断，我才知道按什么标准帮你改。";
+    renderToday();
+    return;
+  }
+  if (state.draftStatus === "loading") return;
+  const snapshot = currentCopySnapshot("优化前版本");
+  if (!snapshot?.copy) {
+    state.precheckStatus = "error";
+    state.precheckMessage = "当前没有可优化的正文。";
+    renderToday();
+    return;
+  }
+  // 备份当前已确认文案，改写失败要能原样回滚，绝不弄丢小妹手里的稿
+  const backup = {
+    draft: state.draft,
+    copyVersions: state.copyVersions,
+    confirmedCopyVersionId: state.confirmedCopyVersionId,
+    currentCopyVersionId: state.currentCopyVersionId,
+    copyConfirmed: state.copyConfirmed,
+    selectedTitle: state.selectedTitle,
+  };
+  const labelMap = { HP: "钩子", ER: "痛点共鸣", SV: "收藏价值", IV: "真实案例/独家细节", SP: "具体可信", HT: "人味", CV: "转化" };
+  const weakest = Array.isArray(r.weakest) ? r.weakest.map((c) => labelMap[c] || c) : [];
+  const brief = [
+    ...(Array.isArray(r.fixes) ? r.fixes : []),
+    ...(weakest.length ? [`重点补强：${weakest.join("、")}`] : []),
+    ...(Array.isArray(r.honest_flags) ? r.honest_flags.map((f) => `发之前先改掉：${f}`) : []),
+  ].filter(Boolean).slice(0, 10);
+  state.draftRevision += 1;
+  state.pendingRevision = {
+    currentDraft: snapshot,
+    qualityFeedback: { rewriteBrief: brief },
+    instruction:
+      "把当前这篇改写成一版可以直接发布的成稿，输出完整新正文（不要只在末尾追加建议）。按以下重点改到位：" +
+      brief.join("；") + "。" +
+      "【改动要最小、最精准】原文里没问题的句子尽量一字不动、原样保留，只改/补真正需要动的句子，不要为了改而把整篇重写一遍——这样运营才能一眼看出改了哪。" +
+      "【真实性铁律，必须遵守】需要『真实案例 / 客户原话 / 具体细节』时，只能用我提供的真实素材（源帖正文、真实评论、客户资料）里的内容，把通用空话替换成这些真实锚点；" +
+      "绝对不要编造任何具体的人物、经历、数字、结果或情节。" +
+      "如果某处确实需要一段只有客户本人才有、而素材里又没有的真实经历，就在那里留一句方括号占位：" +
+      "『【这里补一句你们的真实案例 / 客户原话】』，交给运营去补，不要自己虚构。" +
+      "其余（钩子、结构、收藏点、转化、去AI味、说人话）一次改到能直接用。",
+  };
+  state.precheckStatus = "loading";
+  state.precheckMessage = "正在按判断帮你改成能用的版本（同时去 AI 味），稍等…";
+  clearCopyConfirmation();
+  state.draftStatus = "idle";
+  state.draftError = "";
+  state.draftMeta = null;
+  renderToday();
+
+  await generateSopDraft();
+
+  if (state.draftStatus === "done" && state.draft) {
+    // 把刚改好的版本确认为当前文案，留在制作中心，不用回上一步
+    const version = state.copyVersions.find((v) => v.id === state.currentCopyVersionId);
+    if (version) {
+      state.confirmedCopyVersionId = version.id;
+      state.copyVersions = state.copyVersions.map((v) => ({ ...v, confirmed: v.id === version.id }));
+    }
+    state.copyConfirmed = true;
+    // 记下改前/改后，给前端做对比高亮（黄色=改动处）
+    state.optimizeDiff = { before: snapshot.copy, after: state.draft };
+    state.precheckResult = null;
+    state.precheckStatus = "idle";
+    state.precheckMessage = "已按判断帮你改好。下面黄色高亮的就是改动/补上的地方，看一眼对不对；不满意可以点【撤销】还原。系统再自动判一次。";
+    renderToday();
+    await generateContentPrecheck();
+  } else {
+    // 失败回滚，保住原稿
+    Object.assign(state, backup);
+    state.pendingRevision = null;
+    state.optimizeDiff = null;
+    state.draftStatus = "done";
+    state.precheckStatus = "error";
+    state.precheckMessage = `自动优化这次没成功（${state.draftError || "改写失败"}）。你的原文案已原样保留，可以再点一次，或手动改。`;
+    renderToday();
+  }
+}
+
 async function generateSopDraft() {
   if (!state.selectedTitle || !selectedTopic()) return;
   if (state.draftStatus === "loading") return;

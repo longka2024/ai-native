@@ -226,7 +226,8 @@ function renderFinalWorkAsset(item) {
   const status = finalWorkStatus(item);
   const publishRecord = item.publishRecord || {};
   const platformId = item.platformId || inferPlatformIdFromTitle(item.platform);
-  const expectedImages = platformId === "xhs" ? 5 : images.length;
+  // 张数按内容判断：用保存时记录的规划张数；老作品没记的，回退到实际图数（不再写死 5、不误报“未齐”）
+  const expectedImages = platformId === "xhs" ? (Number(item.plannedImageCount) || images.length || 1) : images.length;
   const imageComplete = platformId !== "xhs" || images.length >= expectedImages;
   const availableTargets = publishTargets.filter((target) => target.id !== "topic-only" && target.id !== platformId);
   const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleString() : zh("&#26410;&#35760;&#24405;&#26102;&#38388;");

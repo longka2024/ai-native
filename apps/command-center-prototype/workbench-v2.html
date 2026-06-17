@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Longka AI Native 内容生产中台</title>
-  <link rel="stylesheet" href="./workbench-v2-clean.css?v=20260617-tidy-1" />
+  <link rel="stylesheet" href="./workbench-v2-clean.css?v=20260618-optimize-2" />
 </head>
 <body>
   <header class="topbar">
@@ -146,6 +146,28 @@
           <button class="secondary" data-action="import-state">导入资料库</button>
           <button class="secondary" data-action="check-health">检查采集能力</button>
         </div>
+        <div class="jianghu-import" style="margin-top:18px;border:1px solid #e6ddd0;border-radius:10px;padding:16px;background:#fff;max-width:780px;">
+          <b style="font-size:16px;">上传爆款素材（江湖工具箱导出）</b>
+          <p style="color:#7a6a55;font-size:13px;margin:8px 0 12px;line-height:1.6;">把江湖工具箱「作品列表勾选数据」导出的 .txt 传上来：系统解析成真实爆款素材（正文 + 点赞收藏评论数 + 链接，可追溯），<b>按行业入库</b>到素材库，供选题和二次原创复用。只入结构化素材，不保存原始文件。</p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:#5b4a32;">这批属于哪个行业
+              <input id="jianghuIndustry" placeholder="如：女性成长 / 私校 / 美容 / AI自媒体" style="padding:8px 10px;border:1px solid #e6ddd0;border-radius:8px;min-width:220px;" />
+            </label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:#5b4a32;">平台
+              <select id="jianghuPlatform" style="padding:8px 10px;border:1px solid #e6ddd0;border-radius:8px;">
+                <option value="xiaohongshu">小红书</option>
+                <option value="douyin">抖音</option>
+                <option value="kuaishou">快手</option>
+                <option value="bilibili">B站</option>
+              </select>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:#5b4a32;">导出文件（.txt / .json）
+              <input type="file" id="jianghuFile" accept=".txt,.json,application/json,text/plain" style="padding:6px 0;" />
+            </label>
+            <button class="primary" data-action="import-jianghu" style="height:38px;">解析并入库</button>
+          </div>
+          <div id="jianghuImportStatus" style="margin-top:12px;"></div>
+        </div>
       </section>
 
       <section class="route-panel simple-panel" data-panel="accounts" hidden>
@@ -157,18 +179,18 @@
   </main>
 
   <!-- 模块化架构 v20260611 — 按依赖顺序加载 -->
-  <script src="./state-manager.js?v=20260616-gold-1"></script>
+  <script src="./state-manager.js?v=20260618-optimize-2"></script>
   <script src="./config.js?v=20260616-gold-1"></script>
   <script src="./utils.js?v=20260611-modular-1"></script>
-  <script src="./copy-manager.js?v=20260617-tidy-1"></script>
-  <script src="./visual-engine.js?v=20260617-tidy-4"></script>
+  <script src="./copy-manager.js?v=20260618-optimize-2"></script>
+  <script src="./visual-engine.js?v=20260618-count-1"></script>
   <script src="./topic-engine.js?v=20260616-usedtopic-1"></script>
   <script src="./title-engine.js?v=20260612-titlefix-4"></script>
   <script src="./content-creation-base.js?v=20260608-motif-compound-1"></script>
-  <script src="./rewrite-engine.js?v=20260617-precheck-1"></script>
-  <script src="./asset-manager.js?v=20260611-modular-1"></script>
+  <script src="./rewrite-engine.js?v=20260618-optimize-2"></script>
+  <script src="./asset-manager.js?v=20260618-publish-1"></script>
   <script src="./collector-panel.js?v=20260611-modular-1"></script>
   <script src="./material-flow.js?v=20260611-modular-1"></script>
-  <script src="./workbench-main.js?v=20260617-tidy-4"></script>
+  <script src="./workbench-main.js?v=20260618-publish-2"></script>
 </body>
 </html>

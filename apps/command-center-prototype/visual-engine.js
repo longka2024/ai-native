@@ -162,9 +162,11 @@ function estimateIllustrationDensity({ copy = "", lines = [], platform = "xhs" }
     /数据|结果|收益|阅读|收藏|评论|增长/.test(copy),
     lines.length >= 7,
   ].filter(Boolean).length;
-  if (signals >= 4) return { types: ["cover", "problem", "case", "method", "action"], reason: "当前文案信息密度够，适合 5 张小红书图集。" };
-  if (signals >= 2) return { types: ["cover", "problem", "action"], reason: "当前文案只有 2-3 个关键关系，做 3 张更干净。" };
-  return { types: ["cover"], reason: "当前文案只适合一张主视觉，硬凑多图会稀释重点。" };
+  if (signals >= 4) return { types: ["cover", "problem", "case", "method", "action"], reason: "信息密度够（案例/方法/痛点/数据齐），适合 5 张图集。" };
+  if (signals === 3) return { types: ["cover", "problem", "case", "action"], reason: "有 3 类关键信息，做 4 张刚好，不硬凑。" };
+  if (signals === 2) return { types: ["cover", "problem", "action"], reason: "只有 2 个关键关系，3 张更干净。" };
+  if (signals === 1) return { types: ["cover", "action"], reason: "信息量偏少，2 张（钩子+行动）就够。" };
+  return { types: ["cover"], reason: "当前文案只适合一张主视觉，多图会稀释重点。" };
 }
 function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVisualStyle(), lines = [], title = "", director = null } = {}) {
   const signal = extractVisualTopicSignals({ copy, topic, title, lines });
@@ -605,21 +607,39 @@ async function generateCoverFromContent() {
     });
     const sk = await skRes.json().catch(() => ({}));
     const result = sk?.result || {};
-    const coverPrompt = String(result.coverPrompt || "");
     state.coverHooks = Array.isArray(result.coverHookOptions) ? result.coverHookOptions : [];
-    if (!coverPrompt) throw new Error(sk.message || sk.error || "未能从正文生成封面提示词");
-    state.coverMessage = "钩子已提炼，正在出封面图…";
+    // 钩子（大标题）：优先用 skill 提炼的钩子，退回标题
+    const hook = String(state.coverHooks[0] || result.coverHook || title || "").trim().slice(0, 40);
+    if (!hook) throw new Error(sk.message || sk.error || "未能提炼封面钩子");
+    // 封面 = 选中配图风格（风格锁）+ 该风格的「封面构图」+ 大钩子标题。
+    // 不再用 skill 的实拍提示词，保证封面与内页同一画风、但仍是“封面的样子”（大标题/单焦点/抓眼）。
+    const contract = visualStyleContract(visual.id);
+    const coverAction = (visualCardActionBriefs(visual.id) || {}).cover || "";
+    const topicCtx = String(selectedTopic()?.theme || title || "").slice(0, 60);
+    const coverComposition = [
+      "This is the COVER image (not an inner content page).",
+      "Render it in the SAME illustration style as the inner cards, but as a real scroll-stopping Xiaohongshu cover:",
+      `the dominant element is one oversized bold Chinese hook title "${hook}";`,
+      `one single strong focal subject representing the topic "${topicCtx}";`,
+      "clear visual hierarchy, generous negative space, single focal point, NOT a multi-panel layout, NOT a content list page.",
+      coverAction,
+    ].filter(Boolean).join(" ");
+    const coverBrief = styleLockedVisualBrief({ role: "cover", visualBrief: coverComposition }, visual);
+    state.coverMessage = "钩子已提炼，正在出封面图（按当前配图风格）…";
     renderToday();
-    // 2) 喂 Kie 出封面（单图，独立任务，不污染内容卡 manifest）
+    // 2) 喂 Kie 出封面（单图，独立任务，不污染内容卡 manifest）——带完整风格合约，封面随内页风格走
     const jobId = `cover-${visual.id}-${Date.now()}`;
     const startRes = await fetch(apiPath("/api/xhs-cards/generate-xiaohei/start"), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         title, style: visual.id, visualStyle: visual.id,
+        visualStyleTitle: visual.title, visualRoute: contract.route,
+        visualCharacter: contract.character, styleBrief: contract.styleBrief,
+        styleLock: contract.styleLock, negativePrompt: contract.negativePrompt,
         platform: visualPlatformForCurrentTarget(), targetPlatform: visualPlatformForCurrentTarget(),
         jobId,
-        cards: [{ page: 1, role: "cover", title, imagePrompt: coverPrompt }],
+        cards: [{ page: 1, role: "cover", title, visualBrief: coverBrief }],
       }),
     });
     const startJson = await startRes.json().catch(() => ({}));
@@ -711,6 +731,8 @@ async function pollXiaoheiCards({ jobId, total, repairAttempts = 0 }) {
 
 async function restoreLatestXiaoheiCards() {
   const jobId = state.xhsCardAsyncJobId || state.xhsCardJobBase || buildCurrentXiaoheiJobId();
+  // 张数按内容判断，不写死 5
+  const total = (typeof plannedVisualCardCount === "function" ? plannedVisualCardCount() : 0) || 5;
   state.xhsCardExportStatus = "loading";
   state.xhsCardOperation = "xiaohei";
   state.xhsCardAsyncJobId = jobId;
@@ -718,18 +740,18 @@ async function restoreLatestXiaoheiCards() {
   state.xhsCardExportMessage = `正在恢复当前主题的图片：${jobId}`;
   renderToday();
   try {
-    const res = await fetch(apiPath(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=5`));
+    const res = await fetch(apiPath(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=${total}`));
     const result = await res.json().catch(() => ({}));
     if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
     applyRemoteVisualManifest(result.manifest || null);
     state.xhsCardAsyncJobId = result.jobId || jobId;
     state.xhsCardJobBase = result.jobId || jobId;
     const count = state.xhsCardManifest?.count || 0;
-    state.xhsCardExportStatus = count >= 5 ? "done" : (count > 0 ? "error" : "idle");
+    state.xhsCardExportStatus = count >= total ? "done" : (count > 0 ? "error" : "idle");
     state.xhsCardOperation = "xiaohei";
     state.xhsCardProgress = null;
     state.xhsCardExportMessage = count
-      ? `已恢复当前主题 ${count}/5 张配图。`
+      ? `已恢复当前主题 ${count}/${total} 张配图。`
       : "当前主题还没有生成过配图，请点击生成配图。";
   } catch (error) {
     state.xhsCardExportStatus = "error";
@@ -750,5 +772,194 @@ function buildCurrentXiaoheiJobId() {
     simpleHash(confirmedCopyText() || ""),
   ].join("-");
   return `longka-xhs-${simpleHash(seed)}`;
+}
+
+// ===== 视频片段（让封面/分镜动起来；也可纯按脚本出片）=====
+
+function buildCurrentVideoClipJobId() {
+  const seed = [
+    selectedTopic()?.id || "topic",
+    state.confirmedCopyVersionId || state.currentCopyVersionId || "copy",
+    state.videoClipMode || "frames",
+    state.selectedTitle || "title",
+    simpleHash(confirmedCopyText() || ""),
+  ].join("-");
+  return `longka-vid-${simpleHash(seed)}`;
+}
+
+// 出图结果（封面/分镜）作为视频首帧来源
+function videoClipFirstFrames() {
+  const files = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
+  return files.filter((url) => /^https?:\/\//.test(String(url))).slice(0, 5);
+}
+
+// 脚本行（标题/钩子 + 段落），文生视频时每行一个片段
+function videoClipScriptLines() {
+  return String(confirmedCopyText() || "")
+    .split(/\n+/)
+    .map((line) => line.replace(/^(标题|正文|配图建议|标签|钩子)[:：\s]*/u, "").trim())
+    .filter((line) => line && line.length > 4)
+    .slice(0, 5);
+}
+
+// 给一段画面配一句“动起来”的运镜提示（中性、平和，喂给出片引擎）
+function videoMotionPrompt(context = "") {
+  const base = "Bring this scene gently to life: subtle natural motion, a slow cinematic camera push-in, soft light shifting, keep the original composition and subject stable, high quality, smooth, no text artifacts.";
+  const ctx = String(context || "").slice(0, 200).trim();
+  return ctx ? `${ctx}. ${base}` : base;
+}
+
+function buildVideoClipStartPayload() {
+  const title = state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "";
+  const platform = visualPlatformForCurrentTarget();
+  const jobId = buildCurrentVideoClipJobId();
+  const frames = videoClipFirstFrames();
+  const useFrames = state.videoClipMode !== "script" && frames.length > 0;
+  let clips = [];
+  if (useFrames) {
+    const lines = videoClipScriptLines();
+    clips = frames.map((url, index) => ({
+      page: index + 1,
+      imageUrl: url,
+      prompt: videoMotionPrompt(lines[index] || lines[0] || title),
+      duration: 5,
+    }));
+  } else {
+    const lines = videoClipScriptLines();
+    const source = lines.length ? lines : [title].filter(Boolean);
+    clips = source.map((line, index) => ({
+      page: index + 1,
+      prompt: videoMotionPrompt(line),
+      duration: 5,
+    }));
+  }
+  return { title, topicId: selectedTopic()?.id || jobId, jobId, platform, targetPlatform: platform, clips, _useFrames: useFrames };
+}
+
+async function generateVideoClips() {
+  if (!state.copyConfirmed) {
+    state.videoClipStatus = "error";
+    state.videoClipMessage = "请先在上一步确认文案，确认后才能生成视频片段。";
+    renderToday();
+    return;
+  }
+  const payload = buildVideoClipStartPayload();
+  if (!payload.clips.length) {
+    state.videoClipStatus = "error";
+    state.videoClipMessage = payload._useFrames
+      ? "没有可用的画面作为首帧。请先在上面生成封面/分镜图，或切到“按脚本直接出片”。"
+      : "脚本内容太少，无法切成视频片段。请先确认文案。";
+    renderToday();
+    return;
+  }
+  const total = payload.clips.length;
+  state.videoClipStatus = "loading";
+  state.videoClipJobId = payload.jobId;
+  state.videoClipProgress = { done: 0, total };
+  state.videoClipMessage = payload._useFrames
+    ? `正在把 ${total} 张画面做成动态片段，页面会自动等结果（出片较慢，请耐心等）。`
+    : `正在按脚本生成 ${total} 个视频片段，页面会自动等结果（出片较慢，请耐心等）。`;
+  state.videoClipManifest = { count: 0, files: [], publicFiles: [] };
+  renderToday();
+  try {
+    const res = await fetch(apiPath("/api/video-clip/start"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
+    state.videoClipJobId = result.jobId || payload.jobId;
+    if (result.manifest) state.videoClipManifest = result.manifest;
+    await pollVideoClips({ jobId: state.videoClipJobId, total });
+  } catch (error) {
+    state.videoClipStatus = "error";
+    state.videoClipProgress = null;
+    const count = state.videoClipManifest?.count || 0;
+    state.videoClipMessage = `视频片段生成中断：${error.message}。已生成的 ${count} 段会保留，未生成的不冒充成品。`;
+    if (!count) state.videoClipManifest = null;
+  }
+  renderToday();
+}
+
+async function pollVideoClips({ jobId, total }) {
+  for (let round = 0; round < 180; round += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    const res = await fetch(apiPath(`/api/video-clip/status?jobId=${encodeURIComponent(jobId)}`));
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
+    if (result.manifest) state.videoClipManifest = result.manifest;
+    const count = state.videoClipManifest?.count || 0;
+    state.videoClipProgress = { done: count, total };
+    if (count >= total && total > 0) {
+      state.videoClipStatus = "done";
+      state.videoClipProgress = null;
+      state.videoClipMessage = `已生成 ${count} 段视频片段，下面可以逐段打开检查。`;
+      renderToday();
+      return;
+    }
+    const failed = Array.isArray(result.failed) ? result.failed : [];
+    if (result.status === "error" || (failed.length && count + failed.length >= total)) {
+      state.videoClipStatus = count > 0 ? "done" : "error";
+      state.videoClipProgress = null;
+      state.videoClipMessage = count > 0
+        ? `已生成 ${count}/${total} 段${failed.length ? `（有 ${failed.length} 段没出来，可再点一次补）` : ""}。`
+        : "这批视频片段没能出来，请稍后再点一次。出片服务较慢或排队时容易这样。";
+      renderToday();
+      return;
+    }
+    state.videoClipMessage = `正在出片：已完成 ${count}/${total} 段。可以停留等待，也可以稍后再点【查询已生成片段】。`;
+    renderToday();
+  }
+  state.videoClipStatus = "done";
+  state.videoClipProgress = null;
+  const count = state.videoClipManifest?.count || 0;
+  state.videoClipMessage = `等待较久，目前看到 ${count}/${total} 段。后台可能还在出，过一会点【查询已生成片段】取回，不用重出。`;
+}
+
+async function restoreLatestVideoClips() {
+  const jobId = state.videoClipJobId || buildCurrentVideoClipJobId();
+  state.videoClipStatus = "loading";
+  state.videoClipJobId = jobId;
+  state.videoClipMessage = "正在查询这个主题已生成的视频片段…";
+  renderToday();
+  try {
+    const res = await fetch(apiPath(`/api/video-clip/status?jobId=${encodeURIComponent(jobId)}`));
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${res.status}`);
+    state.videoClipManifest = result.manifest || null;
+    const count = state.videoClipManifest?.count || 0;
+    state.videoClipStatus = count > 0 ? "done" : "idle";
+    state.videoClipProgress = null;
+    state.videoClipMessage = count
+      ? `已找回这个主题的 ${count} 段视频片段。`
+      : "这个主题还没有生成过视频片段，点上面的按钮开始。";
+  } catch (error) {
+    state.videoClipStatus = "error";
+    state.videoClipProgress = null;
+    state.videoClipMessage = `查询视频片段失败：${error.message}`;
+  }
+  renderToday();
+}
+
+function renderVideoClipGallery() {
+  const files = Array.isArray(state.videoClipManifest?.publicFiles) ? state.videoClipManifest.publicFiles : [];
+  if (files.length) {
+    return `<div class="video-clip-gallery">
+      ${files.map((url, index) => {
+        const src = escapeHtml(String(url));
+        return `<figure class="video-clip-item">
+          <video src="${src}" controls preload="metadata" playsinline></video>
+          <figcaption>片段 ${index + 1} · <a href="${src}" target="_blank" rel="noreferrer">下载</a></figcaption>
+        </figure>`;
+      }).join("")}
+    </div>`;
+  }
+  if (state.videoClipStatus === "loading") {
+    const done = Number(state.videoClipProgress?.done || 0);
+    const total = Number(state.videoClipProgress?.total || 0);
+    return `<div class="video-clip-empty loading"><b>正在出片</b><span>已完成 ${done}/${total} 段，出好的会先显示在这里。</span></div>`;
+  }
+  return "";
 }
 

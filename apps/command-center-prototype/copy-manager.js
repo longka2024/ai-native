@@ -142,10 +142,11 @@ function saveInlineCopyEdit(text) {
   if (state.confirmedCopyVersionId && state.copyVersions.some((v) => v.id === state.confirmedCopyVersionId)) {
     state.copyVersions = state.copyVersions.map((v) => (v.id === state.confirmedCopyVersionId ? { ...v, copy: t } : v));
   }
-  // 文案改了，旧的发布前判断作废
+  // 文案改了，旧的发布前判断 + 改动对比作废
   state.precheckResult = null;
   state.precheckStatus = "idle";
   state.precheckMessage = "";
+  state.optimizeDiff = null;
   state.copyEditNote = "已保存。可重新做发布前判断，或直接往下出图。";
   renderToday();
   return true;
