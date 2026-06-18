@@ -95,7 +95,10 @@ function clearProductionState() {
   state.videoClipProgress = null;
   state.videoClipPhase = "";
   state.videoClipManifest = null;
-  // 注意：videoTier 是用户偏好档位，跨主题保留，不在这里重置
+  state.oralVideoStatus = "idle";
+  state.oralVideoMessage = "";
+  state.oralVideoUrl = "";
+  // 注意：videoTier / ttsVoice 是用户偏好，跨主题保留，不在这里重置
   state.optimizeDiff = null;
   state.referenceImages = [];
   state.selectedReferenceImage = "";
@@ -913,7 +916,26 @@ function renderVideoProductionPreview(copy = "") {
       </div>
       ${state.videoClipMessage ? `<div class="status-strip ${state.videoClipStatus === "error" ? "warn" : ""}" style="margin-top:10px;">${escapeHtml(state.videoClipMessage)}</div>` : ""}
       ${renderVideoClipGallery()}
+      ${renderOralVideoBlock(locked)}
     </div>
+  </div>`;
+}
+
+// 合成口播片：配音 + 字幕 + 拼接成一条可直接发的竖屏成片
+function renderOralVideoBlock(locked = false) {
+  const loading = state.oralVideoStatus === "loading";
+  const url = state.oralVideoUrl ? apiPath(state.oralVideoUrl) : "";
+  return `<div class="oral-video-block" style="margin-top:14px;border-top:1px dashed #ece3d4;padding-top:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+      <b style="font-size:14px;">合成口播片（配音 + 字幕 + 拼接）</b>
+      <button class="primary" ${locked || loading ? "disabled" : ""} data-generate-oral-video>${loading ? "合成中…" : "🎬 生成口播片"}</button>
+    </div>
+    <div style="color:#7a6a55;font-size:12px;margin-top:6px;">把上面出好的视频片段配上中文口播 + 字幕，拼成一条可直接发的竖屏口播片。没出片段也能合成（纯背景 + 配音 + 字幕，但建议先出片段画面更生动）。</div>
+    ${state.oralVideoMessage ? `<div class="status-strip ${state.oralVideoStatus === "error" ? "warn" : ""}" style="margin-top:8px;">${escapeHtml(state.oralVideoMessage)}</div>` : ""}
+    ${url ? `<div style="margin-top:10px;">
+      <video src="${escapeHtml(url)}" controls preload="metadata" playsinline style="max-width:280px;border-radius:10px;display:block;"></video>
+      <div style="margin-top:6px;"><a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">下载口播片</a></div>
+    </div>` : ""}
   </div>`;
 }
 
@@ -1861,6 +1883,7 @@ function bindWorkAreaActions() {
   byId("workArea")?.querySelector("[data-restore-latest-xiaohei]")?.addEventListener("click", () => restoreLatestXiaoheiCards());
   byId("workArea")?.querySelector("[data-generate-video-clips]")?.addEventListener("click", () => generateVideoClips());
   byId("workArea")?.querySelector("[data-restore-video-clips]")?.addEventListener("click", () => restoreLatestVideoClips());
+  byId("workArea")?.querySelector("[data-generate-oral-video]")?.addEventListener("click", () => generateOralVideo());
   byId("workArea")?.querySelectorAll("[data-video-clip-mode]").forEach((button) => {
     button.addEventListener("click", () => {
       state.videoClipMode = button.dataset.videoClipMode === "script" ? "script" : "frames";

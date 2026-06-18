@@ -842,6 +842,66 @@ function buildVideoClipStartPayload() {
 }
 
 // 把确认脚本切成分镜：按句/段落切，每镜一个画面意图，动态 1-6 镜（不硬凑）
+// 生成口播片：每个 beat 配音(国内 MiniMax) + 用已出的视频片段做画面 + 烧字幕 → 拼成一条成片
+async function generateOralVideo() {
+  if (!state.copyConfirmed) {
+    state.oralVideoStatus = "error";
+    state.oralVideoMessage = "请先在上一步确认文案，确认后才能生成口播片。";
+    renderToday();
+    return;
+  }
+  const shots = buildVideoShots();
+  if (!shots.length) {
+    state.oralVideoStatus = "error";
+    state.oralVideoMessage = "脚本内容太少，无法切成分镜。";
+    renderToday();
+    return;
+  }
+  // 已出的视频片段按 page 映射（没有就让后端用纯色背景兜底）
+  const fileByPage = {};
+  (Array.isArray(state.videoClipManifest?.files) ? state.videoClipManifest.files : []).forEach((f) => {
+    if (f && f.url) fileByPage[Number(f.page)] = f.url;
+  });
+  const beats = shots.map((s) => ({ text: s.scriptText, videoUrl: fileByPage[s.page] || "" }));
+  const withClips = beats.filter((b) => b.videoUrl).length;
+  const jobId = `oralcompose-${buildCurrentVideoClipJobId()}`;
+  state.oralVideoStatus = "loading";
+  state.oralVideoUrl = "";
+  state.oralVideoMessage = withClips ? "正在配音 + 合成口播片…" : "没有可用的视频片段，将用纯背景 + 配音 + 字幕合成（建议先出视频片段画面更生动）。";
+  renderToday();
+  try {
+    const startRes = await fetch(apiPath("/api/oral-video/compose/start"), {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jobId, beats, voiceId: state.ttsVoice || undefined }),
+    });
+    const start = await startRes.json().catch(() => ({}));
+    if (!startRes.ok || !start.ok) throw new Error(start.message || start.error || `HTTP ${startRes.status}`);
+    const realId = start.jobId || jobId;
+    for (let round = 0; round < 120; round += 1) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const r = await fetch(apiPath(`/api/oral-video/compose/status?jobId=${encodeURIComponent(realId)}`));
+      const st = await r.json().catch(() => ({}));
+      if (st.status === "done" && st.url) {
+        state.oralVideoStatus = "done";
+        state.oralVideoUrl = st.url;
+        state.oralVideoMessage = `口播片已生成：约 ${st.totalSeconds || 0} 秒，其中 ${st.withVideo || 0} 段用真实画面。`;
+        renderToday();
+        return;
+      }
+      if (st.status === "error") throw new Error(st.error || "合成失败");
+      state.oralVideoMessage = `正在配音 + 合成口播片…（${st.done || 0}/${st.total || beats.length} 段）`;
+      renderToday();
+    }
+    state.oralVideoStatus = "done";
+    state.oralVideoMessage = "合成耗时较久，请稍后再点一次查看。";
+    renderToday();
+  } catch (error) {
+    state.oralVideoStatus = "error";
+    state.oralVideoMessage = `口播片合成失败：${error.message}`;
+    renderToday();
+  }
+}
+
 // 把零散句子均匀归并成 n 段（每段是一个关键画面的脚本依据）
 function groupLinesIntoN(arr, n) {
   n = Math.max(1, Math.min(n, arr.length));

@@ -200,6 +200,42 @@ await ensureDb();
 await initCollectorHub();
 await ensureAssetDb();
 
+// 口播片异步合成任务（避免长合成超 nginx 60s）
+const oralComposeJobs = new Map(); // jobId -> { status, total, done, url, withVideo, totalSeconds, error }
+async function runOralCompose(jobId, payload, beats) {
+  const job = oralComposeJobs.get(jobId);
+  const safeId = jobId;
+  const workdir = join(root, 'media', 'oral', safeId);
+  await mkdir(workdir, { recursive: true });
+  const prepared = [];
+  for (let i = 0; i < beats.length; i += 1) {
+    const b = beats[i] || {};
+    const text = String(b.text || '').trim();
+    if (!text) { if (job) job.done = i + 1; continue; }
+    const tts = await synthesizeSpeech(text, { voiceId: payload.voiceId, model: payload.model, speed: payload.speed });
+    const audioName = `audio_${i}.mp3`;
+    await writeFile(join(workdir, audioName), tts.buffer);
+    const durSec = Math.max(1, Math.round((Number(tts.durationMs) / 1000) * 100) / 100) || 5;
+    let videoName = null;
+    if (b.videoUrl && /^https?:\/\//i.test(b.videoUrl)) {
+      try {
+        const r = await fetch(b.videoUrl);
+        if (r.ok) { const buf = Buffer.from(await r.arrayBuffer()); if (buf.length > 1000) { videoName = `clip_${i}.mp4`; await writeFile(join(workdir, videoName), buf); } }
+      } catch { /* 下载失败→纯色背景 */ }
+    }
+    prepared.push({ text, audioFile: audioName, videoFile: videoName, durationSec: durSec });
+    if (job) job.done = i + 1;
+  }
+  if (!prepared.length) throw new Error('no_valid_beats');
+  const out = await composeOralVideo({ workdir, beats: prepared });
+  if (job) {
+    job.status = 'done';
+    job.url = `media/oral/${safeId}/${out.outName}`;
+    job.withVideo = prepared.filter((b) => b.videoFile).length;
+    job.totalSeconds = Math.round(prepared.reduce((s, b) => s + b.durationSec, 0) * 10) / 10;
+  }
+}
+
 createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -1317,52 +1353,25 @@ createServer(async (req, res) => {
       }
     }
 
-    // 口播片合成：每个 beat 配音(MiniMax) + 下载视频片段 + 烧字幕 → ffmpeg 拼接成片
-    if (req.method === 'POST' && url.pathname === '/api/oral-video/compose') {
+    // 口播片合成（异步）：配音(MiniMax) + 下载片段 + 烧字幕 → ffmpeg 拼接。start 立即返回，前端轮询 status。
+    if (req.method === 'POST' && url.pathname === '/api/oral-video/compose/start') {
       if (!minimaxEnabled()) return sendJson(res, { ok: false, error: 'tts_disabled', message: '口播配音未启用（MINIMAX_API_KEY 未配置）。' }, 503);
       const payload = await readJson(req);
       const beats = Array.isArray(payload.beats) ? payload.beats.slice(0, 12) : [];
       if (!beats.length) return sendJson(res, { ok: false, error: 'missing_beats', message: '没有可合成的分镜文本。' }, 400);
-      const safeId = String(payload.jobId || `oral-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
-      const workdir = join(root, 'media', 'oral', safeId);
-      try {
-        await mkdir(workdir, { recursive: true });
-        const prepared = [];
-        for (let i = 0; i < beats.length; i += 1) {
-          const b = beats[i] || {};
-          const text = String(b.text || '').trim();
-          if (!text) continue;
-          // 1) 配音
-          const tts = await synthesizeSpeech(text, { voiceId: payload.voiceId, model: payload.model, speed: payload.speed });
-          const audioName = `audio_${i}.mp3`;
-          await writeFile(join(workdir, audioName), tts.buffer);
-          const durSec = Math.max(1, Math.round((Number(tts.durationMs) / 1000) * 100) / 100) || 5;
-          // 2) 下载视频片段（有就用，下载失败回落纯色背景）
-          let videoName = null;
-          if (b.videoUrl && /^https?:\/\//i.test(b.videoUrl)) {
-            try {
-              const r = await fetch(b.videoUrl);
-              if (r.ok) {
-                const buf = Buffer.from(await r.arrayBuffer());
-                if (buf.length > 1000) { videoName = `clip_${i}.mp4`; await writeFile(join(workdir, videoName), buf); }
-              }
-            } catch { /* 下载失败 → 纯色背景 */ }
-          }
-          prepared.push({ text, audioFile: audioName, videoFile: videoName, durationSec: durSec });
-        }
-        if (!prepared.length) return sendJson(res, { ok: false, error: 'no_valid_beats', message: '没有有效分镜文本。' }, 400);
-        const out = await composeOralVideo({ workdir, beats: prepared });
-        const totalSec = prepared.reduce((s, b) => s + b.durationSec, 0);
-        return sendJson(res, {
-          ok: true,
-          url: `media/oral/${safeId}/${out.outName}`,
-          segments: out.segments,
-          withVideo: prepared.filter((b) => b.videoFile).length,
-          totalSeconds: Math.round(totalSec * 10) / 10,
-        }, 200);
-      } catch (error) {
-        return sendJson(res, { ok: false, error: 'compose_failed', message: String(error.message || error) }, 502);
-      }
+      const jobId = String(payload.jobId || `oral-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+      oralComposeJobs.set(jobId, { status: 'running', total: beats.length, done: 0, url: '', withVideo: 0, totalSeconds: 0, error: '' });
+      runOralCompose(jobId, payload, beats).catch((error) => {
+        const job = oralComposeJobs.get(jobId);
+        if (job) { job.status = 'error'; job.error = String(error.message || error); }
+      });
+      return sendJson(res, { ok: true, jobId, status: 'running', total: beats.length }, 202);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/oral-video/compose/status') {
+      const jobId = url.searchParams.get('jobId') || '';
+      const job = oralComposeJobs.get(jobId);
+      if (!job) return sendJson(res, { ok: true, status: 'idle', done: 0, total: 0, url: '' }, 200);
+      return sendJson(res, { ok: true, status: job.status, done: job.done, total: job.total, url: job.url, withVideo: job.withVideo, totalSeconds: job.totalSeconds, error: job.error }, 200);
     }
 
     if (req.method === 'POST' && url.pathname === '/api/xhs-cards/generate-xiaohei/start') {
