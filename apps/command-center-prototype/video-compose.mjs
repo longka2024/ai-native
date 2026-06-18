@@ -10,10 +10,19 @@ import { join } from 'node:path';
 
 const run = promisify(execFile);
 const FFMPEG = process.env.FFMPEG_BIN || 'ffmpeg';
-const SUB_FONT = process.env.SUBTITLE_FONT || 'Noto Sans CJK SC';
+const SUB_FONT = process.env.SUBTITLE_FONT || 'Noto Sans CJK SC'; // 粗黑体，比衬线好看
+const SUB_COLOR = (process.env.SUBTITLE_COLOR || 'FFE34D').replace(/^#/, ''); // 默认抖音暖黄，RRGGBB
+const PER_LINE = Number(process.env.SUBTITLE_PER_LINE || 12); // 每行最多字数
+const MAX_LINES = 2; // 每条字幕最多两行
 const VW = Number(process.env.VIDEO_W || 1080);
 const VH = Number(process.env.VIDEO_H || 1920);
 const FF_TIMEOUT = Number(process.env.FFMPEG_TIMEOUT_MS || 180000);
+
+// RRGGBB → ASS &H00BBGGRR&
+function assColor(rrggbb) {
+  const r = rrggbb.slice(0, 2), g = rrggbb.slice(2, 4), b = rrggbb.slice(4, 6);
+  return `&H00${b}${g}${r}&`.toUpperCase();
+}
 
 function srtTime(sec) {
   const ms = Math.max(0, Math.round(sec * 1000));
@@ -24,32 +33,63 @@ function srtTime(sec) {
   return `${h}:${m}:${s},${f}`;
 }
 
-// 竖屏字幕按字数折行（中文约 14 字/行）
-function wrapText(text, per = 14) {
-  const t = String(text || '').replace(/\s+/g, ' ').trim();
-  if (!t) return '';
-  const out = [];
-  for (let i = 0; i < t.length; i += per) out.push(t.slice(i, i + per));
-  return out.join('\n');
+// 把一条字幕折成最多两行（均衡）
+function wrapTwoLines(t) {
+  const s = String(t || '').replace(/\n/g, '').trim();
+  if (s.length <= PER_LINE) return s;
+  const mid = Math.ceil(s.length / 2);
+  return `${s.slice(0, mid)}\n${s.slice(mid)}`;
 }
 
+// 把整段按标点拆成多条短字幕（每条 ≤ 2 行），不再一坨
+function splitIntoCues(text) {
+  const maxChars = PER_LINE * MAX_LINES;
+  const parts = String(text || '').replace(/\s+/g, '').split(/(?<=[。！？，、；：!?,.])/).filter(Boolean);
+  const cues = [];
+  let cur = '';
+  for (const p of parts) {
+    if ((cur + p).length <= maxChars) {
+      cur += p;
+    } else {
+      if (cur) cues.push(cur);
+      if (p.length <= maxChars) {
+        cur = p;
+      } else {
+        for (let i = 0; i < p.length; i += maxChars) cues.push(p.slice(i, i + maxChars));
+        cur = '';
+      }
+    }
+  }
+  if (cur) cues.push(cur);
+  return cues.length ? cues : [String(text || '').slice(0, maxChars)];
+}
+
+// 多条字幕按字数比例分配该段配音时长 → SRT
 function buildSrt(text, durSec) {
-  return `1\n${srtTime(0)} --> ${srtTime(durSec)}\n${wrapText(text)}\n`;
+  const cues = splitIntoCues(text);
+  const totalChars = cues.reduce((s, c) => s + c.length, 0) || 1;
+  let t = 0;
+  return cues.map((c, i) => {
+    const start = t;
+    const end = i === cues.length - 1 ? durSec : Math.min(durSec, t + durSec * (c.length / totalChars));
+    t = end;
+    return `${i + 1}\n${srtTime(start)} --> ${srtTime(end)}\n${wrapTwoLines(c)}\n`;
+  }).join('\n');
 }
 
 function subFilter(srtName) {
-  // libass 默认脚本坐标 384x288，按视频高缩放：MarginV/FontSize 都在 288 空间内取值。
-  // 下三分之一 ≈ MarginV 45；字号 14（缩放后约 90px，竖屏抖音可读）。
+  // libass 默认脚本坐标 384x288，按视频高缩放：MarginV/FontSize 在 288 空间取值。
   const style = [
     `FontName=${SUB_FONT}`,
-    'FontSize=14',
-    'PrimaryColour=&H00FFFFFF&',
+    'FontSize=15',
+    'Bold=1',
+    `PrimaryColour=${assColor(SUB_COLOR)}`,
     'OutlineColour=&H00000000&',
     'BorderStyle=1',
     'Outline=2',
-    'Shadow=0',
+    'Shadow=1',
     'Alignment=2',
-    'MarginV=45',
+    'MarginV=55',
   ].join(',');
   return `subtitles=${srtName}:force_style='${style}'`;
 }

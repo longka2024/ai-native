@@ -2119,5 +2119,8 @@ async function handleCdpRetry() {
   await readMaterials();
 }
 
-restoreWorkbenchSnapshot();
+if (!restoreWorkbenchSnapshot()) {
+  // 本地快照没了（清缓存/换浏览器/超限）→ 从 122 服务器存档恢复
+  serverRestoreSnapshot().then((ok) => { if (ok) { try { renderToday(); } catch (e) { /* noop */ } } });
+}
 renderToday();

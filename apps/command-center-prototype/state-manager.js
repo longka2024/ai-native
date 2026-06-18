@@ -225,9 +225,65 @@ function persistWorkbenchSnapshot() {
     };
     const snapshot = compactSnapshot();
     localStorage.setItem(WORKBENCH_SNAPSHOT_KEY, JSON.stringify(snapshot));
+    serverSaveSnapshot(snapshot); // 同步到 122，防浏览器丢失
   } catch (error) {
     console.warn("Longka snapshot save failed", error);
   }
+}
+
+// 稳定的客户端标识：cookie + localStorage 双存（即使清了 localStorage，cookie 还在，服务器存档仍能对上）
+function getClientId() {
+  try {
+    let id = localStorage.getItem("longka-client-id") || "";
+    if (!id) {
+      const m = (typeof document !== "undefined" ? document.cookie : "").match(/(?:^|;\s*)longka_cid=([^;]+)/);
+      id = m ? decodeURIComponent(m[1]) : "";
+    }
+    if (!id) id = `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    localStorage.setItem("longka-client-id", id);
+    if (typeof document !== "undefined") document.cookie = `longka_cid=${encodeURIComponent(id)}; max-age=31536000; path=/`;
+    return id;
+  } catch {
+    return "default";
+  }
+}
+
+// 服务器端存档（节流：最快 3 秒一次，避免频繁写）
+let lastServerSaveAt = 0;
+let serverSaveTimer = null;
+function serverSaveSnapshot(snapshot) {
+  try {
+    const post = () => {
+      lastServerSaveAt = Date.now();
+      fetch(apiPath("/api/workbench/save"), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ clientId: getClientId(), snapshot }),
+      }).catch(() => {});
+    };
+    const since = Date.now() - lastServerSaveAt;
+    if (since >= 3000) { post(); return; }
+    clearTimeout(serverSaveTimer);
+    serverSaveTimer = setTimeout(post, 3000 - since);
+  } catch { /* 忽略：服务器存档失败不影响本地 */ }
+}
+
+// 本地快照丢了时，从服务器恢复
+async function serverRestoreSnapshot() {
+  try {
+    const res = await fetch(apiPath(`/api/workbench/load?clientId=${encodeURIComponent(getClientId())}`));
+    const data = await res.json().catch(() => ({}));
+    if (data && data.ok && data.snapshot && typeof data.snapshot === "object") {
+      Object.assign(state, data.snapshot, {
+        titleAssetLoading: false, draftStatus: "idle", draftError: "",
+        pendingRevision: null, xhsCardProgress: null, isCollectingX: false,
+      });
+      state.step = Math.max(1, Math.min(12, Number(state.step || 1)));
+      state.logs = [`已从服务器恢复上次工作：${new Date(data.savedAt || Date.now()).toLocaleString()}`, ...(state.logs || [])].slice(0, 10);
+      return true;
+    }
+  } catch { /* 服务器没有或失败 */ }
+  return false;
 }
 
 function restoreWorkbenchSnapshot() {

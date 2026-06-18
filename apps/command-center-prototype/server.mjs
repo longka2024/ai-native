@@ -1,6 +1,6 @@
 import { createServer, get as httpGet } from 'node:http';
 import { execFile } from 'node:child_process';
-import { readFile, writeFile, mkdir, readdir, stat } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, readdir, stat, rm } from 'node:fs/promises';
 import { existsSync, createReadStream, readFileSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -1265,6 +1265,40 @@ createServer(async (req, res) => {
         failed: job ? job.clips.filter((c) => c.state === 'fail').map((c) => ({ page: c.page, message: c.error })) : [],
         manifest: { renderer: `kie-video-${process.env.KIE_VIDEO_MODEL || 'bytedance-seedance-2'}`, jobId: job ? job.jobId : jobId, count: files.length, files, publicFiles: files.map((f) => f.url), platform: job ? job.platform : '', aspect: job ? job.aspect : '' },
       });
+    }
+
+    // 工作存档：前端快照同步到 122，防浏览器丢失（每出一次文案/图就有服务器留底）
+    if (req.method === 'POST' && url.pathname === '/api/workbench/save') {
+      const payload = await readJson(req);
+      const id = String(payload.clientId || 'default').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 60) || 'default';
+      const snap = payload.snapshot;
+      if (!snap || typeof snap !== 'object') return sendJson(res, { ok: false, error: 'missing_snapshot' }, 400);
+      try {
+        const dir = join(root, 'data', 'workbench-snapshots');
+        await mkdir(dir, { recursive: true });
+        const json = JSON.stringify({ ...snap, savedAt: new Date().toISOString() });
+        await writeFile(join(dir, `${id}.json`), json);
+        await writeFile(join(dir, `${id}.${Date.now()}.bak.json`), json); // 时间戳备份
+        // 轮转：每个 client 只留最近 12 个备份
+        try {
+          const all = (await readdir(dir)).filter((f) => f.startsWith(`${id}.`) && f.endsWith('.bak.json')).sort();
+          for (const f of all.slice(0, Math.max(0, all.length - 12))) { await rm(join(dir, f), { force: true }); }
+        } catch { /* 轮转失败不影响存档 */ }
+        return sendJson(res, { ok: true, savedAt: new Date().toISOString() }, 200);
+      } catch (error) {
+        return sendJson(res, { ok: false, error: 'save_failed', message: String(error.message || error) }, 500);
+      }
+    }
+    if (req.method === 'GET' && url.pathname === '/api/workbench/load') {
+      const id = String(url.searchParams.get('clientId') || 'default').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 60) || 'default';
+      try {
+        const file = join(root, 'data', 'workbench-snapshots', `${id}.json`);
+        if (!existsSync(file)) return sendJson(res, { ok: true, snapshot: null }, 200);
+        const snap = JSON.parse(await readFile(file, 'utf8'));
+        return sendJson(res, { ok: true, snapshot: snap, savedAt: snap?.savedAt || '' }, 200);
+      } catch (error) {
+        return sendJson(res, { ok: false, error: 'load_failed', message: String(error.message || error) }, 500);
+      }
     }
 
     // 口播配音：国内 MiniMax T2A v2，合成一段中文语音存为 mp3，返回 url + 时长(ms)
