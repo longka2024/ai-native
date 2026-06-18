@@ -69,7 +69,8 @@ export async function kieStartXiaoheiJob(payload) {
   const style = payload.style || payload.visualStyle || 'xiaohei-metaphor';
   const platform = payload.platform || payload.targetPlatform || 'xhs';
   const aspect = aspectForPlatform(platform);
-  const cards = (Array.isArray(payload.cards) ? payload.cards : []).slice(0, 5);
+  const maxCards = Math.min(Math.max(Number(payload.maxCards) || 5, 1), 12); // 图文卡默认 5；视频关键帧传 maxCards 放开（上限 12 防跑飞）
+  const cards = (Array.isArray(payload.cards) ? payload.cards : []).slice(0, maxCards);
   const rawId = String(payload.jobId || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 72);
   const jobId = rawId || `longka-kie-${style}-${Date.now()}`;
   const job = { jobId, status: 'running', style, platform, total: cards.length, cards: [], startedAt: Date.now(), updatedAt: Date.now(), payload, fb43JobId: '' };

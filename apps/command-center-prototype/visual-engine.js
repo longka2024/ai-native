@@ -842,15 +842,34 @@ function buildVideoClipStartPayload() {
 }
 
 // 把确认脚本切成分镜：按句/段落切，每镜一个画面意图，动态 1-6 镜（不硬凑）
+// 把零散句子均匀归并成 n 段（每段是一个关键画面的脚本依据）
+function groupLinesIntoN(arr, n) {
+  n = Math.max(1, Math.min(n, arr.length));
+  const out = [];
+  const base = Math.floor(arr.length / n);
+  let rem = arr.length % n;
+  let idx = 0;
+  for (let i = 0; i < n; i += 1) {
+    const take = base + (rem > 0 ? 1 : 0);
+    if (rem > 0) rem -= 1;
+    out.push(arr.slice(idx, idx + take).join(" "));
+    idx += take;
+  }
+  return out;
+}
+
 function buildVideoShots() {
   const title = state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "";
   const lines = String(confirmedCopyText() || "")
     .split(/\n+/)
     .map((s) => s.replace(/^(标题|正文|钩子|配图建议|标签)[:：\s]*/u, "").trim())
-    .filter((s) => s && s.length > 6)
-    .slice(0, 6);
-  const shots = lines.length ? lines : (title ? [title] : []);
-  return shots.map((scriptText, i) => ({ page: i + 1, scriptText, isCover: i === 0 }));
+    .filter((s) => s && s.length > 6);
+  const source = lines.length ? lines : (title ? [title] : []);
+  if (!source.length) return [];
+  // 根源控成本：归并成固定几个关键画面（默认 5），不再一句一镜 → 关键帧少→片段少→成本低、视频不拖长
+  const target = Math.max(1, Math.min(Number(typeof VIDEO_TARGET_SHOTS !== "undefined" ? VIDEO_TARGET_SHOTS : 5) || 5, source.length));
+  const beats = groupLinesIntoN(source, target);
+  return beats.map((scriptText, i) => ({ page: i + 1, scriptText, isCover: i === 0 }));
 }
 
 // 关键帧 brief：严格从这一镜的脚本句出画，套所选风格——不用通用模板套话，数字/事实忠实脚本
@@ -866,6 +885,22 @@ function keyframeBriefForShot(shot, visual) {
 }
 
 // 轮询关键帧出图，返回 page->url 映射
+// 单次查询：这个关键帧任务此前是否已出过图（用于刷新后复用，省钱保号）。返回 page->url，查不到则空对象。
+async function lookupExistingKeyframes(jobId, total) {
+  try {
+    const res = await fetch(apiPath(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(jobId)}&total=${total}`));
+    if (!res.ok) return {};
+    const result = await res.json().catch(() => ({}));
+    if (!result.ok) return {};
+    const files = Array.isArray(result.manifest?.files) ? result.manifest.files : [];
+    const map = {};
+    files.forEach((f) => { if (f.url) map[Number(f.page)] = f.url; });
+    return map;
+  } catch (_) {
+    return {};
+  }
+}
+
 async function pollKeyframeImages(jobId, total) {
   for (let round = 0; round < 120; round += 1) {
     await new Promise((r) => setTimeout(r, 5000));
@@ -913,9 +948,12 @@ async function generateVideoClips() {
   const platform = visualPlatformForCurrentTarget();
   const jobId = buildCurrentVideoClipJobId();
   const scriptMode = state.videoClipMode === "script";
+  const tier = videoTierById(state.videoTier);            // 视频档位（省钱/精品）
+  const clipSeconds = tier.defaultSeconds || VIDEO_DEFAULT_CLIP_SECONDS;
   state.videoClipStatus = "loading";
   state.videoClipJobId = jobId;
   state.videoClipProgress = { done: 0, total };
+  state.videoClipPhase = scriptMode ? "clip" : "keyframe";
   state.videoClipManifest = { count: 0, files: [], publicFiles: [] };
   renderToday();
   try {
@@ -924,7 +962,7 @@ async function generateVideoClips() {
       // 文生：不出关键帧，直接按每镜脚本出片
       state.videoClipMessage = `正在按脚本生成 ${total} 个视频片段（文生），出片较慢请耐心等。`;
       renderToday();
-      clips = shots.map((s) => ({ page: s.page, prompt: videoMotionPrompt(s.scriptText), duration: 5 }));
+      clips = shots.map((s) => ({ page: s.page, prompt: videoMotionPrompt(s.scriptText), duration: clipSeconds }));
     } else {
       // 第 1 步：按脚本分镜出关键帧图（内容贴脚本、套风格、有真实参考图就用）
       state.videoClipMessage = `第 1 步·按脚本出 ${total} 张关键帧（贴合每一镜内容）…`;
@@ -932,32 +970,47 @@ async function generateVideoClips() {
       const refImg = (state.selectedReferenceImage || "").trim();
       const contract = visualStyleContract(visual.id);
       const kfJobId = `vidkf-${jobId}`;
-      const startKf = await fetch(apiPath("/api/xhs-cards/generate-xiaohei/start"), {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          title: state.selectedTitle || "", style: visual.id, visualStyle: visual.id,
-          visualStyleTitle: visual.title, visualRoute: contract.route, visualCharacter: contract.character,
-          styleBrief: contract.styleBrief, styleLock: contract.styleLock, negativePrompt: contract.negativePrompt,
-          platform, targetPlatform: platform, jobId: kfJobId, referenceImageUrl: refImg,
-          cards: shots.map((s) => ({ page: s.page, role: s.isCover ? "cover" : "scene", title: state.selectedTitle || "", visualBrief: keyframeBriefForShot(s, visual), referenceImageUrl: refImg })),
-        }),
-      });
-      const kfJson = await startKf.json().catch(() => ({}));
-      if (!startKf.ok || !kfJson.ok) throw new Error(kfJson.message || kfJson.error || "关键帧出图启动失败");
-      const realKfJobId = kfJson.jobId || kfJobId;
-      const frameMap = await pollKeyframeImages(realKfJobId, total);
+      // 省钱保号：先查这个主题之前是否已出过关键帧（浏览器刷新但服务未重启可复用），出齐就直接用、不再扣点
+      let frameMap = await lookupExistingKeyframes(kfJobId, total);
+      const reused = shots.every((s) => frameMap[s.page]);
+      if (reused) {
+        state.videoClipProgress = { done: shots.length, total };
+        state.videoClipMessage = `已复用上次出好的 ${shots.length} 张关键帧（没重新出图、不再扣点），正在出视频片段…`;
+        renderToday();
+      } else {
+        const startKf = await fetch(apiPath("/api/xhs-cards/generate-xiaohei/start"), {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: state.selectedTitle || "", style: visual.id, visualStyle: visual.id,
+            visualStyleTitle: visual.title, visualRoute: contract.route, visualCharacter: contract.character,
+            styleBrief: contract.styleBrief, styleLock: contract.styleLock, negativePrompt: contract.negativePrompt,
+            platform, targetPlatform: platform, jobId: kfJobId, referenceImageUrl: refImg,
+            maxCards: shots.length, // 视频关键帧：放开图文卡的 5 张上限，按分镜数出图
+            cards: shots.map((s) => ({ page: s.page, role: s.isCover ? "cover" : "scene", title: state.selectedTitle || "", visualBrief: keyframeBriefForShot(s, visual), referenceImageUrl: refImg })),
+          }),
+        });
+        const kfJson = await startKf.json().catch(() => ({}));
+        if (!startKf.ok || !kfJson.ok) throw new Error(kfJson.message || kfJson.error || "关键帧出图启动失败");
+        const realKfJobId = kfJson.jobId || kfJobId;
+        frameMap = await pollKeyframeImages(realKfJobId, total);
+      }
       const gotFrames = shots.filter((s) => frameMap[s.page]).length;
       if (!gotFrames) throw new Error("关键帧没出来（出图服务慢或失败），可稍后再点一次");
       // 第 2 步：关键帧图生视频（首帧驱动）
+      state.videoClipPhase = "clip";
+      state.videoClipProgress = { done: 0, total: gotFrames };
       state.videoClipMessage = `第 2 步·关键帧已出 ${gotFrames}/${total} 张，正在按关键帧出视频片段…`;
       renderToday();
       clips = shots.filter((s) => frameMap[s.page]).map((s) => ({
-        page: s.page, imageUrl: frameMap[s.page], prompt: videoMotionPrompt(s.scriptText), duration: 5,
+        page: s.page, imageUrl: frameMap[s.page], prompt: videoMotionPrompt(s.scriptText), duration: clipSeconds,
       }));
     }
     const startRes = await fetch(apiPath("/api/video-clip/start"), {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ title: state.selectedTitle || "", jobId, platform, targetPlatform: platform, clips }),
+      body: JSON.stringify({
+        title: state.selectedTitle || "", jobId, platform, targetPlatform: platform, clips,
+        model: tier.model, resolution: tier.resolution, duration: clipSeconds, // 按档位计费
+      }),
     });
     const result = await startRes.json().catch(() => ({}));
     if (!startRes.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${startRes.status}`);
@@ -1050,7 +1103,10 @@ function renderVideoClipGallery() {
   if (state.videoClipStatus === "loading") {
     const done = Number(state.videoClipProgress?.done || 0);
     const total = Number(state.videoClipProgress?.total || 0);
-    return `<div class="video-clip-empty loading"><b>正在出片</b><span>已完成 ${done}/${total} 段，出好的会先显示在这里。</span></div>`;
+    if (state.videoClipPhase === "keyframe") {
+      return `<div class="video-clip-empty loading"><b>第 1 步·正在出关键帧图</b><span>已出 ${done}/${total} 张。要等关键帧出齐，才会开始第 2 步「关键帧→视频」（这时 Kie 才会有视频任务）。</span></div>`;
+    }
+    return `<div class="video-clip-empty loading"><b>第 2 步·正在出视频片段</b><span>已完成 ${done}/${total} 段，出好的会先显示在这里。</span></div>`;
   }
   return "";
 }

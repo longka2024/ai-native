@@ -93,7 +93,9 @@ function clearProductionState() {
   state.videoClipMode = "frames";
   state.videoClipJobId = "";
   state.videoClipProgress = null;
+  state.videoClipPhase = "";
   state.videoClipManifest = null;
+  // 注意：videoTier 是用户偏好档位，跨主题保留，不在这里重置
   state.optimizeDiff = null;
   state.referenceImages = [];
   state.selectedReferenceImage = "";
@@ -904,6 +906,7 @@ function renderVideoProductionPreview(copy = "") {
       <div style="color:#7a6a55;font-size:12px;margin:6px 0 10px;">${mode === "frames"
         ? `把脚本切成分镜，<b>每一镜按它自己的内容出一张关键帧图</b>（贴脚本、套你选的配图风格，有真实参考图就用），再用关键帧做成视频——画面跟脚本对得上。`
         : "不出图，直接按每一镜脚本生成短视频片段（更自由，但画面可控性差、更花时间）。"}</div>
+      ${renderVideoTierRow(lines, isLoading)}
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="primary" ${locked || isLoading ? "disabled" : ""} data-generate-video-clips>${escapeHtml(genLabel)}</button>
         <button class="secondary" ${isLoading ? "disabled" : ""} data-restore-video-clips>查询已生成片段</button>
@@ -911,6 +914,23 @@ function renderVideoProductionPreview(copy = "") {
       ${state.videoClipMessage ? `<div class="status-strip ${state.videoClipStatus === "error" ? "warn" : ""}" style="margin-top:10px;">${escapeHtml(state.videoClipMessage)}</div>` : ""}
       ${renderVideoClipGallery()}
     </div>
+  </div>`;
+}
+
+// 视频出片档位选择 + 实时成本（大白话，不暴露模型名/服务商）
+function renderVideoTierRow(lines = [], isLoading = false) {
+  const tierId = state.videoTier || "economy";
+  const tier = videoTierById(tierId);
+  const shotCount = Math.min(12, Math.max(1, (Array.isArray(lines) ? lines.filter((l) => String(l).trim().length > 6).length : 0) || (Array.isArray(lines) ? lines.length : 1) || 1));
+  const cost = estimateVideoCost(tierId, shotCount, tier.defaultSeconds);
+  const buttons = VIDEO_TIERS.map((t) => `<button type="button" class="ghost ${t.id === tierId ? "active" : ""}" data-video-tier="${t.id}" ${isLoading ? "disabled" : ""}>${escapeHtml(t.label)}</button>`).join("");
+  return `<div class="video-clip-tier" style="border-top:1px dashed #ece3d4;padding-top:10px;margin-bottom:10px;">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+      <span style="color:#7a6a55;font-size:12px;">出片档位：</span>
+      ${buttons}
+      <span style="color:#9a8a72;font-size:12px;">（${escapeHtml(tier.hint)}）</span>
+    </div>
+    <div style="color:#7a6a55;font-size:12px;margin-top:8px;">这条预计 <b>${shotCount}</b> 段（每段约 ${tier.defaultSeconds} 秒），共 <b>约 ¥${cost.rmb}</b>（${cost.credits} 点，含关键帧出图）。实际以平台扣点为准。</div>
   </div>`;
 }
 
@@ -1844,6 +1864,12 @@ function bindWorkAreaActions() {
   byId("workArea")?.querySelectorAll("[data-video-clip-mode]").forEach((button) => {
     button.addEventListener("click", () => {
       state.videoClipMode = button.dataset.videoClipMode === "script" ? "script" : "frames";
+      renderToday();
+    });
+  });
+  byId("workArea")?.querySelectorAll("[data-video-tier]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.videoTier = button.dataset.videoTier || "economy";
       renderToday();
     });
   });

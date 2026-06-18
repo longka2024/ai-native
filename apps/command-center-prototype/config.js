@@ -116,3 +116,52 @@ const VISUAL_STYLE_REGISTRY = {
   },
 };
 
+// ── 视频出片档位（成本可配）────────────────────────────────────────────
+// Hailuo 2.3 图生视频按「次」计费（不是按秒），喂关键帧图(image_url)。后台改价只改这里。
+// 客户界面只显示 label / 大白话，不暴露模型名/服务商。
+const VIDEO_CREDIT_TO_RMB = 0.036;   // 你的账号：5000 点 = 180 元 → 0.036 元/点
+const VIDEO_KEYFRAME_CREDITS = 3;    // 每张关键帧图（出图）扣点
+const VIDEO_DEFAULT_CLIP_SECONDS = 6; // Hailuo 单段只支持 6 或 10 秒
+// 根源控成本：口播视频按"关键画面"出，不要一句一镜。归并成固定几个分镜（关键帧少→片段少→成本低）。
+const VIDEO_TARGET_SHOTS = 5;        // 默认归并成 5 个关键画面（hook/问题/答案/对比/收尾）
+const VIDEO_TIERS = [
+  {
+    id: "economy",
+    label: "省钱档 · 标清",
+    hint: "出片快、最省，适合走量",
+    model: "hailuo/2-3-image-to-video-standard",
+    resolution: "768P",
+    defaultSeconds: 6,
+    clipCreditsBySeconds: { 6: 30, 10: 50 }, // Hailuo 标准 768P 按次价
+  },
+  {
+    id: "premium",
+    label: "精品档 · 高清",
+    hint: "更清晰，重点视频用",
+    model: "hailuo/2-3-image-to-video-pro",
+    resolution: "1080P",
+    defaultSeconds: 6,
+    clipCreditsBySeconds: { 6: 80 }, // Hailuo Pro 1080P 6s 按次价
+  },
+];
+function videoTierById(id) {
+  return VIDEO_TIERS.find((t) => t.id === id) || VIDEO_TIERS[0];
+}
+// 每段视频扣点（按次价表查；找不到精确秒数取最接近档）
+function videoClipCredits(tier, seconds) {
+  const tbl = (tier && tier.clipCreditsBySeconds) || {};
+  const keys = Object.keys(tbl).map(Number).sort((a, b) => a - b);
+  if (!keys.length) return 0;
+  if (tbl[seconds] != null) return tbl[seconds];
+  const nearest = keys.reduce((p, c) => (Math.abs(c - seconds) < Math.abs(p - seconds) ? c : p), keys[0]);
+  return tbl[nearest];
+}
+// 估算一条视频成本：关键帧图 + N 段视频。返回 {credits, rmb}。
+function estimateVideoCost(tierId, shotCount, seconds) {
+  const tier = videoTierById(tierId);
+  const n = Math.max(0, Number(shotCount) || 0);
+  const dur = Number(seconds) || tier.defaultSeconds || VIDEO_DEFAULT_CLIP_SECONDS;
+  const credits = n * VIDEO_KEYFRAME_CREDITS + n * videoClipCredits(tier, dur);
+  return { credits: Math.round(credits), rmb: Math.round(credits * VIDEO_CREDIT_TO_RMB * 10) / 10 };
+}
+

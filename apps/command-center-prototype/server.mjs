@@ -10,6 +10,8 @@ import { collectorHealth, confirmContentAsset, deleteCollectionRun, importLocalP
 import { runSkill, listSkills } from './skills-runner.mjs';
 import { kieEnabled, kieStartXiaoheiJob, kieXiaoheiJobStatus } from './kie-image.mjs';
 import { kieVideoEnabled, kieStartVideoJob, kieVideoJobStatus } from './kie-video.mjs';
+import { minimaxEnabled, synthesizeSpeech } from './tts-minimax.mjs';
+import { composeOralVideo } from './video-compose.mjs';
 
 // 自动加载同目录下的 .env 文件（不依赖 dotenv 包）
 try {
@@ -53,6 +55,15 @@ const mimeTypes = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.mp3': 'audio/mpeg',
+  '.m4a': 'audio/mp4',
+  '.wav': 'audio/wav',
+  '.mp4': 'video/mp4',
+  '.srt': 'text/plain; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
 };
 
 const defaultConfig = {
@@ -1176,8 +1187,9 @@ createServer(async (req, res) => {
 
     if (req.method === 'POST' && url.pathname === '/api/xhs-cards/generate-xiaohei') {
       const payload = await readJson(req);
-      const cards = Array.isArray(payload.cards) ? payload.cards.slice(0, 5) : [];
-      if (!cards.length) return sendJson(res, { ok: false, error: 'missing_cards', message: '没有可生成的 5 张配图 brief。' }, 400);
+      const maxCards = Math.min(Math.max(Number(payload.maxCards) || 5, 1), 12); // 图文卡默认 5；视频关键帧传 maxCards 放开（上限 12 防跑飞）
+      const cards = Array.isArray(payload.cards) ? payload.cards.slice(0, maxCards) : [];
+      if (!cards.length) return sendJson(res, { ok: false, error: 'missing_cards', message: '没有可生成的配图 brief。' }, 400);
       const endpoint = process.env.LONGKA_43_XIAOHEI_ENDPOINT || 'http://43.135.149.55:3050/api/longka/xhs-xiaohei-cards';
       const publicBase = (process.env.LONGKA_43_PUBLIC_BASE || 'http://43.135.149.55:3050').replace(/\/$/, '');
       const upstream = await fetch(endpoint, {
@@ -1228,7 +1240,7 @@ createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/video-clip/start') {
       if (!kieVideoEnabled()) return sendJson(res, { ok: false, error: 'kie_video_disabled', message: '视频出图未启用(KIE_API_KEY 未配置)。' }, 503);
       const payload = await readJson(req);
-      const clips = Array.isArray(payload.clips) ? payload.clips.slice(0, 5) : [];
+      const clips = Array.isArray(payload.clips) ? payload.clips.slice(0, 12) : [];
       if (!clips.length) return sendJson(res, { ok: false, error: 'missing_clips', message: '没有可生成的视频片段 prompt。' }, 400);
       try {
         const job = await kieStartVideoJob(payload);
@@ -1255,10 +1267,75 @@ createServer(async (req, res) => {
       });
     }
 
+    // 口播配音：国内 MiniMax T2A v2，合成一段中文语音存为 mp3，返回 url + 时长(ms)
+    if (req.method === 'POST' && url.pathname === '/api/tts/synthesize') {
+      if (!minimaxEnabled()) return sendJson(res, { ok: false, error: 'tts_disabled', message: '口播配音未启用（MINIMAX_API_KEY 未配置）。' }, 503);
+      const payload = await readJson(req);
+      try {
+        const out = await synthesizeSpeech(payload.text, { voiceId: payload.voiceId, model: payload.model, speed: payload.speed });
+        const dir = join(root, 'media', 'tts');
+        await mkdir(dir, { recursive: true });
+        const id = `tts-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
+        await writeFile(join(dir, `${id}.mp3`), out.buffer);
+        return sendJson(res, { ok: true, url: `media/tts/${id}.mp3`, durationMs: out.durationMs, voiceId: out.voiceId, model: out.model }, 200);
+      } catch (error) {
+        return sendJson(res, { ok: false, error: 'tts_failed', message: String(error.message || error) }, 502);
+      }
+    }
+
+    // 口播片合成：每个 beat 配音(MiniMax) + 下载视频片段 + 烧字幕 → ffmpeg 拼接成片
+    if (req.method === 'POST' && url.pathname === '/api/oral-video/compose') {
+      if (!minimaxEnabled()) return sendJson(res, { ok: false, error: 'tts_disabled', message: '口播配音未启用（MINIMAX_API_KEY 未配置）。' }, 503);
+      const payload = await readJson(req);
+      const beats = Array.isArray(payload.beats) ? payload.beats.slice(0, 12) : [];
+      if (!beats.length) return sendJson(res, { ok: false, error: 'missing_beats', message: '没有可合成的分镜文本。' }, 400);
+      const safeId = String(payload.jobId || `oral-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+      const workdir = join(root, 'media', 'oral', safeId);
+      try {
+        await mkdir(workdir, { recursive: true });
+        const prepared = [];
+        for (let i = 0; i < beats.length; i += 1) {
+          const b = beats[i] || {};
+          const text = String(b.text || '').trim();
+          if (!text) continue;
+          // 1) 配音
+          const tts = await synthesizeSpeech(text, { voiceId: payload.voiceId, model: payload.model, speed: payload.speed });
+          const audioName = `audio_${i}.mp3`;
+          await writeFile(join(workdir, audioName), tts.buffer);
+          const durSec = Math.max(1, Math.round((Number(tts.durationMs) / 1000) * 100) / 100) || 5;
+          // 2) 下载视频片段（有就用，下载失败回落纯色背景）
+          let videoName = null;
+          if (b.videoUrl && /^https?:\/\//i.test(b.videoUrl)) {
+            try {
+              const r = await fetch(b.videoUrl);
+              if (r.ok) {
+                const buf = Buffer.from(await r.arrayBuffer());
+                if (buf.length > 1000) { videoName = `clip_${i}.mp4`; await writeFile(join(workdir, videoName), buf); }
+              }
+            } catch { /* 下载失败 → 纯色背景 */ }
+          }
+          prepared.push({ text, audioFile: audioName, videoFile: videoName, durationSec: durSec });
+        }
+        if (!prepared.length) return sendJson(res, { ok: false, error: 'no_valid_beats', message: '没有有效分镜文本。' }, 400);
+        const out = await composeOralVideo({ workdir, beats: prepared });
+        const totalSec = prepared.reduce((s, b) => s + b.durationSec, 0);
+        return sendJson(res, {
+          ok: true,
+          url: `media/oral/${safeId}/${out.outName}`,
+          segments: out.segments,
+          withVideo: prepared.filter((b) => b.videoFile).length,
+          totalSeconds: Math.round(totalSec * 10) / 10,
+        }, 200);
+      } catch (error) {
+        return sendJson(res, { ok: false, error: 'compose_failed', message: String(error.message || error) }, 502);
+      }
+    }
+
     if (req.method === 'POST' && url.pathname === '/api/xhs-cards/generate-xiaohei/start') {
       const payload = await readJson(req);
-      const cards = Array.isArray(payload.cards) ? payload.cards.slice(0, 5) : [];
-      if (!cards.length) return sendJson(res, { ok: false, error: 'missing_cards', message: '没有可生成的 5 张配图 brief。' }, 400);
+      const maxCards = Math.min(Math.max(Number(payload.maxCards) || 5, 1), 12); // 图文卡默认 5；视频关键帧传 maxCards 放开（上限 12 防跑飞）
+      const cards = Array.isArray(payload.cards) ? payload.cards.slice(0, maxCards) : [];
+      if (!cards.length) return sendJson(res, { ok: false, error: 'missing_cards', message: '没有可生成的配图 brief。' }, 400);
       if (kieEnabled()) {
         try {
           const job = await kieStartXiaoheiJob(payload);
@@ -1354,7 +1431,8 @@ createServer(async (req, res) => {
                   visualStyleTitle: p.visualStyleTitle || '', visualRoute: p.visualRoute || p.route || '', route: p.visualRoute || p.route || '',
                   visualCharacter: p.visualCharacter || '', styleBrief: p.styleBrief || '', styleLock: p.styleLock || '', negativePrompt: p.negativePrompt || '',
                   platform: p.platform || p.targetPlatform || '', targetPlatform: p.targetPlatform || p.platform || '',
-                  cards: Array.isArray(p.cards) ? p.cards.slice(0, 5) : [],
+                  maxCards: Math.min(Math.max(Number(p.maxCards) || 5, 1), 12),
+                  cards: Array.isArray(p.cards) ? p.cards.slice(0, Math.min(Math.max(Number(p.maxCards) || 5, 1), 12)) : [],
                 }),
               });
               const r = await up.json().catch(() => ({}));
