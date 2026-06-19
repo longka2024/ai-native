@@ -857,22 +857,32 @@ async function generateOralVideo() {
     renderToday();
     return;
   }
-  // 已出的视频片段按 page 映射（没有就让后端用纯色背景兜底）
+  // 防串档：只用"为当前这条脚本出的片段"。对不上(旧脚本/旧分镜)就不用，避免画面跟文案错位。
+  const currentJob = buildCurrentVideoClipJobId();
+  const clipsMatch = Boolean(state.videoClipForJobId) && state.videoClipForJobId === currentJob;
   const fileByPage = {};
-  (Array.isArray(state.videoClipManifest?.files) ? state.videoClipManifest.files : []).forEach((f) => {
-    if (f && f.url) fileByPage[Number(f.page)] = f.url;
-  });
+  if (clipsMatch) {
+    (Array.isArray(state.videoClipManifest?.files) ? state.videoClipManifest.files : []).forEach((f) => {
+      if (f && f.url) fileByPage[Number(f.page)] = f.url;
+    });
+  }
+  const hadAnyClips = Array.isArray(state.videoClipManifest?.files) && state.videoClipManifest.files.some((f) => f && f.url);
+  const staleClips = hadAnyClips && !clipsMatch;
   const beats = shots.map((s) => ({ text: s.scriptText, videoUrl: fileByPage[s.page] || "" }));
   const withClips = beats.filter((b) => b.videoUrl).length;
   const jobId = `oralcompose-${buildCurrentVideoClipJobId()}`;
   state.oralVideoStatus = "loading";
   state.oralVideoUrl = "";
-  state.oralVideoMessage = withClips ? "正在配音 + 合成口播片…" : "没有可用的视频片段，将用纯背景 + 配音 + 字幕合成（建议先出视频片段画面更生动）。";
+  state.oralVideoMessage = withClips
+    ? "正在配音 + 合成口播片…"
+    : (staleClips
+      ? "上次的视频片段跟当前脚本对不上（脚本改过/分镜数变了），已忽略以防画面错位；本次先用纯背景合成。要带画面请先重新点【生成视频片段】。"
+      : "没有可用的视频片段，将用纯背景 + 配音 + 字幕合成（建议先出视频片段画面更生动）。");
   renderToday();
   try {
     const startRes = await fetch(apiPath("/api/oral-video/compose/start"), {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ jobId, beats, voiceId: state.ttsVoice || undefined }),
+      body: JSON.stringify({ jobId, beats, voiceId: state.ttsVoice || undefined, workspace: state.industry || state.businessLine || state.hot30Workspace || "" }),
     });
     const start = await startRes.json().catch(() => ({}));
     if (!startRes.ok || !start.ok) throw new Error(start.message || start.error || `HTTP ${startRes.status}`);
@@ -918,7 +928,62 @@ function groupLinesIntoN(arr, n) {
   return out;
 }
 
+// 爆款视频脚本重构：调 video-script-restructure skill，把确认文案重构成爆款分镜(钩子/口播/大字/B-roll)
+async function loadVideoScript() {
+  if (!state.copyConfirmed) {
+    state.videoScriptStatus = "error";
+    state.videoScriptMessage = "请先在上一步确认文案，再生成视频脚本。";
+    renderToday();
+    return;
+  }
+  const title = state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "";
+  const body = String(confirmedCopyText() || "").trim();
+  if (!body) {
+    state.videoScriptStatus = "error";
+    state.videoScriptMessage = "当前没有可用的文案正文。";
+    renderToday();
+    return;
+  }
+  state.videoScriptStatus = "loading";
+  state.videoScriptMessage = "正在把文案重构成爆款视频脚本…";
+  renderToday();
+  try {
+    const platform = (typeof platformWanted === "function" ? platformWanted() : "") || "";
+    const industry = state.industry || state.businessLine || state.hot30Workspace || "";
+    const res = await fetch(apiPath("/api/skills/run"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ skill: "video-script-restructure", content: `标题：${title}\n\n正文：${body}`, vars: { platform, industry } }),
+    });
+    const j = await res.json().catch(() => ({}));
+    const r = j?.result || {};
+    const shots = Array.isArray(r.shots) ? r.shots : [];
+    if (!j.ok || !shots.length) throw new Error(j.message || j.error || "脚本重构未返回分镜");
+    state.videoScript = { hookType: r.hookType || "", shots, cta: r.cta || "", notes: r.notes || "" };
+    state.videoScriptStatus = "done";
+    state.videoScriptMessage = `已重构 ${shots.length} 个爆款分镜（钩子：${r.hookType || "—"}）。可逐镜微调口播/大字，再出片。`;
+  } catch (error) {
+    state.videoScriptStatus = "error";
+    state.videoScriptMessage = `脚本重构失败：${error.message}`;
+  }
+  renderToday();
+}
+
 function buildVideoShots() {
+  // 优先用爆款脚本重构的分镜（口播=画面脚本，大字/B-roll 一并带上）
+  const vs = state.videoScript;
+  if (vs && Array.isArray(vs.shots) && vs.shots.length) {
+    return vs.shots.map((s, i) => ({
+      page: i + 1,
+      scriptText: String(s.narration || s.bigText || s.keywords || "").trim(),
+      bigText: s.bigText || "",
+      broll: s.broll || "",
+      brollSource: s.brollSource || "",
+      role: s.role || "",
+      seconds: s.seconds || 0,
+      isCover: i === 0,
+    })).filter((s) => s.scriptText);
+  }
   const title = state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "";
   const lines = String(confirmedCopyText() || "")
     .split(/\n+/)
@@ -1075,6 +1140,7 @@ async function generateVideoClips() {
     const result = await startRes.json().catch(() => ({}));
     if (!startRes.ok || !result.ok) throw new Error(result.message || result.error || `HTTP ${startRes.status}`);
     state.videoClipJobId = result.jobId || jobId;
+    state.videoClipForJobId = jobId; // 这批片段是为"当前脚本"出的，口播片据此校验对版，防串档
     if (result.manifest) state.videoClipManifest = result.manifest;
     await pollVideoClips({ jobId: state.videoClipJobId, total: clips.length });
   } catch (error) {

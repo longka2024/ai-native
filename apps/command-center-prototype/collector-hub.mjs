@@ -866,6 +866,51 @@ async function ensureCollectorSchema() {
   `);
   await pgPool.query('create index if not exists idx_longka_asset_confirmations_destination on longka_asset_confirmations(destination)');
   await pgPool.query('create index if not exists idx_longka_asset_confirmations_run on longka_asset_confirmations(run_id)');
+  // 对标起锚库:每次起锚一行(该账号的评分方向 signals + 指纹 patterns + 选题 topics)
+  await pgPool.query(`
+    create table if not exists longka_benchmark (
+      id text primary key,
+      workspace text not null default '',
+      account text not null default '',
+      sample_count int not null default 0,
+      signals jsonb, patterns jsonb, topics jsonb, hooks jsonb, samples jsonb,
+      created_at timestamptz not null default now()
+    )
+  `);
+  await pgPool.query('create index if not exists idx_longka_benchmark_workspace on longka_benchmark(workspace)');
+}
+
+// 保存一次对标起锚结果
+export async function saveBenchmarkAnchor({ workspace = '', account = '', sampleCount = 0, signals = [], patterns = [], topics = [], hooks = [], samples = [] }) {
+  await requireCollectorDb();
+  const id = `bm-${randomUUID().slice(0, 12)}`;
+  await pgPool.query(
+    `insert into longka_benchmark (id, workspace, account, sample_count, signals, patterns, topics, hooks, samples)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+    [id, normalizeText(workspace), normalizeText(account), Number(sampleCount) || 0,
+     JSON.stringify(signals || []), JSON.stringify(patterns || []), JSON.stringify(topics || []), JSON.stringify(hooks || []), JSON.stringify(samples || [])],
+  );
+  return { id };
+}
+
+export async function listBenchmarks(workspace = '') {
+  await requireCollectorDb();
+  const r = await pgPool.query(
+    `select id, workspace, account, sample_count, signals, patterns, topics, hooks, created_at
+     from longka_benchmark where ($1='' or workspace=$1) order by created_at desc limit 50`,
+    [normalizeText(workspace)],
+  );
+  return r.rows;
+}
+
+// 给"发布前判断"用:某 workspace 最新起锚的评分方向(客户专属)
+export async function getBenchmarkRubric(workspace = '') {
+  await requireCollectorDb();
+  const r = await pgPool.query(
+    `select signals, account from longka_benchmark where ($1='' or workspace=$1) order by created_at desc limit 1`,
+    [normalizeText(workspace)],
+  );
+  return r.rows[0] || null;
 }
 
 async function requireCollectorDb() {

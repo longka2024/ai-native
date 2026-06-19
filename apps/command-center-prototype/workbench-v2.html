@@ -99,9 +99,11 @@
           <div>
             <span class="eyebrow">SOURCES</span>
             <h2>对标账号库</h2>
-            <p>维护长期监控的信息源。X 账号可以一行一个或逗号分隔；小红书、RSS、网页、公众号后续按同一套母题资产标准入库。</p>
+            <p>给系统几条对标账号的爆款,自动拆解 + 起锚出"这个号该按什么标准评分、抄什么写法、做什么选题"。免登录:粘稿子+填数据+你的印象即可。</p>
           </div>
         </div>
+        <div id="benchmarkPanel"></div>
+        <details style="margin-top:18px;"><summary style="cursor:pointer;color:#7a6a55;">X 对标账号(旧)</summary>
         <div class="source-editor">
           <label>X 对标账号
             <textarea id="sourceAccounts" rows="8" placeholder="Xudong07452910&#10;snail_9106&#10;xionghuanwei"></textarea>
@@ -112,6 +114,7 @@
             <button class="primary" data-action="save-sources">保存账号库</button>
           </div>
         </div>
+        </details>
       </section>
 
       <section class="route-panel simple-panel" data-panel="questions" hidden>
@@ -179,18 +182,18 @@
   </main>
 
   <!-- 模块化架构 v20260611 — 按依赖顺序加载 -->
-  <script src="./state-manager.js?v=20260618-voral-1"></script>
+  <script src="./state-manager.js?v=20260619-vsearch-4"></script>
   <script src="./config.js?v=20260618-vgroup-1"></script>
   <script src="./utils.js?v=20260618-factguard-1"></script>
   <script src="./copy-manager.js?v=20260618-optimize-2"></script>
-  <script src="./visual-engine.js?v=20260618-voral-1"></script>
-  <script src="./topic-engine.js?v=20260618-ref-1"></script>
+  <script src="./visual-engine.js?v=20260619-vbroll-1"></script>
+  <script src="./topic-engine.js?v=20260619-corpus-3"></script>
   <script src="./title-engine.js?v=20260612-titlefix-4"></script>
   <script src="./content-creation-base.js?v=20260608-motif-compound-1"></script>
-  <script src="./rewrite-engine.js?v=20260618-optimize-2"></script>
-  <script src="./asset-manager.js?v=20260618-publish-1"></script>
+  <script src="./rewrite-engine.js?v=20260619-anchor-1"></script>
+  <script src="./asset-manager.js?v=20260619-bench-3"></script>
   <script src="./collector-panel.js?v=20260611-modular-1"></script>
   <script src="./material-flow.js?v=20260611-modular-1"></script>
-  <script src="./workbench-main.js?v=20260618-voral-1"></script>
+  <script src="./workbench-main.js?v=20260619-uiclean-4"></script>
 </body>
 </html>

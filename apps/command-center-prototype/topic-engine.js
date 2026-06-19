@@ -375,6 +375,25 @@ function loginWalledPlatformName(url) {
 
 async function loadSignalSearchState() {
   try {
+    // 全库素材搜索「用这些素材生成选题」：多条结果直接注入成多个选题候选(双列)，不再抓取
+    if (Array.isArray(state.injectedSamples) && state.injectedSamples.length) {
+      const arr = state.injectedSamples;
+      state.injectedSamples = null;
+      const contentSamples = arr
+        .filter((s) => s && (String(s.body || "").length > 10 || s.title))
+        .map((s, i) => ({
+          id: `corpus-${i}-${String(s.sourceUrl || s.title || "x").slice(0, 28).replace(/[^a-zA-Z0-9]/g, "-")}`,
+          title: s.title || "素材",
+          body: s.body || "",
+          sourceUrl: s.sourceUrl || "",
+          platform: s.platform || "web",
+          collectionStatus: "real",
+          metrics: s.metrics || {},
+        }));
+      log(`已载入 ${contentSamples.length} 条素材，生成选题候选。`);
+      state.assetStatus = "已载入素材";
+      return { contentSamples, rawMaterials: [], candidates: [], assets: [] };
+    }
     const title = (state.signalKeywords || state.signalSearchQuery || "").trim();
     const signalUrl = (state.signalUrl || "").trim();
     if (!title) {
@@ -648,6 +667,24 @@ function buildTopicsFromDb(db) {
     }
     // 判断是否来自 xcrawl scrape（单篇原文）
     const isSingleArticle = signalSamples.length === 1 && (signalSamples[0].body || "").length > 100;
+    // 全库素材搜索（多条）：走和小红书选题同一套排名 —— 相关性打分 + 母题资格 + 排序，不堆、不跑题
+    if (!isSingleArticle && signalSamples.length > 1) {
+      const kw = tokenize(state.signalKeywords || state.keywords || "");
+      const scored = signalSamples
+        .map((sample) => ({ sample, score: scoreSample(sample, kw), eligibility: judgeMotherTopicEligibility(sample) }))
+        .filter((item) => item.eligibility.pass)
+        .sort((a, b) => b.score - a.score);
+      const pool = scored.length ? scored : signalSamples.map((sample) => ({ sample, eligibility: judgeMotherTopicEligibility(sample) }));
+      return dedupeMotherTopics(pool.map(({ sample, eligibility }, index) => {
+        const topic = makeMotherTopic(sample, index, eligibility);
+        const url = sample.sourceUrl || "";
+        topic.collectionStatus = "全库素材";
+        const m = sample.metrics || {};
+        topic.reason = `命中「${state.signalKeywords || ""}」，正文 ${(sample.body || "").length} 字${m.likes ? `，互动 ${m.likes} 赞` : ""}${url ? `（[原文](${url})）` : ""}。`;
+        if (!eligibility.pass && eligibility.blockers?.length) topic.reason += ` 风险：${eligibility.blockers.slice(0, 2).join("；")}。`;
+        return topic;
+      })).slice(0, 10);
+    }
     return dedupeMotherTopics(signalSamples.map((sample, index) => {
       const eligibility = judgeMotherTopicEligibility(sample);
       const topic = makeMotherTopic(sample, index, eligibility);

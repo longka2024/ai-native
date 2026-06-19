@@ -1,5 +1,16 @@
 # Codex 技术基座 × 现状 真账（2026-06-17,逐条核运行代码）
 
+## 🔄 2026-06-19 进度更新(在原 06-17 账基础上)
+- **skills-runner 真接 skill 现 7 个**(06-17 时基本只有 humanizer/cover):`cover-from-content`、`humanizer-zh`、`dbs-ai-check`(死标签→已扶正真 runSkill)、`dbs-xhs-title`(已扶正)、`precheck-xhs`(新,小红书7维发布前判断=cheat score 静态内化)、`video-script-restructure`(新,爆款分镜)、`benchmark-deconstruct`(新,对标拆解=激活闲置 dbs 拆解)。
+- **窟窿 #1 cheat 闭环:进行中** —— 已用 4 agent 全文吃透,出落地 spec `docs/specs/2026-06-19-cheat-engine-integration-spec.md`(P0-P3)。P0 第一块(对标拆解)✅ 接好跑通;接着 盲打分 + rubric 存 PG + 对标起锚。
+- **窟窿 #3 dbs 教练扶正:部分**(ai-check/xhs-title 已扶正;content/hook 仍待)。
+- **采集/视频侧新增真接**(06-17 后):43-Firecrawl keyless 海外抓取、Pexels 关键词匹配空镜(口播片自动配真实画面)、MiniMax TTS 口播、视频脚本重构、整片合成。
+- **仍未接的真窟窿**:#2 Kami 交付排版、#4 数据回填+retro(=cheat P2)、#5 朱雀、#6 taste 审美门、#7 人像封面;dbs-content/hook 扶正。
+- 其余结论(给~80、真窟窿就 backlog 7 条、操作者/参考不进产品)**仍成立**。
+
+---
+
+
 准绳:`longka_technical_base_ledger.md`(6/7)逐条;现状=grep **运行代码**(`apps/command-center-prototype/*.mjs *.js`,workbench-v2.html 实际加载的那批)。
 图例:
 - ✅ **真接**(运行代码里真在用)

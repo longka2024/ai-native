@@ -6,12 +6,13 @@ import { extname, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { collectorHealth, confirmContentAsset, deleteCollectionRun, importLocalPlatformBatch, initCollectorHub, loadHot30Samples, loadLatestXBatch, loadRecentCollectionBatches, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch } from './collector-hub.mjs';
+import { collectorHealth, confirmContentAsset, deleteCollectionRun, importLocalPlatformBatch, initCollectorHub, loadHot30Samples, loadLatestXBatch, loadRecentCollectionBatches, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch, saveBenchmarkAnchor, listBenchmarks } from './collector-hub.mjs';
 import { runSkill, listSkills } from './skills-runner.mjs';
 import { kieEnabled, kieStartXiaoheiJob, kieXiaoheiJobStatus } from './kie-image.mjs';
 import { kieVideoEnabled, kieStartVideoJob, kieVideoJobStatus } from './kie-video.mjs';
 import { minimaxEnabled, synthesizeSpeech } from './tts-minimax.mjs';
 import { composeOralVideo } from './video-compose.mjs';
+import { pexelsEnabled, translateToBrollQueries, fetchPexelsClip } from './broll-pexels.mjs';
 
 // 自动加载同目录下的 .env 文件（不依赖 dotenv 包）
 try {
@@ -202,11 +203,36 @@ await ensureAssetDb();
 
 // 口播片异步合成任务（避免长合成超 nginx 60s）
 const oralComposeJobs = new Map(); // jobId -> { status, total, done, url, withVideo, totalSeconds, error }
+// 空镜素材库:按赛道(workspace)挑真实 B-roll 空镜,口播片自动配真实画面。
+// clips 放 media/broll/<赛道>/(如 女性成长),无则回落 media/broll/通用/,再无→纯色底。
+async function pickBrollClips(workspace) {
+  const ws = String(workspace || '').trim();
+  const dirs = [ws ? join(root, 'media', 'broll', ws) : null, join(root, 'media', 'broll', '通用')].filter(Boolean);
+  for (const d of dirs) {
+    try {
+      const files = (await readdir(d)).filter((f) => /\.(mp4|mov|webm)$/i.test(f)).sort();
+      if (files.length) return files.map((f) => join(d, f));
+    } catch { /* 目录不存在→跳过 */ }
+  }
+  return [];
+}
+
 async function runOralCompose(jobId, payload, beats) {
   const job = oralComposeJobs.get(jobId);
   const safeId = jobId;
   const workdir = join(root, 'media', 'oral', safeId);
   await mkdir(workdir, { recursive: true });
+  const brollPool = await pickBrollClips(payload.workspace || payload.industry || '');
+  let brollIdx = 0;
+  // 关键词匹配空镜:每段口播 → 英文画面词(优先前端给的 brollQuery,否则 DeepSeek 中译英)→ Pexels 竖屏抓
+  let brollQueries = beats.map((b) => String(b?.brollQuery || '').trim());
+  if (pexelsEnabled() && brollQueries.some((q) => !q)) {
+    try {
+      const tx = await translateToBrollQueries(beats.map((b) => String(b?.text || '')));
+      brollQueries = brollQueries.map((q, i) => q || tx[i] || '');
+    } catch { /* 翻译失败→回落素材库 */ }
+  }
+  const usedPexelsIds = new Set();
   const prepared = [];
   for (let i = 0; i < beats.length; i += 1) {
     const b = beats[i] || {};
@@ -223,6 +249,11 @@ async function runOralCompose(jobId, payload, beats) {
         if (r.ok) { const buf = Buffer.from(await r.arrayBuffer()); if (buf.length > 1000) { videoName = `clip_${i}.mp4`; await writeFile(join(workdir, videoName), buf); } }
       } catch { /* 下载失败→纯色背景 */ }
     }
+    // 没指定视频→优先按内容关键词从 Pexels 抓匹配空镜(说什么配什么);抓不到再回落赛道素材库;再无→纯色
+    if (!videoName && pexelsEnabled() && brollQueries[i]) {
+      try { videoName = await fetchPexelsClip(brollQueries[i], workdir, i, usedPexelsIds); } catch { /* 失败→回落 */ }
+    }
+    if (!videoName && brollPool.length) { videoName = brollPool[brollIdx % brollPool.length]; brollIdx += 1; }
     prepared.push({ text, audioFile: audioName, videoFile: videoName, durationSec: durSec });
     if (job) job.done = i + 1;
   }
@@ -234,6 +265,54 @@ async function runOralCompose(jobId, payload, beats) {
     job.withVideo = prepared.filter((b) => b.videoFile).length;
     job.totalSeconds = Math.round(prepared.reduce((s, b) => s + b.durationSec, 0) * 10) / 10;
   }
+}
+
+// ─── 对标起锚:批量拆解对标作品 → 聚合成该账号评分方向+指纹+选题 → 存对标库 ───
+const benchmarkJobs = new Map();
+const BM_DIMS = ['钩子强度', '痛点精准', '具体可信', '情感共鸣', '收藏价值', '金句密度', '行动指令'];
+function aggregateBenchmark(deconstructed) {
+  const high = deconstructed.filter((d) => d._impression === '高');
+  const strong = (v) => /强/.test(String(v || ''));
+  const uniq = (arr) => [...new Set(arr.filter(Boolean))];
+  const signals = BM_DIMS.map((dim) => {
+    const hs = high.filter((d) => strong((d.rubricSignals || {})[dim])).length;
+    let verdict = '无明显差异';
+    if (high.length && hs >= Math.max(1, Math.round(high.length * 0.6))) verdict = '重要';
+    else if (high.length && hs <= high.length * 0.34) verdict = '不显著';
+    return { dim, verdict, evidence: `高印象 ${hs}/${high.length} 强` };
+  });
+  return {
+    signals,
+    patterns: uniq(deconstructed.flatMap((d) => d.patterns || [])).slice(0, 12),
+    topics: uniq(deconstructed.map((d) => d.topicDirection)),
+    hooks: uniq(deconstructed.map((d) => d.hookType)),
+  };
+}
+async function runBenchmarkAnchor(jobId, payload) {
+  const job = benchmarkJobs.get(jobId);
+  const samples = Array.isArray(payload.samples) ? payload.samples.slice(0, 15) : [];
+  const cfg = await readOperatorAiConfig();
+  const deconstructed = [];
+  for (let i = 0; i < samples.length; i += 1) {
+    const s = samples[i] || {};
+    const script = String(s.script || '').trim();
+    if (!script) { if (job) job.done = i + 1; continue; }
+    const impression = String(s.impression || '中').trim();
+    const content = `【对标作品】\n稿子：${script}\n真实数据：${String(s.metrics || '(未提供)')}\n运营印象：${impression}${s.reason ? ' - ' + s.reason : ''}`;
+    try {
+      const r = await runSkill('benchmark-deconstruct', content, {}, cfg);
+      if (r && r.ok && r.result) deconstructed.push({ _impression: impression, ...r.result });
+    } catch { /* 单条失败跳过 */ }
+    if (job) job.done = i + 1;
+  }
+  if (!deconstructed.length) throw new Error('no_valid_samples');
+  const agg = aggregateBenchmark(deconstructed);
+  const saved = await saveBenchmarkAnchor({
+    workspace: payload.workspace || '', account: payload.account || '对标账号',
+    sampleCount: deconstructed.length, ...agg,
+    samples: deconstructed.map((d) => ({ hookType: d.hookType, mvpLine: d.mvpLine, topicDirection: d.topicDirection, impression: d._impression })),
+  });
+  if (job) { job.status = 'done'; job.result = { ...agg, account: payload.account || '对标账号', sampleCount: deconstructed.length, id: saved.id }; }
 }
 
 createServer(async (req, res) => {
@@ -1618,6 +1697,26 @@ createServer(async (req, res) => {
       const cfg = await readOperatorAiConfig();
       const result = await runSkill(skill, content, vars || {}, cfg);
       return sendJson(res, result);
+    }
+
+    // 对标起锚:批量拆解对标作品 → 起锚该账号评分方向+指纹+选题 → 存对标库
+    if (req.method === 'POST' && url.pathname === '/api/benchmark/anchor/start') {
+      const payload = await readJson(req);
+      const samples = Array.isArray(payload.samples) ? payload.samples.filter((s) => s && String(s.script || '').trim()) : [];
+      if (!samples.length) return sendJson(res, { ok: false, error: 'missing_samples', message: '没有对标作品样本(每条至少要有稿子)。' }, 400);
+      const jobId = `bm-${Date.now().toString(36)}-${randomUUID().slice(0, 6)}`;
+      benchmarkJobs.set(jobId, { status: 'running', total: samples.length, done: 0, result: null, error: '' });
+      runBenchmarkAnchor(jobId, { ...payload, samples }).catch((e) => { const j = benchmarkJobs.get(jobId); if (j) { j.status = 'error'; j.error = String(e.message || e); } });
+      return sendJson(res, { ok: true, jobId, status: 'running', total: samples.length }, 202);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/benchmark/anchor/status') {
+      const job = benchmarkJobs.get(url.searchParams.get('jobId') || '');
+      if (!job) return sendJson(res, { ok: false, error: 'job_not_found' }, 404);
+      return sendJson(res, { ok: true, ...job });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/benchmark/list') {
+      const rows = await listBenchmarks(url.searchParams.get('workspace') || '');
+      return sendJson(res, { ok: true, items: rows });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/xiaomei/video-job') {

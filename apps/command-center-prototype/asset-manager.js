@@ -7,6 +7,14 @@ function renderAssetPage(route) {
     renderTitleAssets();
     return;
   }
+  if (route === "records") {
+    renderRecords();
+    return;
+  }
+  if (route === "sources") {
+    renderBenchmarkPanel();
+    return;
+  }
   const map = {
     questions: "客户问题库",
     titles: "标题库",
@@ -555,6 +563,140 @@ function deconstructFinalWork(id) {
   if (!work) return;
   state.archiveMessage = `已拆解：标题《${work.extractedAssets?.title || work.title}》、结构《${work.extractedAssets?.structure || "未记录"}》、图文风格《${work.extractedAssets?.visualStyle || "未记录"}》。后续会正式写入标题库和结构库。`;
   renderAssetPage("assets");
+}
+
+// 对标账号起锚:填几条对标爆款 → 拆解+起锚出评分方向/指纹/选题 → 存对标库
+function renderBenchmarkPanel() {
+  const target = byId("benchmarkPanel");
+  if (!target) return;
+  const rows = (n) => Array.from({ length: n }, (_, i) => `
+    <div class="bm-sample" style="border:1px solid #e6ddd0;border-radius:8px;padding:12px;margin-bottom:8px;background:#fff;">
+      <div style="font-size:13px;color:#3a2c1c;font-weight:600;margin-bottom:6px;">对标爆款 ${i + 1}${i < 3 ? "" : "(可不填)"}</div>
+      <label style="font-size:12px;color:#7a6a55;">① 帖子正文 —— 打开这条帖子,把<b>文字内容全选复制</b>粘到这里:</label>
+      <textarea class="bm-script" rows="3" placeholder="例:我裸辞那年做对了三件事…(粘对标帖子的正文文字)" style="width:100%;box-sizing:border-box;border:1px solid #e6ddd0;border-radius:6px;padding:6px;margin-top:3px;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:flex-end;">
+        <label style="flex:1;font-size:12px;color:#7a6a55;">② 这条的数据(帖子里看得到,可不填)<input class="bm-metrics" placeholder="例:赞2.1万 藏3.4万 评890" style="width:100%;box-sizing:border-box;border:1px solid #e6ddd0;border-radius:6px;padding:6px;font-size:13px;margin-top:3px;"></label>
+        <label style="font-size:12px;color:#7a6a55;">③ 你觉得这条火不火<select class="bm-impression" style="display:block;border:1px solid #e6ddd0;border-radius:6px;padding:6px;margin-top:3px;"><option value="高">很火/想抄</option><option value="中" selected>一般</option><option value="低">不太行</option></select></label>
+      </div>
+    </div>`).join("");
+  target.innerHTML = `
+    <div style="border:1px solid #e6ddd0;border-radius:12px;padding:16px;background:#faf6ef;">
+      <div style="background:#fff;border:1px solid #e6ddd0;border-radius:8px;padding:12px;margin-bottom:12px;font-size:13px;line-height:1.7;color:#5a4a40;">
+        <b style="color:#3a2c1c;">怎么用(以小红书为例,3 步):</b><br>
+        1️⃣ 打开小红书,搜到你想学的<b>对标博主</b>,进 ta 的<b>主页</b> —— 主页最上面那个<b>大字名字</b>就是「账号名」(例:<b>快失业的AI设计师</b>;底下"小红书号:545958787"那串数字<b>不用填</b>)。<br>
+        2️⃣ 在 ta 主页点「笔记」,挑<b>最火的 3-5 条</b>(看点赞高的),<b>点进每一条</b>。<br>
+        3️⃣ 每条笔记里:把<b>正文文字复制</b>粘到下面框 + 记下这条的<b>点赞/收藏数</b> + 选 ta 火不火 → 点「起锚」。
+      </div>
+      <label style="font-size:13px;color:#3a2c1c;font-weight:600;">① 对标账号名(博主主页顶上的昵称,不是数字号):</label>
+      <div style="display:flex;gap:8px;align-items:center;margin:4px 0 12px;">
+        <input id="bmAccount" placeholder="例:快失业的AI设计师(主页那个大字名字)" style="flex:1;border:1px solid #d8cdba;border-radius:8px;padding:9px 12px;">
+        <button class="primary" data-bm-anchor>🎯 起锚</button>
+      </div>
+      <div style="color:#9a8a70;font-size:12px;margin-bottom:8px;">账号名只是个标签(方便你记是谁)。系统不自动爬,稿子你手动粘(用自己号正常浏览复制,系统不碰平台、不会封号)。至少填 1 条,填 3-5 条更准。</div>
+      ${rows(4)}
+      <div id="bmStatus" style="margin-top:8px;font-size:13px;"></div>
+      <div id="bmResult" style="margin-top:10px;"></div>
+    </div>
+    <div style="margin-top:16px;"><b style="color:#3a2c1c;">已起锚的对标库</b><div id="bmList" style="margin-top:8px;"></div></div>`;
+  target.querySelector("[data-bm-anchor]")?.addEventListener("click", () => doBenchmarkAnchor());
+  loadBenchmarkList();
+}
+
+async function doBenchmarkAnchor() {
+  const target = byId("benchmarkPanel"); if (!target) return;
+  const account = byId("bmAccount")?.value.trim() || "对标账号";
+  const samples = [...target.querySelectorAll(".bm-sample")].map((el) => ({
+    script: el.querySelector(".bm-script")?.value.trim() || "",
+    metrics: el.querySelector(".bm-metrics")?.value.trim() || "",
+    impression: el.querySelector(".bm-impression")?.value || "中",
+  })).filter((s) => s.script);
+  const status = byId("bmStatus");
+  if (!samples.length) { if (status) status.innerHTML = `<span style="color:#b4231f;">至少填一条对标作品的稿子。</span>`; return; }
+  const ws = state.hot30Workspace || state.industry || state.businessLine || "";
+  if (status) status.innerHTML = `正在拆解 ${samples.length} 条对标作品起锚…(每条约 10-20 秒)`;
+  try {
+    const d = await (await fetch(apiPath("/api/benchmark/anchor/start"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ account, workspace: ws, samples }) })).json();
+    const jobId = d.jobId;
+    if (!jobId) throw new Error(d.message || "启动失败");
+    for (let i = 0; i < 80; i += 1) {
+      await new Promise((r) => setTimeout(r, 4000));
+      const sr = await (await fetch(apiPath(`/api/benchmark/anchor/status?jobId=${jobId}`))).json();
+      if (status) status.innerHTML = `拆解中 ${sr.done || 0}/${sr.total || samples.length}…`;
+      if (sr.status === "done") { renderBenchmarkResult(sr.result); if (status) status.innerHTML = "✅ 起锚完成,已存进对标库"; loadBenchmarkList(); return; }
+      if (sr.status === "error") { if (status) status.innerHTML = `<span style="color:#b4231f;">起锚失败:${escapeHtml(sr.error || "")}</span>`; return; }
+    }
+    if (status) status.innerHTML = `<span style="color:#b4231f;">起锚超时,稍后在对标库看结果。</span>`;
+  } catch (e) { if (status) status.innerHTML = `<span style="color:#b4231f;">起锚失败:${escapeHtml(e.message)}</span>`; }
+}
+
+function renderBenchmarkResult(r) {
+  const box = byId("bmResult"); if (!box || !r) return;
+  const sig = (r.signals || []).map((s) => `<span style="display:inline-block;margin:2px;padding:3px 9px;border-radius:10px;font-size:12px;background:${s.verdict === "重要" ? "#e6f4ea" : s.verdict === "不显著" ? "#f3ede1" : "#eee"};color:${s.verdict === "重要" ? "#1a7f37" : "#7a6a55"};">${escapeHtml(s.dim)}:${escapeHtml(s.verdict)}</span>`).join("");
+  box.innerHTML = `<div style="border:1px solid #cfe6d4;border-radius:10px;padding:12px;background:#fff;">
+    <b>「${escapeHtml(r.account || "对标账号")}」的评分方向(系统据此判稿)</b><div style="margin:6px 0;">${sig}</div>
+    ${(r.hooks || []).length ? `<div style="font-size:13px;margin-top:6px;"><b>常用钩子:</b>${(r.hooks || []).map(escapeHtml).join(" / ")}</div>` : ""}
+    ${(r.patterns || []).length ? `<div style="font-size:13px;margin-top:6px;"><b>可抄写法:</b><ul style="margin:4px 0 0 18px;">${(r.patterns || []).map((p) => `<li>${escapeHtml(p)}</li>`).join("")}</ul></div>` : ""}
+    ${(r.topics || []).length ? `<div style="font-size:13px;margin-top:6px;"><b>选题方向:</b>${(r.topics || []).map(escapeHtml).join(" · ")}</div>` : ""}
+  </div>`;
+}
+
+async function loadBenchmarkList() {
+  const box = byId("bmList"); if (!box) return;
+  try {
+    const ws = state.hot30Workspace || state.industry || state.businessLine || "";
+    const d = await (await fetch(apiPath(`/api/benchmark/list?workspace=${encodeURIComponent(ws)}`))).json();
+    const items = d.items || [];
+    box.innerHTML = items.length ? items.map((it) => {
+      const imp = (it.signals || []).filter((s) => s.verdict === "重要").map((s) => s.dim).join(" / ");
+      return `<div style="border:1px solid #e6ddd0;border-radius:8px;padding:10px;margin-bottom:6px;background:#fff;"><b>${escapeHtml(it.account || "对标账号")}</b> <span style="color:#9a8a70;font-size:12px;">${it.sample_count || 0} 条 · ${String(it.created_at || "").slice(0, 10)}</span><div style="font-size:12px;color:#5a4a40;margin-top:4px;">重要维度:${escapeHtml(imp || "—")}</div></div>`;
+    }).join("") : `<div class="muted-text">还没起锚过对标账号。上面填几条爆款,点起锚。</div>`;
+  } catch (e) { box.innerHTML = `<div class="muted-text">读取对标库失败。</div>`; }
+}
+
+// 作品记录：显示真实成品(从122加载) + 已保存/已发布 + 每条「改成别的平台」(一鱼多吃)
+async function renderRecords() {
+  const target = byId("recordBoard");
+  if (!target) return;
+  target.innerHTML = `<div class="empty-state"><b>正在读取作品记录…</b><span>从 122 作品库读取你做过的成品。</span></div>`;
+  try {
+    const res = await fetch(apiPath("/api/final-works"));
+    if (res.ok) {
+      const result = await res.json();
+      const remote = Array.isArray(result.works) ? result.works : (Array.isArray(result.finalWorks) ? result.finalWorks : []);
+      const m = new Map();
+      [...remote, ...(Array.isArray(state.finalWorks) ? state.finalWorks : [])].forEach((w) => { if (w?.id) m.set(w.id, w); });
+      state.finalWorks = [...m.values()].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+    }
+  } catch (e) { /* 122 读不到就用本机缓存 */ }
+  const works = Array.isArray(state.finalWorks) ? state.finalWorks : [];
+  if (!works.length) {
+    target.innerHTML = `<div class="empty-state"><b>还没有作品</b><span>在今日工作台做完一条内容、点「✅ 完成」，它就会出现在这里。</span></div>`;
+    return;
+  }
+  const pName = (p) => ((typeof publishTargets !== "undefined" && publishTargets.find((t) => t.id === p)?.title) || p || "");
+  target.innerHTML = works.map((w) => {
+    const published = w.publishRecord?.status === "published";
+    const status = published ? "已发布" : "已保存";
+    const titleText = String(w.title || w.theme || w.topic || "(无标题)").slice(0, 44);
+    const imgs = Array.isArray(w.images) ? w.images.length : 0;
+    const date = String(w.createdAt || "").slice(0, 10);
+    // 作品的 platform 可能存 id(xhs)或中文名(小红书图文),都比对,排掉自己
+    const wpid = ((typeof publishTargets !== "undefined" && publishTargets.find((t) => t.id === w.platform || t.title === w.platform)?.id) || w.platform);
+    const others = (typeof publishTargets !== "undefined" ? publishTargets : []).filter((t) => t.id !== wpid).slice(0, 4);
+    return `<article class="asset-item" style="border:1px solid #e6ddd0;border-radius:10px;padding:14px;margin-bottom:10px;background:#fff;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <b style="font-size:15px;color:#3a2c1c;">${escapeHtml(titleText)}</b>
+        <span style="font-size:12px;padding:2px 10px;border-radius:10px;background:${published ? "#e6f4ea" : "#f3ede1"};color:${published ? "#1a7f37" : "#7a6a55"};">${status}</span>
+      </div>
+      <div style="color:#9a8a70;font-size:12px;margin:6px 0;">${escapeHtml(pName(w.platform))}${imgs ? " · " + imgs + " 张图" : ""}${date ? " · " + date : ""}</div>
+      <div style="margin-top:8px;font-size:12px;color:#7a6a55;">用这个母题再做一篇：</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+        <button class="secondary" data-reuse-work="${escapeHtml(w.id)}" data-reuse-target="${escapeHtml(wpid)}" style="font-size:12px;padding:4px 10px;">✍️ 同平台换角度再写</button>
+        ${others.map((t) => { const sfx = (t.id === "douyin" || t.id === "video-account") ? "脚本" : ""; return `<button class="secondary" data-reuse-work="${escapeHtml(w.id)}" data-reuse-target="${escapeHtml(t.id)}" style="font-size:12px;padding:4px 10px;">改成${escapeHtml(t.title)}${sfx}</button>`; }).join("")}
+      </div>
+    </article>`;
+  }).join("");
+  target.querySelectorAll("[data-reuse-work]").forEach((b) => b.addEventListener("click", () => reuseFinalWork(b.dataset.reuseWork, b.dataset.reuseTarget)));
 }
 
 function sampleAssetItems(label) {

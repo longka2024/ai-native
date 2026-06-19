@@ -233,10 +233,74 @@ function renderBusinessStep() {
   </section>`;
 }
 
+function renderCorpusSearchPanel() {
+  const q = escapeHtml(state.corpusQuery || "");
+  const results = Array.isArray(state.corpusResults) ? state.corpusResults : [];
+  return `<div class="corpus-search" style="border:1px solid #e6ddd0;border-radius:12px;padding:16px;background:#faf6ef;margin-bottom:14px;">
+    <div style="font-size:16px;font-weight:700;color:#3a2c1c;">🔍 搜索素材库</div>
+    <div style="color:#7a6a55;font-size:13px;margin:4px 0 10px;">输入关键词搜<b>全部已采集素材</b>，回车或点搜索 → 直接进入<b>双列选题候选</b>,挑一个改写(和小红书选题一样)。</div>
+    <div style="display:flex;gap:8px;">
+      <input id="corpusQ" value="${q}" placeholder="输入关键词,如:女性成长 / 讨好型人格 / 配得感" style="flex:1;padding:10px 12px;border:1px solid #d8cdba;border-radius:8px;" />
+      <button class="primary" data-corpus-search>搜索 → 生成选题</button>
+    </div>
+    ${state.assetStatus === "正在搜索素材库" ? `<div class="muted-text" style="margin-top:8px;">正在搜索「${q}」…</div>` : ""}
+  </div>`;
+}
+
+async function doCorpusSearch() {
+  const q = (byId("corpusQ")?.value || "").trim();
+  state.corpusQuery = q;
+  if (!q) return;
+  state.assetStatus = "正在搜索素材库";
+  state.logs = [`正在搜索素材库：${q}`];
+  renderToday();
+  try {
+    const res = await fetch(apiPath(`/api/content-assets/unified?keywords=${encodeURIComponent(q)}&limit=40`));
+    const d = await res.json().catch(() => ({}));
+    const assets = Array.isArray(d.assets) ? d.assets : [];
+    // 质量过滤:去 PDF乱码 / 登录页 / 导航垃圾 / 广告 / 太短，只留能当选题的真素材
+    const isJunk = (a) => {
+      const title = String(a.title || "");
+      const body = String(a.body || a.content || "");
+      const t = `${title} ${body}`;
+      if (/%PDF|FlateDecode|endobj|�/.test(t)) return true;                 // PDF/乱码
+      if (/登录\s*\/?\s*注册|下载.{0,4}客户端|APP\s*下载|扫码下载|立即下载/.test(t)) return true; // 登录/下载墙
+      if (/^\s*\(?无标题/.test(title) && body.replace(/\s/g, "").length < 400) return true;
+      if (body.replace(/\s/g, "").length < 200) return true;                      // 正文太短
+      const adHits = (t.match(/就选|官网|加微信|咨询热线|扫码购买|限时优惠/g) || []).length;
+      if (adHits >= 2) return true;                                               // 明显广告
+      return false;
+    };
+    const clean = assets.filter((a) => !isJunk(a))
+      .sort((a, b) => String(b.body || "").length - String(a.body || "").length) // 正文充实优先
+      .slice(0, 12);
+    if (!clean.length) {
+      state.assetStatus = "没搜到合格素材";
+      state.logs = [`「${q}」搜到 ${assets.length} 条，但都没通过质量过滤(乱码/登录页/太短)。换个关键词,或先把这条赛道的库做厚。`];
+      renderToday();
+      return;
+    }
+    // 干净素材注入 → 走原有 signal-search 流程 → 直接出双列选题候选(同小红书选题)
+    state.injectedSamples = clean.map((a) => ({
+      title: a.title || "", body: a.body || a.content || "",
+      sourceUrl: a.sourceUrl || a.url || a.source_url || "", platform: a.platform || "web",
+    }));
+    state.signalKeywords = q;
+    state.signalUrl = "";
+    state.sourceChannel = "signal-search";
+    await readMaterials();
+  } catch (e) {
+    state.assetStatus = "搜索失败";
+    state.logs = [`搜索失败：${e.message}`];
+    renderToday();
+  }
+}
+
 function renderSourceStep() {
   const defaultSource = state.sourceChannel === "same-platform" ? sourceTitleForTarget() : currentSource().title;
   return `<section class="work-card">
     ${cardHead("今天从哪里找素材？", "同平台素材用于学习平台表达；跨平台素材用于提炼观点和方法论，再按目标平台重写。")}
+    ${renderCorpusSearchPanel()}
     <div class="source-note">
       <b>当前策略：${escapeHtml(defaultSource)}</b>
       <span>素材来源要标清楚，选题可以复用，最终成品必须按 ${escapeHtml(currentTarget().title)} 重写。</span>
@@ -825,7 +889,7 @@ function renderConfirmStep() {
     <div class="actions">
       <button class="ghost" data-step-target="8">返回继续优化</button>
       <button class="primary" data-confirm-copy ${state.draft ? "" : "disabled"}>${state.copyConfirmed ? "文案已确认" : "确认这版文案"}</button>
-      <button class="secondary" data-step-target="10" ${state.copyConfirmed ? "" : "disabled"}>进入制作分流</button>
+      <button class="secondary" data-step-target="10" ${state.copyConfirmed ? "" : "disabled"}>下一步：做图文/视频</button>
     </div>
   </section>`;
 }
@@ -887,13 +951,23 @@ function renderNonXhsProductionStep(locked) {
 }
 
 function renderVideoProductionPreview(copy = "") {
-  const lines = String(copy || "").split(/\n+/).map((line) => line.trim()).filter(Boolean).slice(0, 10);
+  // 预览 + 成本都用"真正会生成的归并分镜"(buildVideoShots，默认5)，不要再按行拆成一堆
+  const shots = (typeof buildVideoShots === "function") ? buildVideoShots() : [];
+  const lines = shots.length
+    ? shots.map((s) => s.scriptText)
+    : String(copy || "").split(/\n+/).map((line) => line.trim()).filter(Boolean).slice(0, 5);
   const frameCount = (Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : []).filter((u) => /^https?:\/\//.test(String(u))).length;
   const isLoading = state.videoClipStatus === "loading";
   const mode = state.videoClipMode === "script" ? "script" : "frames";
   const locked = !state.copyConfirmed;
   const genLabel = isLoading ? "出片中…" : (mode === "script" ? "按脚本直接出片段" : "按脚本出关键帧 → 生成视频片段");
   return `<div class="article-layout-preview">
+    <div style="border:1px solid #e6ddd0;border-radius:10px;padding:14px;background:#faf6ef;margin-bottom:12px;">
+      <b style="font-size:15px;">🎬 先生成爆款视频脚本</b>
+      <div style="color:#7a6a55;font-size:12px;margin:4px 0 8px;">把确认的文案重构成爆款分镜：黄金3秒钩子 + 口播 + 顶部大字 + 画面建议。生成后下面的分镜会自动用它。</div>
+      <button class="primary" ${locked || state.videoScriptStatus === "loading" ? "disabled" : ""} data-gen-video-script>${state.videoScriptStatus === "loading" ? "重构中…" : (state.videoScript ? "重新生成脚本" : "生成爆款视频脚本")}</button>
+      ${state.videoScriptMessage ? `<div class="status-strip ${state.videoScriptStatus === "error" ? "warn" : ""}" style="margin-top:8px;">${escapeHtml(state.videoScriptMessage)}</div>` : ""}
+    </div>
     <div class="title-group-head"><b>视频脚本预览</b><span>这里检查钩子、口播、分镜和字幕节奏。下面把脚本切成分镜、按每一镜内容出关键帧，再做成视频。</span></div>
     <div class="asset-grid">
       ${lines.map((line, index) => `<article class="asset-item"><b>${index === 0 ? "标题 / 钩子（第 1 镜）" : `第 ${index + 1} 镜`}</b><span>${escapeHtml(line)}</span></article>`).join("")}
@@ -975,8 +1049,8 @@ function renderExportStep() {
       </div>
     </div>
     <div class="actions">
-      <button class="ghost" data-step-target="10">返回制作分流</button>
-      <button class="primary" data-step-target="12" ${ready ? "" : "disabled"}>下一步：沉淀资产</button>
+      <button class="ghost" data-step-target="10">返回上一步</button>
+      <button class="primary" data-finish-work ${ready ? "" : "disabled"}>✅ 完成（存入作品记录）</button>
     </div>
   </section>`;
 }
@@ -1649,13 +1723,12 @@ function renderProductionStep() {
         <button class="primary" ${locked || isLoading ? "disabled" : ""} data-generate-xiaohei-cards>${isLoading ? "出图中…" : escapeHtml(primaryVisualActionLabelClean(state.visualStyle))}</button>
         <button class="secondary" ${locked || isLoading ? "disabled" : ""} data-export-xhs-cards>导出当前风格拆页方案</button>
       </article>
-      <article class="production-card ${locked ? "locked" : ""}"><b>完成后：一鱼多吃</b><span>图文存为母题资产后，可再切成公众号长文、朋友圈、抖音/视频号脚本。</span><button class="primary" ${locked ? "disabled" : ""} data-step-target="12">保存为母题资产</button></article>
     </div>
     ${renderCleanXhsCardPreview()}
     ${isWechat ? renderWechatArticleImageLayout(copy) : ""}
     ${isVideo ? renderVideoProductionPreview(copy) : ""}
     ${files.length ? `<div class="status-strip success">${zh("&#24050;&#29983;&#25104;")} ${files.length} ${zh("&#24352;&#22270;&#29255;&#65292;&#21487;&#20197;&#23548;&#20986;&#25110;&#20445;&#23384;&#20026;&#27597;&#39064;&#36164;&#20135;&#12290;")}</div>` : ""}
-    <div class="actions"><button class="ghost" data-step-target="9">${zh("&#36820;&#22238;&#30830;&#35748;&#25991;&#26696;")}</button><button class="primary" data-step-target="11" ${state.copyConfirmed ? "" : "disabled"}>${zh("&#19979;&#19968;&#27493;&#65306;&#23548;&#20986;&#20132;&#20184;")}</button></div>
+    <div class="actions"><button class="ghost" data-step-target="9">返回改文案</button><button class="primary" data-step-target="11" ${state.copyConfirmed ? "" : "disabled"}>下一步：下载成品</button></div>
   </section>`;
 }
 
@@ -1876,6 +1949,8 @@ function bindWorkAreaActions() {
     state.copyConfirmed = true;
     setStep(10);
   });
+  byId("workArea")?.querySelector("[data-corpus-search]")?.addEventListener("click", () => doCorpusSearch());
+  byId("workArea")?.querySelector("#corpusQ")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doCorpusSearch(); });
   byId("workArea")?.querySelectorAll("[data-visual-style]").forEach((button) => {
     button.addEventListener("click", () => changeVisualStyle(button.dataset.visualStyle));
   });
@@ -1884,6 +1959,7 @@ function bindWorkAreaActions() {
   byId("workArea")?.querySelector("[data-generate-video-clips]")?.addEventListener("click", () => generateVideoClips());
   byId("workArea")?.querySelector("[data-restore-video-clips]")?.addEventListener("click", () => restoreLatestVideoClips());
   byId("workArea")?.querySelector("[data-generate-oral-video]")?.addEventListener("click", () => generateOralVideo());
+  byId("workArea")?.querySelector("[data-gen-video-script]")?.addEventListener("click", () => loadVideoScript());
   byId("workArea")?.querySelectorAll("[data-video-clip-mode]").forEach((button) => {
     button.addEventListener("click", () => {
       state.videoClipMode = button.dataset.videoClipMode === "script" ? "script" : "frames";
@@ -1898,6 +1974,11 @@ function bindWorkAreaActions() {
   });
   byId("workArea")?.querySelector("[data-export-xhs-cards]")?.addEventListener("click", () => exportCleanXhsCardPlan());
   byId("workArea")?.querySelector("[data-archive-final-work]")?.addEventListener("click", () => archiveFinalWork());
+  byId("workArea")?.querySelector("[data-finish-work]")?.addEventListener("click", async () => {
+    await archiveFinalWork();
+    // 保存成功(作品已进 finalWorks)→ 直接跳到「作品记录」,小妹能看到已保存
+    if (state.finalWorks.some((w) => w.id === currentFinalWorkId())) setRoute("records");
+  });
   byId("workArea")?.querySelector("[data-register-published]")?.addEventListener("click", () => registerPublishedFromArchive());
   } catch (e) { console.error("bindWorkAreaActions error:", e); }
 }

@@ -72,3 +72,8 @@ apps/command-center-prototype/temp_screenshot*.png
 tieba_sync2.txt
 .codex-import/
 external/pixelle-video/
+
+# 本地大目录(媒体/参考克隆/vendored),不进 git
+video-studio/
+_ref/
+external/

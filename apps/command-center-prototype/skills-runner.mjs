@@ -158,6 +158,46 @@ const SKILL_OUTPUT_SPECS = {
       }
     },
   },
+
+  'video-script-restructure': {
+    model: 'main',           // 内容重构需要强模型
+    maxTokens: 3500,
+    temperature: 0.7,
+    outputInstruction: `
+## 本次任务
+
+把上面的「原帖 / 选题」按 SKILL 里的**爆款结构**(黄金3秒钩子 → 痛点放大 → 解决方案 → 行动指令)重构成口播脚本骨架，并切成分镜。平台/行业见上方；数字、品牌名、成分一律照搬不改；口语化、好念；一镜一个重点；点睛画面要具体可执行。
+
+**只输出 JSON(用 SKILL.md 里的 schema)，不要 Markdown 代码块、不要任何解释文字。**`,
+    parseResponse: (text) => {
+      try {
+        const clean = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
+        return JSON.parse(clean);
+      } catch {
+        return { shots: [], notes: text.slice(0, 300) };
+      }
+    },
+  },
+
+  'benchmark-deconstruct': {
+    model: 'main',           // 拆解要准
+    maxTokens: 2000,
+    temperature: 0.4,
+    outputInstruction: `
+## 本次任务
+
+把上面的「对标作品(稿子 + 数据 + 印象)」按 SKILL 拆透:钩子类型/原句、≤3 段主体结构、双声道、金句、可复刻写法、7 维定性信号(强/中/弱 + 引原文理由)、选题方向。**只定性不给权重。**
+
+**只输出 JSON(用 SKILL.md 的 schema),不要 Markdown 代码块、不要解释。**`,
+    parseResponse: (text) => {
+      try {
+        const clean = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
+        return JSON.parse(clean);
+      } catch {
+        return { hookType: '', structure: [], rubricSignals: {}, patterns: [], notes: text.slice(0, 300) };
+      }
+    },
+  },
 };
 
 // ─── 读取 SKILL.md，剥离 YAML 前置元数据 ────────────────────────────────
@@ -242,6 +282,10 @@ async function buildUserMessage(skillName, content, vars = {}) {
       const corpusSection = buildVoiceCorpusSection(await loadVoiceCorpus(vars.platform));
       if (corpusSection) msg += '\n\n' + corpusSection;
       msg += '\n\n' + buildPlatformRules(vars.platform);
+    }
+    if (skillName === 'video-script-restructure') {
+      if (vars.platform) msg += `\n\n目标平台：${vars.platform}`;
+      if (vars.industry) msg += `\n行业：${vars.industry}`;
     }
   }
 

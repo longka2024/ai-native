@@ -16,10 +16,22 @@ async function generateContentPrecheck() {
   state.precheckMessage = "正在做发布前判断…";
   renderToday();
   try {
+    // 取该账号对标起锚的"评分侧重",让发布前判断从通用 → 客户专属(没起锚就用通用)
+    let rubricHint = "";
+    try {
+      const ws = state.hot30Workspace || state.industry || state.businessLine || "";
+      const bl = await (await fetch(apiPath(`/api/benchmark/list?workspace=${encodeURIComponent(ws)}`))).json();
+      const top = (bl.items || [])[0];
+      if (top && Array.isArray(top.signals)) {
+        const imp = top.signals.filter((s) => s.verdict === "重要").map((s) => s.dim);
+        const weak = top.signals.filter((s) => s.verdict === "不显著").map((s) => s.dim);
+        if (imp.length) rubricHint = `\n\n【该账号评分侧重(来自对标「${top.account || ""}」起锚)】这个号特别看重：${imp.join("、")}${weak.length ? `；不太靠：${weak.join("、")}` : ""}。打分时对"看重的维度"要求更严、更看重。`;
+      }
+    } catch (e) { /* 没起锚 → 用通用 rubric */ }
     const res = await fetch(apiPath("/api/skills/run"), {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ skill: "precheck-xhs", content: `标题：${title}\n\n正文：${body}` }),
+      body: JSON.stringify({ skill: "precheck-xhs", content: `标题：${title}\n\n正文：${body}${rubricHint}` }),
     });
     const j = await res.json().catch(() => ({}));
     const r = j?.result || {};
