@@ -28,6 +28,7 @@
 
 ```
 客户开通(行业/目标/平台/关键词)
+→ 人群定位 + 关键词洞察(选对买单人群 + 这群人搜的真实词;**定位=选题第一要素**)
 → 信号发现(TrendRadar + AI HOT)
 → 真实素材采集(5-10 锚点 + 高价值帖评论深挖)
 → 选题候选(带评分+预测,绑真实来源)
@@ -38,6 +39,9 @@
 
 10 层模块架构(Spec/纪律 → 工程 → 采集 → 内容资产 → 内容创作 → 视觉 → 排版 → 视频 → 发布风控 → QA)
 详见 `docs/strategy/longka-ai-native-technical-base-report-2026-06-07.md`。
+
+> **整条工厂的完整地图**(图文线 + 视频线·6 形态·风格库 6 档·渲染·降本·爆 vs 不差)见
+> `docs/strategy/2026-06-25-content-factory-master-map.md`;视频风格库见 `2026-06-25-video-style-template-library.md`。
 
 ## 关键路径(注意:项目已从 E:\Codex 迁到 D:\AInative)
 

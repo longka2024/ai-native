@@ -1,6 +1,10 @@
 // topic-engine.js — 素材读取、对标采集、选题生成
 // 依赖: state-manager.js, config.js, utils.js, copy-manager.js
 
+// 选题候选上限：选题用一批就枯竭，所以每次尽量多给几条供运营挑。
+// 池子够大(各业务线几十~几百条真实素材)，放到 20 让小妹有得选、不易断粮。
+const TOPIC_CANDIDATE_LIMIT = 20;
+
 async function readMaterials() {
   saveMaterialFilterInputs();
   state.logs = [];
@@ -27,7 +31,7 @@ async function readMaterials() {
     renderToday();
     return;
   }
-  state.topics = topics.slice(0, 10);
+  state.topics = topics.slice(0, TOPIC_CANDIDATE_LIMIT);
   state.selectedTopicId = "";
   state.titleChoices = [];
   state.titleChoiceKey = "";
@@ -79,7 +83,7 @@ async function collectXAccounts() {
     ]);
     const topics = await buildTopicsWithXHistoryBackfill(buildTopicsFromLiveXSamples(batchSamples));
     state.assets = result;
-    state.topics = topics.slice(0, 10);
+    state.topics = topics.slice(0, TOPIC_CANDIDATE_LIMIT);
     state.selectedTopicId = "";
     state.titleChoices = [];
     state.titleChoiceKey = "";
@@ -124,12 +128,12 @@ function balanceXBatchSamples(samples = []) {
   const rest = unique
     .filter((sample) => !used.has(sample.sourceUrl || sample.url || sample.id || sample.title))
     .sort((a, b) => (Number(b.contentValueScore || 0) + Number(b.radarScore || 0) / 1000) - (Number(a.contentValueScore || 0) + Number(a.radarScore || 0) / 1000));
-  return [...balanced, ...rest].slice(0, 12);
+  return [...balanced, ...rest].slice(0, TOPIC_CANDIDATE_LIMIT);
 }
 
 async function buildTopicsWithXHistoryBackfill(liveTopics = []) {
-  const targetCount = 8;
-  if (liveTopics.length >= 6) return liveTopics.slice(0, 10);
+  const targetCount = TOPIC_CANDIDATE_LIMIT;
+  if (liveTopics.length >= TOPIC_CANDIDATE_LIMIT) return liveTopics.slice(0, TOPIC_CANDIDATE_LIMIT);
   const previousUseLatest = state.useLatestXRunOnly;
   try {
     state.useLatestXRunOnly = false;
@@ -147,10 +151,10 @@ async function buildTopicsWithXHistoryBackfill(liveTopics = []) {
     if (merged.length > liveTopics.length) {
       log(`本轮 X 优质候选 ${liveTopics.length} 个，已从历史 X 资产补到 ${merged.length} 个。`);
     }
-    return merged.slice(0, 10);
+    return merged.slice(0, TOPIC_CANDIDATE_LIMIT);
   } catch (error) {
     log(`历史 X 资产补位失败：${error.message}`);
-    return liveTopics.slice(0, 10);
+    return liveTopics.slice(0, TOPIC_CANDIDATE_LIMIT);
   } finally {
     state.useLatestXRunOnly = previousUseLatest;
   }
@@ -199,7 +203,7 @@ function buildTopicsFromLiveXSamples(samples = []) {
       };
     })
     .sort((a, b) => Number(b.metrics?.heat || 0) - Number(a.metrics?.heat || 0))
-    .slice(0, 10);
+    .slice(0, TOPIC_CANDIDATE_LIMIT);
 }
 
 function inferLiveXTopicPain(title = "", body = "") {
@@ -261,7 +265,7 @@ async function readDemoMaterials() {
   log("注意：这不是真实采集结果，只用于验证页面步骤是否能走通。");
   const db = sampleState();
   state.assets = db;
-  state.topics = buildTopicsFromDb(db).slice(0, 10);
+  state.topics = buildTopicsFromDb(db).slice(0, TOPIC_CANDIDATE_LIMIT);
   state.selectedTopicId = "";
   state.titleChoices = [];
   state.titleChoiceKey = "";
@@ -278,6 +282,8 @@ async function loadState() {
       keywords: state.keywords,
       limit: "200",
     });
+    const bizLine = state.businessLine || state.workspace || "";
+    if (bizLine) params.set("workspace", bizLine); // 业务线生效:只在本赛道素材里搜(关键词变可选细化)
     const wanted = platformWanted();
     if (wanted !== "all") params.set("platform", wanted);
     if (state.sourceChannel === "x-history") {
@@ -640,7 +646,7 @@ function buildTopicsFromDb(db) {
         topic.reason = `真实 X 素材，建议人工判断后再用；风险：${eligibility.blockers.slice(0, 2).join("；")}。`;
       }
       return topic;
-    })).slice(0, 10);
+    })).slice(0, TOPIC_CANDIDATE_LIMIT);
   }
   if (state.sourceChannel === "hot30") {
     const hotScored = normalized
@@ -655,7 +661,7 @@ function buildTopicsFromDb(db) {
         topic.reason += `风险：${eligibility.blockers.slice(0, 2).join("；")}。`;
       }
       return topic;
-    })).slice(0, 10);
+    })).slice(0, TOPIC_CANDIDATE_LIMIT);
   }
   if (state.sourceChannel === "signal-search") {
     // 信号驱动采集：刚抓回来的热点原文/搜索结果，直接展示
@@ -683,7 +689,7 @@ function buildTopicsFromDb(db) {
         topic.reason = `命中「${state.signalKeywords || ""}」，正文 ${(sample.body || "").length} 字${m.likes ? `，互动 ${m.likes} 赞` : ""}${url ? `（[原文](${url})）` : ""}。`;
         if (!eligibility.pass && eligibility.blockers?.length) topic.reason += ` 风险：${eligibility.blockers.slice(0, 2).join("；")}。`;
         return topic;
-      })).slice(0, 10);
+      })).slice(0, TOPIC_CANDIDATE_LIMIT);
     }
     return dedupeMotherTopics(signalSamples.map((sample, index) => {
       const eligibility = judgeMotherTopicEligibility(sample);
@@ -702,14 +708,14 @@ function buildTopicsFromDb(db) {
         topic.reason += ` 风险：${eligibility.blockers.slice(0, 2).join("；")}。`;
       }
       return topic;
-    })).slice(0, 10);
+    })).slice(0, TOPIC_CANDIDATE_LIMIT);
   }
   const scored = normalized
     .map((sample) => ({ sample, score: scoreSample(sample, keywords), eligibility: judgeMotherTopicEligibility(sample) }))
     .filter((item) => shouldKeepScoredSample(item, keywords))
     .filter((item) => item.eligibility.pass)
     .sort((a, b) => b.score - a.score);
-  return dedupeMotherTopics(scored.map(({ sample, eligibility }, index) => makeMotherTopic(sample, index, eligibility))).slice(0, 10);
+  return dedupeMotherTopics(scored.map(({ sample, eligibility }, index) => makeMotherTopic(sample, index, eligibility))).slice(0, TOPIC_CANDIDATE_LIMIT);
 }
 
 function dedupeMotherTopics(topics = []) {

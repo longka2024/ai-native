@@ -60,7 +60,7 @@ function buildLongkaIllustrationDirectorPlan({ copy = "", topic = {}, visual = c
   const allSlots = [
     { type: "cover", role: "Stop-scroll cover", placement: platform === "wechat-article" ? "article opening cover" : "P1", job: "make the reader stop and understand the main promise", focus: `${signal.subject} + ${signal.result}` },
     { type: "problem", role: "Problem visual", placement: platform === "wechat-article" ? "after the first pain paragraph" : "P2", job: "externalize the hidden question or pitfall", focus: signal.pain },
-    { type: "case", role: "Source deconstruction", placement: platform === "wechat-article" ? "after source/case paragraph" : "P3", job: "show what is worth borrowing from the source", focus: signal.casePoints.join(" / ") },
+    { type: "case", role: "Key points", placement: platform === "wechat-article" ? "after the key-point paragraph" : "P3", job: "show the core points of THIS content (use the copy's own points; it is NOT a benchmark/case deconstruction unless the copy itself is)", focus: signal.casePoints.join(" / ") },
     { type: "method", role: "Method path", placement: platform === "wechat-article" ? "inside method section" : "P4", job: "turn the idea into an executable path", focus: signal.methodSteps.join(" -> ") },
     { type: "action", role: "Next action", placement: platform === "wechat-article" ? "before the ending CTA" : "P5", job: "tell the operator/reader the next concrete step", focus: signal.action },
   ];
@@ -98,8 +98,8 @@ function enrichJujuDirectorSlot(slot, index, signal, parallelWorld) {
       colorMood: "near-white paper, muted orange warning, low-saturation blue secondary path",
     },
     case: {
-      cognitiveAction: "deconstruct the source case into reusable pieces",
-      jujuAction: "Juju sorts three paper cards into who, action, result",
+      cognitiveAction: "organize this content's own core points into a few clear cards (not a benchmark-case deconstruction)",
+      jujuAction: "Juju organizes a few note cards carrying the content's key points",
       metaphorProps: "archive cards, clips, divider tabs, tiny evidence photo, pencil marks",
       composition: "small archive desk, repeated cards create rhythm, Juju actively sorting one card",
       colorMood: "near-white paper, muted green dividers, small yellow tape accents",
@@ -162,11 +162,12 @@ function estimateIllustrationDensity({ copy = "", lines = [], platform = "xhs" }
     /数据|结果|收益|阅读|收藏|评论|增长/.test(copy),
     lines.length >= 7,
   ].filter(Boolean).length;
-  if (signals >= 4) return { types: ["cover", "problem", "case", "method", "action"], reason: "信息密度够（案例/方法/痛点/数据齐），适合 5 张图集。" };
-  if (signals === 3) return { types: ["cover", "problem", "case", "action"], reason: "有 3 类关键信息，做 4 张刚好，不硬凑。" };
-  if (signals === 2) return { types: ["cover", "problem", "action"], reason: "只有 2 个关键关系，3 张更干净。" };
-  if (signals === 1) return { types: ["cover", "action"], reason: "信息量偏少，2 张（钩子+行动）就够。" };
-  return { types: ["cover"], reason: "当前文案只适合一张主视觉，多图会稀释重点。" };
+  // 小红书:封面由【②做封面】单独出,③这里只出内页,绝不再自带封面(否则两个封面/重复)。
+  if (signals >= 4) return { types: ["problem", "case", "method", "action"], reason: "内页 4 张（封面由②做封面单独出）。" };
+  if (signals === 3) return { types: ["problem", "case", "action"], reason: "内页 3 张（封面由②做封面单独出）。" };
+  if (signals === 2) return { types: ["problem", "case", "action"], reason: "内页 3 张（封面由②做封面单独出）。" };
+  if (signals === 1) return { types: ["problem", "action"], reason: "内页 2 张（封面由②做封面单独出）。" };
+  return { types: ["problem", "action"], reason: "内页 2 张（封面由②做封面单独出）。" };
 }
 function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVisualStyle(), lines = [], title = "", director = null } = {}) {
   const signal = extractVisualTopicSignals({ copy, topic, title, lines });
@@ -178,21 +179,22 @@ function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVis
     "3:4 social content image.",
     `Topic: ${signal.subject}.`,
     `Result/proof: ${signal.result}.`,
-    `Current title: ${title}.`,
+    `Topic context only (background, do NOT render this long title as the big headline text): ${title}.`,
     `Visual route: ${contract.route}.`,
     `Character/style: ${contract.character}.`,
     `Style lock: ${contract.styleLock}.`,
     `Style brief: ${contract.styleBrief}.`,
     `Negative prompt: ${contract.negativePrompt}.`,
     "Do not reuse unrelated content asset library, title formula library, user question library, or structure library visuals unless this selected topic is explicitly about those libraries.",
-    "Aesthetic quality: clean, elegant, and clear at a glance (简洁大方、一目了然). ONE clear focal point / single scene that nails this page's theme, supported by only a few (about 3-5) meaningful details that reinforce that one point. Generous breathing room, strong visual hierarchy, mobile-legible. Do NOT crowd the canvas with many scattered objects, multiple protagonists, or several mini-scenes — clutter that splits the focus is worse than too little. Use tasteful light color accents (warm red/orange or soft blue) on a clean base, not flat black-and-white. Vary the layout from page to page so the set does not look monotonous."
+    "Aesthetic quality: clean, elegant, and clear at a glance (简洁大方、一目了然). ONE clear focal point / single scene that nails this page's theme, supported by only a few (about 3-5) meaningful details that reinforce that one point. Generous breathing room, strong visual hierarchy, mobile-legible. Do NOT crowd the canvas with many scattered objects, multiple protagonists, or several mini-scenes — clutter that splits the focus is worse than too little. Use tasteful light color accents (warm red/orange or soft blue) on a clean base, not flat black-and-white. Vary the layout from page to page so the set does not look monotonous.",
+    "文对题铁律(HIGHEST PRIORITY): every page MUST visualize the MEANING of THIS copy's own text. Never substitute a generic framework (case-deconstruction, who/what/result, 选案例/拆结构/找亮点, a fixed step-flow) when the copy is not about that. Do NOT drift off-topic (不跑题). Numbers / facts / metrics only from the copy itself — never invent them."
   ].join(" ");
   const cardSpecs = {
-    cover: { title: title || signal.coverText, text: signal.coverText, extra: `Only express ${signal.subject} and ${signal.result}.`, layout: "Cover layout: one bold headline, one strong hero focal element, lots of whitespace, magazine-cover feel.", prompt: `Cover page. Strong focal point: ${signal.subject} + ${signal.result}.` },
-    problem: { title: signal.problemTitle, text: signal.pain, extra: `Show the real reader question behind ${signal.result}.`, layout: "Comparison layout: two contrasting panels (wrong vs right / before vs after) side by side.", prompt: `Problem page. Show the question behind ${signal.subject}.` },
-    case: { title: signal.caseTitle, text: signal.casePoints.join("\n"), extra: `Break the current case into subject=${signal.subject}, result=${signal.result}, key=${signal.keyPoint}.`, layout: "Evidence layout: a 3-card grid or quadrant (who / what worked / result), each a distinct block.", prompt: "Case deconstruction page with three cards: who, what worked, result." },
-    method: { title: signal.methodTitle, text: signal.methodSteps.join("\n"), extra: `Break the path to ${signal.result} into executable steps.`, layout: "Step-flow layout: a numbered vertical path with 3-5 connected nodes and arrows.", prompt: "Method page. Show an executable route, not a generic template." },
-    action: { title: signal.actionTitle, text: signal.action, extra: `Give only the next practical step around ${signal.subject}.`, layout: "Checklist layout: a short check-item list with check marks, one clear next step highlighted.", prompt: `Action checklist page, practical next step for ${signal.subject}.` },
+    cover: { title: signal.coverText, text: signal.coverText, extra: `Hook = 「${signal.coverText}」.`, layout: "Cover layout: one bold headline, one strong hero focal element, lots of whitespace, magazine-cover feel.", prompt: `Cover page. The cover's ONE big headline text is EXACTLY this Chinese hook, verbatim: 「${signal.coverText}」 — and NOTHING ELSE as big text. Do NOT render the topic name, the source/母题 title, or any other long sentence as the big text. Do NOT replace the hook with a how-to/method/step line. The hook is the single dominant largest text; everything else is small annotations only.` },
+    problem: { title: signal.problemTitle, text: signal.pain, extra: `Visualize EXACTLY this point from the copy: 「${signal.pain}」. Do not invent a generic problem.`, layout: "Layout that fits this point (a contrast / a single tense scene). Pick what suits the meaning, not a fixed template.", prompt: `A page that visualizes the copy's own idea, verbatim meaning: 「${signal.pain}」. Stay strictly on this meaning; do NOT drift to an unrelated topic or a generic framework.` },
+    case: { title: signal.caseTitle, text: signal.casePoints.join("\n"), extra: `These are the copy's OWN points: ${signal.casePoints.join(" / ")}. Visualize THESE, not a generic who/what/result case.`, layout: "A clean points layout (a short list or a few blocks), one point per block; only as many blocks as there are real points.", prompt: `A key-points page visualizing the copy's own points: ${signal.casePoints.join(" / ")}. It is NOT a benchmark/case deconstruction unless the copy itself is about deconstructing a case. Do NOT add 选案例/拆结构/找亮点 style filler.` },
+    method: { title: signal.methodTitle, text: signal.methodSteps.join("\n"), extra: `Use the copy's OWN steps: ${signal.methodSteps.join(" / ")}.`, layout: "Step-flow layout only IF the copy is actually a step/process; otherwise a simple clean layout for these points.", prompt: `A method page showing the copy's own steps/points, verbatim meaning: ${signal.methodSteps.join(" / ")}. Do not invent steps the copy never said.` },
+    action: { title: signal.actionTitle, text: signal.action, extra: `The copy's OWN next step: 「${signal.action}」.`, layout: "Checklist or single-highlight layout for one concrete next step.", prompt: `An action page for the copy's own next step, verbatim meaning: 「${signal.action}」. Stay on this; do not drift.` },
   };
   return plan.slots.map((slot) => {
     const spec = cardSpecs[slot.type] || cardSpecs.cover;
@@ -230,26 +232,30 @@ function buildTopicBoundVisualCards({ copy = "", topic = {}, visual = currentVis
 }
 function extractVisualTopicSignals({ copy = "", topic = {}, title = "", lines = [] } = {}) {
   const source = cleanSourceText([title, copy, topic.title, topic.theme, topic.body, topic.content].filter(Boolean).join(" "));
-  const metric = source.match(/(\d+(?:\.\d+)?\s*[万千百]?\+?\s*(?:阅读|播放|收藏|点赞|评论|收益|收入|粉丝|转化))/)?.[1] || "";
-  const subject = cleanSourceText(topic.theme || topic.title || title).replace(/[，。！？].*$/, "").slice(0, 18) || "这个选题";
-  const result = metric || (source.match(/(涨粉|阅读|播放|成交|获客|收益|收入|增长)[^，。！？]{0,16}/)?.[0] || "跑出结果");
-  const pain = lines.find((line) => /为什么|不是|关键|忽略|收益|流量|定位|内容|案例|痛点|问题/.test(line)) || `很多人只看到${result}，但没看懂${subject}背后的关键变量。`;
-  const action = lines.find((line) => /先|第一步|建议|测试|行动|复盘|观察|评论|私信/.test(line)) || `先拆一个真实${subject}案例：看它服务谁、发什么、怎么把注意力变成${result}。`;
-  const keyPoint = /定位/.test(source) ? "账号定位" : /内容/.test(source) ? "持续内容" : /收益|流量|增长/.test(source) ? "结果路径" : "可复用动作";
+  // 数字只从正文取,没有就留空——绝不编(数字事实铁律)
+  const metric = source.match(/(\d+(?:\.\d+)?\s*[万千百]?\+?\s*(?:阅读|播放|收藏|点赞|评论|收益|收入|粉丝|转化|天|周|个|件|次|%|倍))/)?.[1] || "";
+  const subject = cleanSourceText(topic.theme || topic.title || title).replace(/[，。！？,.!?].*$/, "").slice(0, 18) || "这个主题";
+  const clip = (s, n = 18) => cleanSourceText(String(s || "")).replace(/^[\s\d.、)）]+/, "").slice(0, n);
+  const has = (re) => lines.find((line) => re.test(line)) || "";
+  // 卡片内容一律从真实正文里抽,不套"案例拆解"模板
+  const pain = has(/为什么|不是|别|误区|坑|焦虑|累|难|卡|忽略|问题|总是|老是/) || lines[0] || `${subject}里大多数人忽略的关键点`;
+  const keyLine = has(/关键|核心|其实|重点|真相|本质|秘诀|不是.{0,12}而是/) || "";
+  const stepLines = lines.filter((line) => /^\s*\d|第[一二三四五六七八九]|步|先|再|然后|接着|最后|每天|今天/.test(line)).slice(0, 4);
+  const action = has(/先|第一步|今天|从.{0,8}开始|建议|试|做一件|行动|坚持|现在就/) || lines[lines.length - 1] || "从今天起先做最小的一件事";
   return {
     subject,
-    result,
-    keyPoint,
-    coverText: `${subject}为什么能${result}`,
-    problemTitle: `为什么${subject}能跑出来`,
-    caseTitle: `${subject}案例拆解`,
-    methodTitle: `跑通${subject}的动作`,
-    actionTitle: "先照着拆一个真实案例",
-    pain,
-    action,
-    takeaway: `这篇讲的是${subject}的真实结果，不是泛泛讲内容资产库。`,
-    casePoints: [`对象：${subject}`, `结果：${result}`, `关键：${keyPoint}`],
-    methodSteps: ["找准具体人群", "持续发有用内容", "观察结果数据", "复盘可复制动作"],
+    result: metric, // 无则空,下游不显假数字
+    keyPoint: keyLine ? clip(keyLine, 14) : "核心要点",
+    coverText: (typeof state !== "undefined" && (state.coverHook || state.selectedTitle)) ? (state.coverHook || state.selectedTitle) : (title || subject),
+    problemTitle: clip(pain, 16),
+    caseTitle: keyLine ? clip(keyLine, 14) : `${subject}·重点`, // 跟正文走,不再"X案例拆解"
+    methodTitle: "可执行的方法",
+    actionTitle: clip(action, 16), // 用正文的行动句,不再"先照着拆一个真实案例"
+    pain: clip(pain, 40),
+    action: clip(action, 40),
+    takeaway: keyLine ? clip(keyLine, 30) : clip(pain, 30),
+    casePoints: (stepLines.length ? stepLines : lines.slice(0, 3)).map((line) => clip(line, 20)).filter(Boolean),
+    methodSteps: (stepLines.length ? stepLines : lines.slice(0, 4)).map((line) => clip(line, 16)).filter(Boolean),
   };
 }
 function renderCleanXhsCardPreview() {
@@ -331,14 +337,18 @@ function renderXhsGeneratedGallery() {
       <div class="xhs-generated-head">
         <b>${escapeHtml(styleName)} 出图结果</b>
         <span>${isLoading ? `正在生成: ${done}/${total} 张。已生成的先显示，可点开看大图。` : "图片已生成，点开可看大图。"}</span>
+        ${!isLoading ? `<button class="secondary" data-judge-inner style="font-size:12px;padding:4px 10px;margin-top:6px;" ${state.xhsCardJudging ? "disabled" : ""}>${state.xhsCardJudging ? "质检中…" : "🔍 质检这组配图(文对题/清晰)"}</button>` : ""}
       </div>
       <div class="xhs-generated-grid ${isLoading ? "partial" : ""}">
         ${files.map((file, index) => {
           const raw = String(file);
           const src = /^https?:\/\//.test(raw) ? raw : `./${raw.replace(/^\/+/, "")}`;
-          return `<a href="${escapeHtml(src)}" target="_blank" rel="noreferrer">
+          const jd = (state.xhsCardJudge || {})[raw];
+          const badge = jd && jd.ok !== false ? ` <span style="color:${jd.pass ? "#1a7f37" : "#c0392b"};">${jd.pass ? "✅" : "⚠️"}${escapeHtml(jd.summary || "")}</span>` : "";
+          const tip = jd && jd.fix && jd.fix !== "无" ? ` title="改:${escapeHtml(String(jd.fix))}"` : "";
+          return `<a href="${escapeHtml(src)}" target="_blank" rel="noreferrer"${tip}>
             <img src="${escapeHtml(src)}" alt="${escapeHtml(styleName)} P${index + 1}" loading="lazy" />
-            <span>P${index + 1}</span>
+            <span>P${index + 1}${badge}</span>
           </a>`;
         }).join("")}
       </div>
@@ -371,7 +381,7 @@ function renderXhsGeneratedGallery() {
   if (!files.length) {
     return `<div class="xhs-generated-empty">
       <b>还没有出图</b>
-      <span>确认文案后，点上面的【生成图文卡】，生成好的图会显示在这里。</span>
+      <span>确认文案后，点上面的【生成内页配图】，生成好的图会显示在这里。</span>
       <button class="secondary" type="button" data-restore-latest-xiaohei>查询这个主题已生成的图</button>
     </div>`;
   }
@@ -499,6 +509,26 @@ async function exportCleanXhsCardPlan() {
   renderToday();
 }
 
+// 出图前:接 cover-from-content 专业 skill,从正文+真实料提炼"痛点钩子"当封面大字(替代写死模板);风格不变
+async function loadCoverHook() {
+  try {
+    const ws = state.hot30Workspace || state.industry || state.businessLine || "";
+    const res = await fetch(apiPath("/api/cover/hook"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "",
+        copy: confirmedCopyText(),
+        workspace: ws,
+      }),
+    });
+    const d = await res.json().catch(() => ({}));
+    const opts = d && d.result && Array.isArray(d.result.coverHookOptions) ? d.result.coverHookOptions : [];
+    const hook = opts.length ? String(opts[0] || "").trim() : "";
+    if (hook) state.coverHook = hook;
+  } catch { /* 取钩子失败用模板兜底,不阻塞出图 */ }
+}
+
 async function generateXiaoheiCards() {
   if (!state.copyConfirmed) {
     state.xhsCardExportStatus = "error";
@@ -507,6 +537,8 @@ async function generateXiaoheiCards() {
     renderToday();
     return;
   }
+  await loadCoverHook();
+  state.xhsCardPlan = []; // 用新的痛点钩子重建 plan
   const cards = ensureXhsCardPlan();
   if (!cards.length) {
     state.xhsCardExportStatus = "error";
@@ -548,6 +580,7 @@ async function generateXiaoheiCards() {
         styleBrief: visualContract.styleBrief,
         styleLock: visualContract.styleLock,
         negativePrompt: visualContract.negativePrompt,
+        referenceImageUrl: visualContract.referenceImageUrl || "", // 小妹形象一致性:整套卡都引用人设图
         platform: visualPlatformForCurrentTarget(),
         targetPlatform: visualPlatformForCurrentTarget(),
         cards: cards.map((card, index) => ({
@@ -584,6 +617,39 @@ async function generateXiaoheiCards() {
   renderToday();
 }
 
+// 封面模板矩阵(方法内化自 CTR-first 封面打法:信息密度 × 视觉锚点;只取方法,绝不含任何作者水印/署名)。脚本判型,不烧 LLM。
+function pickCoverTemplate(hook = "", body = "") {
+  const t = `${hook} ${body}`;
+  if (/\d/.test(hook)) return "number"; // 钩子带数字 → 数字型
+  if (/对比|改前|改后|前后|vs/i.test(t)) return "comparison";
+  if (/案例|测评|结果|截图|实测|数据|证明|晒|复盘/.test(t)) return "screenshot";
+  if (/内耗|焦虑|治愈|疗愈|孤独|一个人|放过|慢慢来|emo|情绪|崩溃|累了|emo|破防/.test(t)) return "emotion";
+  return "conflict"; // 默认观点/方法 → 冲突型
+}
+const COVER_TEMPLATE_GUIDE = {
+  conflict: "Cover template = CONFLICT: anchor is a confident subject/face or a strong graphic block in the lower-center; the bold hook headline sits in the TOP THIRD with a contrasting color/brush block behind it for impact.",
+  number: "Cover template = NUMBER: pull the ONE key number from the hook and make it the dominant anchor (about 35-45% of the height) in the upper/center; the rest of the hook is one or two short lines under the number.",
+  screenshot: "Cover template = SCREENSHOT/PROOF: anchor is a believable mockup/screenshot/result panel in the lower ~60% with a few hand-drawn red circles or arrows on the key spots; big bold headline on top. Do NOT fabricate dense unreadable UI.",
+  comparison: "Cover template = BEFORE/AFTER: split left 'before' (dull) vs right 'after' (clean/bright) with a big VS as the center anchor; bold headline on top.",
+  emotion: "Cover template = EMOTION: anchor is an authentic cinematic portrait or warm lifestyle scene in the lower two-thirds; one short emotional headline overlays the top third or a warm color band; keep it real, not a stock-photo selfie.",
+};
+const COVER_QUALITY_CONTRACT = [
+  "Cover quality contract (HIGHEST priority):",
+  "3-level text hierarchy — the hook headline dominates (~60-75% of text weight), an optional short support line is secondary (~20-30%), a small category tag is least (~5-10%); never let the tag outshine the headline.",
+  "Placement — headline in the TOP THIRD, the single visual anchor at center / lower-center, optional tiny tag at the upper-left; keep fewer than 3 text regions.",
+  "80px thumbnail test — the headline and the one anchor MUST stay readable when the whole cover is shrunk to ~80px wide; if unsure, enlarge the headline and thicken the strokes.",
+  "Contrast — headline vs background at least 4.5:1 (aim higher); no pale low-contrast text.",
+  "Chinese must be crisp, large and correctly written; no garbled characters, no tiny paragraphs, no explanatory blocks.",
+  "Numbers / metrics / revenue ONLY if present in the copy — never invent them (数字事实铁律).",
+].join(" ");
+// 水印动态化:默认干净无水印;state.coverWatermark 有值(如 longka)→ 角落低调暗签,证明自有设计。绝不带任何第三方作者署名/水印。
+function coverWatermarkLine() {
+  const wm = (typeof state !== "undefined" && state.coverWatermark) ? String(state.coverWatermark).trim().slice(0, 16) : "";
+  return wm
+    ? `Brand signature: place a small, subtle, low-opacity "${wm}" text mark discreetly in a bottom corner as a faint watermark — never covering the headline or the anchor, never large. No other watermark, logo, '@' handle, or QR code.`
+    : "No watermark, no author signature, no logo, no '@' handle, no QR code.";
+}
+
 async function generateCoverFromContent() {
   const title = state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "";
   const body = confirmedCopyText() || state.draft || "";
@@ -596,10 +662,11 @@ async function generateCoverFromContent() {
   const visual = currentVisualStyle();
   state.coverStatus = "loading";
   state.coverImage = "";
-  state.coverMessage = "正在从正文提炼封面钩子…";
+  state.coverOptions = [];
+  state.coverMessage = "正在从正文提炼 3 个封面钩子…";
   renderToday();
   try {
-    // 1) cover-from-content skill：提炼诚实钩子 + 封面提示词
+    // 1) cover-from-content skill：提炼 3 个诚实钩子（不同切入角度）
     const skRes = await fetch(apiPath("/api/skills/run"), {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -607,78 +674,136 @@ async function generateCoverFromContent() {
     });
     const sk = await skRes.json().catch(() => ({}));
     const result = sk?.result || {};
-    state.coverHooks = Array.isArray(result.coverHookOptions) ? result.coverHookOptions : [];
-    // 钩子（大标题）：优先用 skill 提炼的钩子，退回标题
-    const hook = String(state.coverHooks[0] || result.coverHook || title || "").trim().slice(0, 40);
-    if (!hook) throw new Error(sk.message || sk.error || "未能提炼封面钩子");
-    // 封面 = 选中配图风格（风格锁）+ 该风格的「封面构图」+ 大钩子标题。
-    // 不再用 skill 的实拍提示词，保证封面与内页同一画风、但仍是“封面的样子”（大标题/单焦点/抓眼）。
+    let hooks = (Array.isArray(result.coverHookOptions) ? result.coverHookOptions : [])
+      .map((h) => String(h || "").trim()).filter(Boolean);
+    if (!hooks.length) hooks = [String(result.coverHook || title || "").trim().slice(0, 40)].filter(Boolean);
+    if (!hooks.length) throw new Error(sk.message || sk.error || "未能提炼封面钩子");
+    hooks = hooks.slice(0, 3); // 一篇出最多 3 张,3 个钩子角度
+    state.coverHooks = hooks;
+    // 封面 = 选中配图风格（风格锁）+ 该风格的丰富封面构图 + 大钩子标题。画风永远跟随所选配图风格,绝不改成暗黑/极简。
     const contract = visualStyleContract(visual.id);
     const coverAction = (visualCardActionBriefs(visual.id) || {}).cover || "";
     const topicCtx = String(selectedTopic()?.theme || title || "").slice(0, 60);
-    const coverComposition = [
-      "This is the COVER image (not an inner content page).",
-      "Render it in the SAME illustration style as the inner cards, but as a real scroll-stopping Xiaohongshu cover:",
-      `the dominant element is one oversized bold Chinese hook title "${hook}";`,
-      `one single strong focal subject representing the topic "${topicCtx}";`,
-      "clear visual hierarchy, generous negative space, single focal point, NOT a multi-panel layout, NOT a content list page.",
-      coverAction,
-    ].filter(Boolean).join(" ");
     const refImg = (state.selectedReferenceImage || "").trim();
-    const coverCompositionFull = refImg
-      ? `${coverComposition} 重要：参考图里是这个主题的真实产品/主体，封面里的产品必须严格按参考图的外形、比例、颜色来，不要换成别的样子；只把它融入封面构图并套上风格，不要改变产品本身。`
-      : coverComposition;
-    const coverBrief = styleLockedVisualBrief({ role: "cover", visualBrief: coverCompositionFull }, visual);
-    state.coverMessage = "钩子已提炼，正在出封面图（按当前配图风格）…";
+    const buildCoverBrief = (hook) => {
+      const comp = [
+        "This is the COVER image (not an inner content page).",
+        "Render it in the SAME illustration style as the inner cards, but as a real scroll-stopping Xiaohongshu cover:",
+        `the dominant element is one oversized bold Chinese hook title "${hook}";`,
+        `one single strong focal subject representing the topic "${topicCtx}";`,
+        "clear visual hierarchy, generous negative space, single focal point, NOT a multi-panel layout, NOT a content list page.",
+        coverAction,
+        COVER_TEMPLATE_GUIDE[pickCoverTemplate(hook, body)] || COVER_TEMPLATE_GUIDE.conflict,
+        COVER_QUALITY_CONTRACT,
+        coverWatermarkLine(),
+      ].filter(Boolean).join(" ");
+      const full = refImg
+        ? `${comp} 重要：参考图里是这个主题的真实产品/主体，封面里的产品必须严格按参考图的外形、比例、颜色来，不要换成别的样子；只把它融入封面构图并套上风格，不要改变产品本身。`
+        : comp;
+      return styleLockedVisualBrief({ role: "cover", visualBrief: full }, visual);
+    };
+    // 2) 并行起 N 个 Kie 任务（一钩子一张）
+    state.coverOptions = hooks.map((h) => ({ hook: h, url: "", jobId: "", status: "loading" }));
+    state.coverMessage = `钩子已提炼，正在出 ${hooks.length} 张封面（同一画风、不同钩子）…`;
     renderToday();
-    // 2) 喂 Kie 出封面（单图，独立任务，不污染内容卡 manifest）——带完整风格合约，封面随内页风格走
-    const jobId = `cover-${visual.id}-${Date.now()}`;
-    const startRes = await fetch(apiPath("/api/xhs-cards/generate-xiaohei/start"), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        title, style: visual.id, visualStyle: visual.id,
-        visualStyleTitle: visual.title, visualRoute: contract.route,
-        visualCharacter: contract.character, styleBrief: contract.styleBrief,
-        styleLock: contract.styleLock, negativePrompt: contract.negativePrompt,
-        platform: visualPlatformForCurrentTarget(), targetPlatform: visualPlatformForCurrentTarget(),
-        jobId,
-        referenceImageUrl: refImg,
-        cards: [{ page: 1, role: "cover", title, visualBrief: coverBrief, referenceImageUrl: refImg }],
-      }),
-    });
-    const startJson = await startRes.json().catch(() => ({}));
-    if (!startRes.ok || !startJson.ok) throw new Error(startJson.message || startJson.error || `HTTP ${startRes.status}`);
-    const realJobId = startJson.jobId || jobId;
-    state.coverJobId = realJobId; // 存任务号：Kie 慢时超时也不丢，可点【查询封面】续查
+    for (let i = 0; i < hooks.length; i += 1) {
+      try {
+        const jobId = `cover-${visual.id}-${Date.now()}-${i}`;
+        const startRes = await fetch(apiPath("/api/xhs-cards/generate-xiaohei/start"), {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: hooks[i], style: visual.id, visualStyle: visual.id,
+            visualStyleTitle: visual.title, visualRoute: contract.route,
+            visualCharacter: contract.character, styleBrief: contract.styleBrief,
+            styleLock: contract.styleLock, negativePrompt: contract.negativePrompt,
+            platform: visualPlatformForCurrentTarget(), targetPlatform: visualPlatformForCurrentTarget(),
+            jobId,
+            referenceImageUrl: refImg,
+            cards: [{ page: 1, role: "cover", title: hooks[i], visualBrief: buildCoverBrief(hooks[i]), referenceImageUrl: refImg }],
+          }),
+        });
+        const sj = await startRes.json().catch(() => ({}));
+        state.coverOptions[i].jobId = sj.jobId || jobId;
+        if (!startRes.ok || !sj.ok) state.coverOptions[i].status = "error";
+      } catch { state.coverOptions[i].status = "error"; }
+    }
     renderToday();
-    // 3) 轮询（最多 ~7.5 分钟；Kie 排队拥堵时出图可能要 5 分钟以上）
+    // 3) 轮询所有未完成任务（最多 ~7.5 分钟）
     for (let round = 0; round < 90; round += 1) {
       await new Promise((r) => setTimeout(r, 5000));
-      const stRes = await fetch(apiPath(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(realJobId)}&total=1`));
-      const st = await stRes.json().catch(() => ({}));
-      const url = (st?.manifest?.publicFiles || [])[0] || "";
-      if (url) {
-        state.coverImage = url;
-        state.coverStatus = "done";
-        state.coverJobId = "";
-        state.coverMessage = "封面已生成。可右键保存；想换风格或再来一版，切换风格后再点一次。";
-        renderToday();
-        return;
+      let pending = 0;
+      for (let i = 0; i < state.coverOptions.length; i += 1) {
+        const o = state.coverOptions[i];
+        if (o.status === "done" || o.status === "error" || !o.jobId) continue;
+        const stRes = await fetch(apiPath(`/api/xhs-cards/generate-xiaohei/status?jobId=${encodeURIComponent(o.jobId)}&total=1`));
+        const st = await stRes.json().catch(() => ({}));
+        const url = (st?.manifest?.publicFiles || [])[0] || "";
+        if (url) { o.url = url; o.status = "done"; if (!state.coverImage) { state.coverImage = url; state.coverHook = o.hook; } }
+        else if (st.status === "error") { o.status = "error"; }
+        else pending += 1;
       }
-      if (st.status === "error") throw new Error("封面出图失败");
-      state.coverMessage = `封面出图中…(${round + 1}/90，较慢时请耐心等)`;
+      const doneCount = state.coverOptions.filter((o) => o.status === "done").length;
+      state.coverMessage = `封面出图中…（${doneCount}/${state.coverOptions.length} 张已出）`;
       renderToday();
+      if (!pending) break;
     }
-    // 超时不算失败：Kie 仍可能在后台出图，保留任务号供续查
-    state.coverStatus = "pending";
-    state.coverMessage = "出图服务较慢，封面还在出。任务已保存，过一会儿点【查询封面】就能取回，不用重出（省钱）。";
+    const doneCount = state.coverOptions.filter((o) => o.status === "done").length;
+    if (doneCount) {
+      state.coverStatus = "done";
+      if (!state.coverImage) { const f = state.coverOptions.find((o) => o.url); if (f) { state.coverImage = f.url; state.coverHook = f.hook; } }
+      state.coverMessage = `出了 ${doneCount} 张封面，点你最想要的那张「✅ 用这张」（封面+标题=流量命门，挑最抓眼的）。`;
+      // 视觉质检(免费):逐张用 GLM-5V 判分,给"通过/建议重出"+一句改进。判图不花钱,重出由你点。
+      const toJudge = state.coverOptions.filter((o) => o.url && !o.judge);
+      if (toJudge.length) {
+        state.coverMessage = `出了 ${doneCount} 张封面，正在做视觉质检(锚点/缩略图/对题)…`;
+        renderToday();
+        await Promise.all(toJudge.map(async (o) => {
+          try {
+            const jr = await fetch(apiPath("/api/visual/judge-cover"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ imageUrl: o.url, hook: o.hook, topic: title }) });
+            const jd = await jr.json().catch(() => ({}));
+            if (jd && jd.ok) o.judge = jd;
+          } catch {}
+        }));
+        const passN = state.coverOptions.filter((o) => o.judge && o.judge.pass).length;
+        state.coverMessage = `出了 ${doneCount} 张封面，视觉质检完成(${passN} 张通过)。挑通过且最抓眼的那张「✅ 用这张」。`;
+      }
+    } else {
+      state.coverStatus = "pending";
+      state.coverMessage = "出图服务较慢，封面还在出，过一会儿再点一次「生成封面」即可（不重复扣已出的）。";
+    }
     renderToday();
   } catch (error) {
     state.coverStatus = "error";
     state.coverMessage = `封面生成失败：${error.message}`;
     renderToday();
   }
+}
+
+// 内页配图视觉质检(免费):逐张用 GLM-5V 判 文对题/清晰,结果按 URL 存 state.xhsCardJudge。
+async function judgeInnerCards() {
+  const files = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
+  if (!files.length) return;
+  const topic = state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "";
+  state.xhsCardJudge = state.xhsCardJudge || {};
+  const todo = files.map(String).filter((k) => !state.xhsCardJudge[k]);
+  if (!todo.length) return; // 这组都判过了
+  state.xhsCardJudging = true;
+  state.xhsCardExportMessage = "正在视觉质检这组配图(文对题/清晰)…";
+  renderToday();
+  await Promise.all(todo.map(async (key) => {
+    try {
+      const abs = /^https?:\/\//.test(key) ? key : new URL("./" + key.replace(/^\/+/, ""), window.location.href).href;
+      const jr = await fetch(apiPath("/api/visual/judge-cover"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ imageUrl: abs, hook: topic, topic, mode: "inner" }) });
+      const jd = await jr.json().catch(() => ({}));
+      if (jd && jd.ok) state.xhsCardJudge[key] = jd;
+    } catch {}
+  }));
+  state.xhsCardJudging = false;
+  const judged = files.map(String).filter((k) => state.xhsCardJudge[k]);
+  const pass = judged.filter((k) => state.xhsCardJudge[k].pass).length;
+  state.xhsCardExportMessage = `配图视觉质检完成(${pass}/${judged.length} 张文对题通过)。⚠️ 的可换钩子/重出。`;
+  renderToday();
 }
 
 async function pollXiaoheiCards({ jobId, total, repairAttempts = 0 }) {
@@ -692,7 +817,11 @@ async function pollXiaoheiCards({ jobId, total, repairAttempts = 0 }) {
     if (count >= total) {
       state.xhsCardExportStatus = "done";
       state.xhsCardProgress = null;
-      state.xhsCardExportMessage = `已生成 ${count} 张${visualRouteNameClean(state.visualStyle)}，下面可以逐张打开检查。`;
+      state.xhsCardExportMessage = `已生成 ${count} 张${visualRouteNameClean(state.visualStyle)}，正在做视觉质检(文对题/清晰)…`;
+      renderToday();
+      await judgeInnerCards();
+      const innerPass = Object.values(state.xhsCardJudge || {}).filter((j) => j && j.pass).length;
+      state.xhsCardExportMessage = `已生成 ${count} 张${visualRouteNameClean(state.visualStyle)}，视觉质检完成(${innerPass} 张文对题通过)。逐张打开检查。`;
       renderToday();
       return;
     }
@@ -758,6 +887,7 @@ async function restoreLatestXiaoheiCards() {
     state.xhsCardExportMessage = count
       ? `已恢复当前主题 ${count}/${total} 张配图。`
       : "当前主题还没有生成过配图，请点击生成配图。";
+    if (count) { renderToday(); await judgeInnerCards(); }
   } catch (error) {
     state.xhsCardExportStatus = "error";
     state.xhsCardProgress = null;

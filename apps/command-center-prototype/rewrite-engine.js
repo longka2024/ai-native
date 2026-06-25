@@ -218,6 +218,8 @@ function buildSopDraftPayload() {
     keyword: state.keywords,
     industry: state.industry,
     businessLine: state.businessLine,
+    // L3: 真实声音库按 workspace 取(与对标起锚一致),后端据此注入该领域真人真实料
+    workspace: state.hot30Workspace || state.industry || state.businessLine || "",
     goal: state.goal,
     keywords: state.keywords,
     revision: state.draftRevision,

@@ -69,6 +69,7 @@ function clearAfter(step) {
 
 function clearProductionState() {
   state.visualStyle = state.visualStyle || "xiaohei-metaphor";
+  state.visualPlay = state.visualPlay || "cover";
   state.visualStyleTouched = false;
   state.xhsCardPlan = [];
   state.xhsCardExportStatus = "idle";
@@ -83,8 +84,13 @@ function clearProductionState() {
   state.precheckStatus = "idle";
   state.precheckResult = null;
   state.precheckMessage = "";
+  state.complianceStatus = "idle";
+  state.complianceResult = null;
+  state.complianceRewrite = null;
+  state.complianceMessage = "";
   state.coverStatus = "idle";
   state.coverImage = "";
+  state.magazineCover = ""; state.magazineStatus = "idle"; state.magazineMessage = "";
   state.coverMessage = "";
   state.coverJobId = "";
   state.coverHooks = [];
@@ -98,6 +104,13 @@ function clearProductionState() {
   state.oralVideoStatus = "idle";
   state.oralVideoMessage = "";
   state.oralVideoUrl = "";
+  state.videoFormat = ""; // 智能选片选中的形态(空=进视频步时按文案自动推荐)
+  state.finalFilmStatus = "idle";
+  state.finalFilmMessage = "";
+  state.finalFilmUrl = "";
+  state.comicStatus = "idle";
+  state.comicMessage = "";
+  state.comicUrl = "";
   // 注意：videoTier / ttsVoice 是用户偏好，跨主题保留，不在这里重置
   state.optimizeDiff = null;
   state.referenceImages = [];
@@ -1031,7 +1044,7 @@ function renderVideoTierRow(lines = [], isLoading = false) {
 }
 
 function renderExportStep() {
-  const files = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
+  const files = currentDeliveryImages(); // 封面+内页统一清单(封面=②做封面,P1)
   const ready = state.copyConfirmed && Boolean(confirmedCopyText());
   const copy = confirmedCopyText();
   return `<section class="work-card">
@@ -1045,7 +1058,8 @@ function renderExportStep() {
       <div class="draft-text"><h3>发布正文</h3><pre>${escapeHtml(copy || "暂无确认文案")}</pre></div>
       <div class="check-panel">
         <h3>图片文件</h3>
-        ${files.length ? files.map((url, index) => `<p><strong>P${index + 1}</strong><br><a class="source-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">打开第 ${index + 1} 张图</a></p>`).join("") : `<p>当前平台以文字或脚本交付为主，图片可后续补充或从母题复用。</p>`}
+        ${files.length ? files.map((url, index) => { const label = index === 0 ? "封面" : `P${index + 1}`; return `<p><strong>${label}</strong><br><a class="source-link" href="${escapeHtml(url)}" download="${label}.png" rel="noreferrer">下载${label}</a></p>`; }).join("") : `<p>当前平台以文字或脚本交付为主，图片可后续补充或从母题复用。</p>`}
+        ${(() => { const alts = (Array.isArray(state.coverOptions) ? state.coverOptions : []).map((o) => o && o.url).filter((u) => u && u !== state.coverImage); return alts.length ? `<h3 style="margin-top:14px;">封面备选（没选的，可下载/做A/B，没浪费）</h3>${alts.map((url, i) => `<p><strong>备选${i + 1}</strong><br><a class="source-link" href="${escapeHtml(url)}" download="封面备选${i + 1}.png" rel="noreferrer">下载备选${i + 1}</a></p>`).join("")}` : ""; })()}
       </div>
     </div>
     <div class="actions">
@@ -1056,19 +1070,22 @@ function renderExportStep() {
 }
 
 function renderArchiveStep() {
-  const files = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
+  const innerFiles = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
+  const files = currentDeliveryImages(); // 封面+内页统一清单
   const reusableImages = getReusableImagesForCurrentTopic();
   const savedWork = state.finalWorks.find((item) => item.id === currentFinalWorkId());
   const archived = Boolean(savedWork);
   const published = savedWork?.publishRecord?.status === "published";
   const ready = state.copyConfirmed && Boolean(confirmedCopyText());
   const expectedImages = expectedImageCountForCurrentWork();
-  const imageComplete = state.publishTarget !== "xhs" || files.length >= expectedImages;
+  const hasCover = !!(state.coverImage && /^https?:\/\//.test(state.coverImage));
+  // 小红书图文要完整 = 有封面(②做封面) + 有内页(③生成图文卡)
+  const imageComplete = state.publishTarget !== "xhs" || (hasCover && innerFiles.length >= 1);
   const canSave = ready && imageComplete;
   return `<section class="work-card">
     ${cardHead("保存为母题资产", "不是只收藏成品，而是把这次内容沉淀成可复盘、可拆解、可切换平台再生产的母题资产。")}
     ${state.archiveMessage ? `<div class="status-strip success">${escapeHtml(state.archiveMessage)}</div>` : ""}
-    ${state.publishTarget === "xhs" && !imageComplete ? `<div class="status-strip warn">小红书图文需要 ${expectedImages} 张图才算完整成稿。当前只有 ${files.length}/${expectedImages} 张，请回到第 10 步继续补齐，补齐前不会保存为已完成作品。</div>` : ""}
+    ${state.publishTarget === "xhs" && !imageComplete ? `<div class="status-strip warn">小红书图文要完整成稿,需要:${hasCover ? "" : "① 回第10步【②做封面】做一张封面;"}${innerFiles.length >= 1 ? "" : "② 回第10步【③生成内页配图】出内页;"}补齐前不会保存。</div>` : ""}
     <div class="production-grid">
       <article class="production-card"><b>1. 平台成稿</b><span>${escapeHtml(currentTarget().title)} · ${state.publishTarget === "xhs" ? `${files.length}/${expectedImages}` : (files.length || reusableImages.length)} 张可用图 / ${confirmedCopyText().length} 字正文 / 可回看交付链接。</span></article>
       <article class="production-card"><b>2. 母题复用</b><span>${escapeHtml(selectedTopic()?.theme || "本次选题")} 后续可切换成公众号、视频号、抖音、朋友圈或小红书二版。</span></article>
@@ -1138,14 +1155,26 @@ function plannedVisualCardCount() {
   return 0;
 }
 
-function buildFinalWorkAsset() {
+// 统一的"封面+内页"交付清单:封面=②做封面(state.coverImage)放第一张;内页=③生成图文卡(publicFiles)。
+// 保存、导出、作品记录都用它 → 封面有位、内页齐、不重复、不丢图。③已只出内页,不再自带封面。
+function currentDeliveryImages() {
   const files = Array.isArray(currentVisualManifest()?.publicFiles) ? currentVisualManifest().publicFiles : [];
-  const reusableImages = getReusableImagesForCurrentTopic();
+  const inner = files.length ? files : getReusableImagesForCurrentTopic();
+  const cover = (typeof state.coverImage === "string" && /^https?:\/\//.test(state.coverImage)) ? state.coverImage : "";
+  if (!cover) return inner;
+  return [cover, ...inner.filter((u) => u !== cover)]; // 封面P1 + 内页;去掉与封面完全相同的
+}
+
+function buildFinalWorkAsset() {
+  const images = currentDeliveryImages();
+  // 没选中的另外两张封面 → 存成「封面备选」,不浪费(可下载/换主封面/做A/B)
+  const coverAlts = (Array.isArray(state.coverOptions) ? state.coverOptions : [])
+    .map((o) => o && o.url).filter((u) => u && /^https?:\/\//.test(u) && u !== state.coverImage);
   const topic = selectedTopic();
   const target = currentTarget();
   const body = cleanPublishBodyForCopy(confirmedCopyText());
   const visual = currentVisualStyle();
-  const prediction = buildLongkaPredictionSnapshot({ topic, target, body, images: files.length ? files : reusableImages });
+  const prediction = buildLongkaPredictionSnapshot({ topic, target, body, images });
   return {
     id: currentFinalWorkId(),
     type: "final-work",
@@ -1155,8 +1184,10 @@ function buildFinalWorkAsset() {
     topic: topic?.theme || topic?.title || "",
     sourceUrl: topic?.url || "",
     sourcePlatform: topic?.platform || currentSource().title,
+    workspace: state.businessLine || state.workspace || "", // 业务线,获客脚本/真实料按它取
     body,
-    images: files.length ? files : reusableImages,
+    images,
+    coverAlts, // 备选封面(没选中的那几张,留作 A/B/换封面,不浪费)
     plannedImageCount: expectedImageCountForCurrentWork(),
     visualStyleId: visual.id,
     visualStyle: visual.assetLabel,
@@ -1297,6 +1328,20 @@ async function archiveFinalWork() {
     renderToday();
     return;
   }
+  // 🛡️ 发布前合规硬卡口:保存(=发/交付)前自动扫,high 风险直接拦下,必须先改合规再存。
+  try {
+    const scan = await fetch(apiPath("/api/compliance/scan"), {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: asset.title, body: asset.body }),
+    }).then((r) => r.json());
+    if (scan && scan.risk === "high") {
+      state.complianceResult = scan; // 把结果亮到合规门卡上,小妹看得见为什么被拦
+      state.archiveMessage = `⛔ 合规未过,已拦下:这篇命中导流违规(${(scan.categories || []).map(complianceCatLabel).join("/")}),直接发大概率封号。请回第 9 步点【🛡️合规检查 → 一键改成合规版】改完再保存。`;
+      setStep(9);
+      renderToday();
+      return;
+    }
+  } catch { /* 扫描失败不阻断,放行,避免误杀 */ }
   const withoutCurrent = state.finalWorks.filter((item) => item.id !== asset.id);
   state.finalWorks = [asset, ...withoutCurrent].slice(0, 30);
   state.archiveMessage = `已保存到本机缓存，正在同步到 122 统一作品库：${asset.platform}`;
@@ -1462,10 +1507,11 @@ function visualProductionCopy(styleId) {
 function primaryVisualActionLabel(styleId) {
   const count = plannedVisualCardCount();
   const prefix = count ? `生成 ${count} 张` : "生成";
-  if (styleId === "xiaohei-metaphor") return `${prefix}小黑漫画图`;
+  if (styleId === "xiaohei-metaphor") return `${prefix}小妹场景图`;
   if (styleId === "juju-organizing") return `${prefix}卷卷整理图`;
   if (styleId === "guizang-editorial") return `${prefix}归藏杂志图`;
-  return `${prefix}宝玉知识卡`;
+  if (styleId === "xhs-knowledge-card") return `${prefix}宝玉知识卡`;
+  return `${prefix}${visualRouteNameClean(styleId)}`;
 }
 
 function zh(entity) {
@@ -1474,29 +1520,34 @@ function zh(entity) {
   return box.value;
 }
 
+// 内容 → 配图风格 自动推荐(认全 12 种;顺序=从具体到一般,先命中先返回)
 function recommendVisualRouteClean() {
   const topic = selectedTopic() || {};
-  const text = `${state.selectedTitle || ""}
-${confirmedCopyText() || state.draft || ""}
-${topic.theme || ""}
-${topic.pain || ""}`;
-  if (/流程|步骤|系统|资产|方法|框架|拆解|复盘|教程|清单|整理|梳理/.test(text)) {
-    return { id: "juju-organizing", reason: "这篇内容在讲方法和系统，需要把复杂流程整理成一个能进入的现场；卷卷整理比单纯漫画更适合承载步骤和资产关系。" };
-  }
-  if (/避坑|焦虑|卡住|误区|为什么|不是|别再|问题|失败|痛点|情绪|反差|真相|观点/.test(text)) {
-    return { id: "xiaohei-metaphor", reason: "这篇内容有明显痛点和情绪张力，适合用小黑人物场景做隐喻，让读者先被画面抓住。" };
-  }
-  if (/行业|趋势|洞察|商业|投资人|方法论|战略|中台|底层逻辑/.test(text)) {
-    return { id: "guizang-editorial", reason: "这篇内容偏方法论和行业判断，归藏杂志卡更适合呈现高级感和系统感。" };
-  }
-  return { id: "xhs-knowledge-card", reason: "这篇内容更像可收藏的知识点，宝玉知识卡适合一页一个重点，方便小红书用户收藏。" };
+  const t = `${state.selectedTitle || ""}\n${confirmedCopyText() || state.draft || ""}\n${topic.theme || ""}\n${topic.pain || ""}`;
+  const ws = state.businessLine || state.workspace || "";
+  const has = (re) => re.test(t);
+  if (has(/种草|好物|测评|开箱|护肤|美妆|彩妆|成分|包装|商品|平价|必买|链接/) || /美容/.test(ws))
+    return { id: "product-commerce", reason: "这篇偏商品/种草,用商品商业视觉(主图+卖点+材质光)比卡通更能带货、更专业。" };
+  if (has(/数据|复盘|统计|榜单|增长|对比|步骤|教程|清单|攻略|框架|怎么做|如何|流程|时间表|盘点|几招|几个方法/))
+    return { id: "infographic-engine", reason: "这篇是干货/步骤/对比,用信息图把要点结构化——小红书收藏率最高,也补上了干货感。" };
+  if (has(/行业|趋势|洞察|商业|投资人|方法论|战略|认知|底层逻辑|思维|格局|职场|专业|表达力|沟通/) || /私校|留学/.test(ws))
+    return { id: "poster-cinematic", reason: "这篇偏严肃高端/认知,用高级海报(大标题+主视觉+留白)有质感有分量,别用卡通狗稀释掉。" };
+  if (has(/治愈|温柔|陪伴|疗愈|松弛|情感|那天|后来|经历|内心|温暖|慢生活/))
+    return { id: "art-illustration", reason: "这篇偏治愈/情感/故事,用艺术插画(水彩/水墨/手绘)更有温度。" };
+  if (has(/诗|古风|文化|历史|传统|国风|意境|禅/))
+    return { id: "ink-poster", reason: "这篇偏文化/诗意,用水墨意境海报更高级、更应景。" };
+  if (has(/观点|态度|金句|真相|别再|劝你|其实|反差|扎心|你要/))
+    return { id: "typography-poster", reason: "这篇是强观点/态度,用字体海报让金句本身成为主视觉,够冲。" };
+  if (has(/焦虑|卡住|误区|痛点|摆烂|逆袭|改变|为什么|失败/) || /女性/.test(ws))
+    return { id: "xiaohei-metaphor", reason: "这篇有痛点情绪,用小妹真实物件场景做隐喻,本账号 IP 一致、有共鸣。" };
+  if (has(/整理|系统|资产|梳理/))
+    return { id: "juju-organizing", reason: "这篇在整理复杂方法,卷卷整理风把流程变成能进入的纸面现场。" };
+  return { id: "xiaohei-metaphor", reason: "按内容默认用本账号 IP 小妹配图,保持账号一致性(也可手动换上面任一风格)。" };
 }
 
 function visualRouteNameClean(styleId) {
-  if (styleId === "xiaohei-metaphor") return zh("&#23567;&#40657;&#28459;&#30011;&#38544;&#21947;");
-  if (styleId === "juju-organizing") return zh("&#21367;&#21367;&#25972;&#29702;&#25554;&#30011;");
-  if (styleId === "guizang-editorial") return zh("&#24402;&#34255;&#26434;&#24535;&#21345;");
-  if (styleId === "xhs-knowledge-card") return zh("&#23453;&#29577;&#30693;&#35782;&#21345;");
+  const s = (typeof visualStyles !== "undefined" && Array.isArray(visualStyles)) ? visualStyles.find((x) => x.id === styleId) : null;
+  if (s) return s.title;
   return currentVisualStyle().title || "visual";
 }
 
@@ -1510,10 +1561,11 @@ function visualProductionCopyClean(styleId) {
 function primaryVisualActionLabelClean(styleId) {
   const count = plannedVisualCardCount();
   const prefix = count ? `生成 ${count} 张` : "生成";
-  if (styleId === "xiaohei-metaphor") return `${prefix}小黑漫画图`;
+  if (styleId === "xiaohei-metaphor") return `${prefix}小妹场景图`;
   if (styleId === "juju-organizing") return `${prefix}卷卷整理图`;
   if (styleId === "guizang-editorial") return `${prefix}归藏杂志图`;
-  return `${prefix}宝玉知识卡`;
+  if (styleId === "xhs-knowledge-card") return `${prefix}宝玉知识卡`;
+  return `${prefix}${visualRouteNameClean(styleId)}`;
 }
 
 function visualPlatformForCurrentTarget() {
@@ -1602,6 +1654,71 @@ function renderOptimizeDiff() {
   </div>`;
 }
 
+// 合规门(发布前):红黄绿风险 + 命中违规点 + 一键改成过来人口吻合规版
+function complianceCatLabel(c) {
+  return { contact: "联系方式", promise: "承诺夸大", solicit: "招揽口吻", industry: "高危行业" }[c] || c;
+}
+function renderComplianceGate() {
+  const r = state.complianceResult || null;
+  const rw = state.complianceRewrite || null;
+  let html = "";
+  if (state.complianceMessage) html += `<div class="status-strip ${state.complianceStatus === "error" ? "" : "success"}" style="margin-top:8px;">${escapeHtml(state.complianceMessage)}</div>`;
+  if (!r) return html;
+  const map = { high: ["#b4231f", "#fdecea", "🔴 高风险 · 直接发大概率封号"], medium: ["#b8860b", "#fdf6e3", "🟡 中风险 · 建议改成合规版再发"], low: ["#1a7f37", "#eaf6ed", "🟢 低风险 · 未命中明显导流特征"] };
+  const m = map[r.risk] || ["#777", "#f0f0f0", "风险未知"];
+  const cats = Array.isArray(r.categories) ? r.categories : [];
+  const hitWords = {};
+  (r.hits || []).forEach((h) => { (hitWords[h.category] = hitWords[h.category] || []).push(h.term); });
+  html += `<div style="margin-top:10px;border:1px solid ${m[0]};border-radius:8px;padding:11px 13px;background:${m[1]};">
+    <div style="font-weight:600;color:${m[0]};font-size:14px;">${m[2]}</div>
+    <div style="font-size:12px;color:#5a4a32;margin-top:4px;">${escapeHtml(r.advice || "")}</div>
+    ${cats.length ? `<div style="margin-top:6px;font-size:13px;">命中:${cats.map((c) => `<span style="display:inline-block;background:#fff;border:1px solid ${m[0]};color:${m[0]};border-radius:6px;padding:1px 7px;margin:2px;">${complianceCatLabel(c)}${hitWords[c] ? "·" + hitWords[c].slice(0, 4).join("/") : ""}</span>`).join("")}</div>` : ""}
+    ${(r.risk === "high" || r.risk === "medium") ? `<button class="primary" ${state.complianceStatus === "rewriting" ? "disabled" : ""} data-compliance-rewrite style="margin-top:8px;background:#1a7f37;border-color:#1a7f37;">${state.complianceStatus === "rewriting" ? "改写中…" : "✨ 一键改成合规版(过来人口吻)"}</button>` : ""}
+  </div>`;
+  if (rw && rw.body) {
+    html += `<div style="margin-top:8px;border:1px dashed #1a7f37;border-radius:8px;padding:11px 13px;background:#f6fbf7;">
+      <div style="font-size:13px;"><b>合规版标题:</b>${escapeHtml(rw.title || "")}</div>
+      <div style="font-size:13px;white-space:pre-wrap;margin-top:4px;max-height:220px;overflow:auto;">${escapeHtml(rw.body || "")}</div>
+      ${Array.isArray(rw.changes) && rw.changes.length ? `<div style="font-size:12px;color:#7a6a55;margin-top:6px;"><b>改了什么:</b><ul style="margin:3px 0 0 16px;padding:0;">${rw.changes.slice(0, 5).map((ch) => `<li>${escapeHtml(String(ch.from || "").slice(0, 20))} → ${escapeHtml(String(ch.to || "").slice(0, 20))}</li>`).join("")}</ul></div>` : ""}
+      ${rw.residualRisk ? `<div style="font-size:12px;color:#b8860b;margin-top:4px;">⚠️ ${escapeHtml(rw.residualRisk)}</div>` : ""}
+      <button class="primary" data-apply-compliance style="margin-top:8px;">用这个合规版替换文案</button>
+    </div>`;
+  }
+  return html;
+}
+
+async function runComplianceScan() {
+  const title = state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "";
+  const body = byId("workArea")?.querySelector("[data-inline-copy]")?.value || confirmedCopyText() || "";
+  if (!body) { state.complianceStatus = "error"; state.complianceMessage = "没有文案可检查。"; renderToday(); return; }
+  state.complianceStatus = "loading"; state.complianceResult = null; state.complianceRewrite = null; state.complianceMessage = "正在合规检查(导流风险)…"; renderToday();
+  try {
+    const res = await fetch(apiPath("/api/compliance/scan"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ title, body }) });
+    const d = await res.json();
+    state.complianceResult = d; state.complianceStatus = "done"; state.complianceMessage = ""; renderToday();
+  } catch (e) { state.complianceStatus = "error"; state.complianceMessage = `合规检查失败:${e.message}`; renderToday(); }
+}
+
+async function runComplianceRewrite() {
+  const title = state.selectedTitle || selectedTopic()?.theme || "";
+  const body = byId("workArea")?.querySelector("[data-inline-copy]")?.value || confirmedCopyText() || "";
+  const ws = state.businessLine || state.workspace || "";
+  state.complianceStatus = "rewriting"; state.complianceMessage = "正在改成合规版(过来人口吻)…"; renderToday();
+  try {
+    const res = await fetch(apiPath("/api/skills/run"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ skill: "compliance-rewrite", content: `标题:${title}\n正文:${body}\n业务线:${ws}` }) });
+    const d = await res.json();
+    state.complianceRewrite = d?.result || {}; state.complianceStatus = "done"; state.complianceMessage = ""; renderToday();
+  } catch (e) { state.complianceStatus = "error"; state.complianceMessage = `合规改写失败:${e.message}`; renderToday(); }
+}
+
+function applyComplianceRewrite() {
+  const rw = state.complianceRewrite;
+  if (!rw || !rw.body) return;
+  if (rw.title) state.selectedTitle = rw.title;
+  state.complianceResult = null; state.complianceRewrite = null;
+  saveInlineCopyEdit(rw.body); // 落进文案 + 作废旧判断 + 重渲染
+}
+
 function renderPrecheckResults() {
   const r = state.precheckResult || null;
   const labelMap = { HP: "钩子", ER: "痛点共鸣", SV: "收藏价值", IV: "增量价值/存在感", SP: "具体可信", HT: "人味", CV: "转化" };
@@ -1660,15 +1777,77 @@ function renderCoverPanel() {
       </div>
       ${sel ? `<div style="font-size:12px;color:#2e7d32;margin-top:6px;">✓ 已选参考图，封面会按它出（更对版）。</div>` : ""}
     </div>` : "";
+  const magAvailable = state.visualPlay === "magazine";
+  const coverMode = magAvailable ? (state.coverMode || "xhs") : "xhs";
+  const coverModeBtn = (id, label) => `<button type="button" data-cover-mode="${id}" class="${coverMode === id ? "primary" : "secondary"}" style="font-size:13px;padding:6px 14px;">${label}</button>`;
   return `<div class="cover-panel" style="border:1px solid #e6ddd0;border-radius:10px;padding:14px;margin:12px 0;background:#fffdf8;">
+    <b>② 做封面（小红书第一闸）</b>
+    ${magAvailable ? `<div style="display:flex;gap:8px;margin:8px 0 12px;align-items:center;flex-wrap:wrap;"><span style="font-size:13px;color:#7a6a55;">封面方式(二选一·只出你选的那种·不会双份扣点)：</span>${coverModeBtn("xhs", "🎨 小红书插画封面")}${coverModeBtn("magazine", "📰 杂志海报封面")}</div>` : ""}
+    ${coverMode === "xhs" ? `<div>
     <b>小红书封面（独立生成，不用配套图第一页）</b>
-    <div style="color:#7a6a55;font-size:13px;margin:4px 0 8px;">从已确认的标题+正文自动提炼诚实钩子，出一张专门封面。封面+标题是点击率第一闸。</div>
+    <div style="color:#7a6a55;font-size:13px;margin:4px 0 8px;">从标题+正文提炼钩子，一次出 <b>3 张</b>（同一画风、不同钩子角度）让你挑。封面+标题是点击率第一闸。</div>
     ${refStrip}
     <button class="primary" ${locked || loading ? "disabled" : ""} data-generate-cover>${loading ? "正在生成封面…" : "生成封面"}</button>
+    <div style="margin-top:10px;"><label style="display:inline-flex;align-items:center;gap:8px;font-size:13px;color:#7a6a55;cursor:pointer;white-space:nowrap;"><input type="checkbox" data-cover-watermark ${state.coverWatermark ? "checked" : ""} style="width:15px;height:15px;flex:0 0 auto;margin:0;"> 封面盖 <b style="color:#3a2c1c;">longka</b> 暗水印 <span style="color:#9a8a70;">(证明自有设计 · 默认关)</span></label></div>
     ${state.coverMessage ? `<div class="status-strip ${state.coverStatus === "error" ? "" : "success"}" style="margin-top:8px;">${escapeHtml(state.coverMessage)}</div>` : ""}
-    ${hooks.length ? `<div style="margin-top:8px;font-size:13px;"><b>封面钩子候选：</b>${hooks.map((h) => `<span style="display:inline-block;background:#f3ece0;border-radius:6px;padding:2px 8px;margin:2px;">${escapeHtml(h)}</span>`).join("")}</div>` : ""}
-    ${state.coverImage ? `<div style="margin-top:10px;"><a href="${escapeHtml(state.coverImage)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(state.coverImage)}" alt="封面" style="max-width:300px;border-radius:8px;border:1px solid #e6ddd0;"></a></div>` : ""}
+    ${(Array.isArray(state.coverOptions) && state.coverOptions.length) ? `<div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;">${state.coverOptions.map((o, i) => {
+      const picked = state.coverImage && o.url && o.url === state.coverImage;
+      const inner = o.url
+        ? `<a href="${escapeHtml(o.url)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(o.url)}" alt="封面${i + 1}" style="width:100%;border-radius:6px;display:block;" /></a><button class="${picked ? "primary" : "secondary"}" data-pick-cover="${i}" style="width:100%;margin-top:8px;font-size:12px;padding:6px;">${picked ? "✓ 已选这张" : "用这张"}</button>`
+        : (o.status === "error" ? `<div style="height:130px;display:flex;align-items:center;justify-content:center;color:#c0392b;font-size:12px;">这张没出来</div>` : `<div style="height:130px;display:flex;align-items:center;justify-content:center;color:#9a8a70;font-size:12px;">出图中…</div>`);
+      return `<div style="width:180px;border:2px solid ${picked ? "#1a7f37" : "#e6ddd0"};border-radius:10px;padding:8px;background:#fff;">
+        <div style="font-size:12px;color:#3a2c1c;margin-bottom:6px;min-height:34px;line-height:1.4;">${escapeHtml(String(o.hook || "").slice(0, 26))}</div>
+        ${inner}
+        ${o.judge && o.judge.ok !== false ? `<div style="margin-top:6px;font-size:11px;line-height:1.5;padding:5px 7px;border-radius:6px;background:${o.judge.pass ? "#eef7ee" : "#fdeeee"};color:${o.judge.pass ? "#1a7f37" : "#c0392b"};">${o.judge.pass ? "✅ 质检通过" : "⚠️ 建议重出"} · ${escapeHtml(o.judge.summary || "")}${o.judge.fix && o.judge.fix !== "无" ? `<br><span style="color:#7a6a55;">改:${escapeHtml(o.judge.fix)}</span>` : ""}</div>` : ""}
+      </div>`;
+    }).join("")}</div>` : (state.coverImage ? `<div style="margin-top:10px;"><a href="${escapeHtml(state.coverImage)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(state.coverImage)}" alt="封面" style="max-width:300px;border-radius:8px;border:1px solid #e6ddd0;"></a></div>` : "")}
+    ${(() => {
+      const dc = (Array.isArray(state.coverOptions) ? state.coverOptions : []).map((o) => o && o.url).filter((u) => u && /^https?:\/\//.test(u));
+      const list = dc.length ? dc : ((state.coverImage && /^https?:\/\//.test(state.coverImage)) ? [state.coverImage] : []);
+      if (!list.length) return "";
+      return `<div style="margin-top:12px;padding:10px;border:1px dashed #d8cdb8;border-radius:8px;background:#fbf7ee;">
+        <div style="font-size:12px;color:#7a6a55;margin-bottom:6px;">📏 <b>缩略图自检</b> —— 信息流里封面就这么小,<b>标题和主体还看得清 = 合格</b>(80px 缩略图测试)。糊成一团就换钩子/换张:</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;">${list.map((u) => `<img src="${escapeHtml(u)}" alt="缩略图" style="width:80px;height:107px;object-fit:cover;border-radius:4px;border:1px solid #e6ddd0;background:#fff;">`).join("")}</div>
+      </div>`;
+    })()}
+    </div>` : ""}
+    ${(magAvailable && coverMode === "magazine") ? `<div style="margin-top:6px;">
+      <b>📰 杂志海报打法(一键出成品)</b><div style="color:#7a6a55;font-size:13px;margin:4px 0 8px;">不用上面的做封面 —— 直接一键:自动出<b>无字底图</b> + 叠<b>得意黑大标题</b> = 图文一体杂志封面。约 1 分钟(出底图 ≈¥0.03)。</div>
+      <button class="primary" ${locked || state.magazineStatus === "loading" ? "disabled" : ""} data-make-magazine>${state.magazineStatus === "loading" ? "出杂志封面中(约1分钟)…" : "📰 出杂志封面"}</button>
+      ${state.magazineMessage ? `<div class="status-strip ${state.magazineStatus === "error" ? "" : "success"}" style="margin-top:8px;">${escapeHtml(state.magazineMessage)}</div>` : ""}
+      ${state.magazineCover ? `<div style="margin-top:10px;"><a href="${escapeHtml(state.magazineCover)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(state.magazineCover)}" alt="杂志封面成品" style="max-width:300px;border-radius:8px;border:1px solid #1a7f37;"></a><div style="font-size:12px;color:#1a7f37;margin-top:4px;">杂志封面成品(可右键下载)</div>${state.magazineJudge && state.magazineJudge.ok !== false ? `<div style="margin-top:6px;font-size:11px;line-height:1.5;padding:5px 7px;border-radius:6px;display:inline-block;background:${state.magazineJudge.pass ? "#eef7ee" : "#fdeeee"};color:${state.magazineJudge.pass ? "#1a7f37" : "#c0392b"};">${state.magazineJudge.pass ? "✅ 质检通过" : "⚠️ 建议再调"} · ${escapeHtml(state.magazineJudge.summary || "")}${state.magazineJudge.fix && state.magazineJudge.fix !== "无" ? `<br><span style="color:#7a6a55;">改:${escapeHtml(state.magazineJudge.fix)}</span>` : ""}</div>` : ""}</div>` : ""}
+    </div>` : ""}
   </div>`;
+}
+
+async function generateMagazineCover() {
+  const title = (state.selectedTitle || (typeof currentTarget === "function" ? (currentTarget() || {}).title : "") || "").trim();
+  if (!title) { state.magazineStatus = "error"; state.magazineMessage = "没有标题,先确认文案标题。"; renderToday(); return; }
+  const visual = (typeof currentVisualStyle === "function") ? currentVisualStyle() : { id: state.visualStyle };
+  const t = (typeof currentTarget === "function") ? (currentTarget() || {}) : {};
+  const body = String(t.body || t.copy || t.content || "").slice(0, 240);
+  const brief = `Premium magazine cover key visual for the topic「${title}」. ${body}`;
+  let prompt = (typeof styleLockedVisualBrief === "function") ? styleLockedVisualBrief({ role: "cover", visualBrief: brief }, visual) : brief;
+  prompt += "\nHard rule: this is a CLEAN cover image — NO text, NO Chinese characters, NO baked title; leave generous empty space at the TOP for a headline added later.";
+  const ref = (typeof visualStyleContract === "function") ? (visualStyleContract(visual.id).referenceImageUrl || "") : "";
+  state.magazineStatus = "loading"; state.magazineMessage = "正在出无字底图 + 叠得意黑大标题(约 1 分钟)…"; renderToday();
+  try {
+    const res = await fetch(apiPath("/api/visual/magazine-cover"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt, title, subtitle: "", aspect: "3:4", referenceImageUrl: ref, author: "@" + (state.businessLine || "小妹成长说") }) });
+    const d = await res.json().catch(() => ({}));
+    if (d.ok && d.url) {
+      state.magazineCover = apiPath("/" + d.url); state.magazineStatus = "done"; state.magazineJudge = null;
+      state.magazineMessage = "杂志封面成品出好了,正在视觉质检…"; renderToday();
+      try {
+        const abs = /^https?:\/\//.test(state.magazineCover) ? state.magazineCover : (window.location.origin + state.magazineCover);
+        const jr = await fetch(apiPath("/api/visual/judge-cover"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ imageUrl: abs, hook: title, topic: title, mode: "cover" }) });
+        const jd = await jr.json().catch(() => ({}));
+        if (jd && jd.ok) state.magazineJudge = jd;
+      } catch {}
+      state.magazineMessage = state.magazineJudge ? (state.magazineJudge.pass ? "杂志封面出好了 · 质检通过。" : "杂志封面出好了 · 质检建议再调(见下)。") : "杂志封面成品出好了(图文一体)。";
+    }
+    else { state.magazineStatus = "error"; state.magazineMessage = d.message || d.error || "出图失败,稍后再试。"; }
+  } catch (e) { state.magazineStatus = "error"; state.magazineMessage = `失败:${e.message}`; }
+  renderToday();
 }
 
 function renderProductionStep() {
@@ -1699,13 +1878,15 @@ function renderProductionStep() {
         <b style="font-size:16px;">当前文案（${escapeHtml(currentTarget().title)}）</b>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="primary" ${locked || state.precheckStatus === "loading" ? "disabled" : ""} data-run-precheck>${state.precheckStatus === "loading" ? "判断中…" : "做发布前判断"}</button>
+          <button class="primary" ${locked || state.complianceStatus === "loading" ? "disabled" : ""} data-run-compliance style="background:#b8860b;border-color:#b8860b;">${state.complianceStatus === "loading" ? "检查中…" : "🛡️ 合规检查"}</button>
           <button class="secondary" ${locked ? "disabled" : ""} data-save-inline-copy>保存修改</button>
         </div>
       </div>
-      <div style="color:#7a6a55;font-size:12px;margin:6px 0 8px;">${escapeHtml(platformNote)} · 点【做发布前判断】看这篇行不行；有问题就在下面改完点【保存修改】，不用回上一步。觉得行直接往下出图。</div>
+      <div style="color:#7a6a55;font-size:12px;margin:6px 0 8px;">${escapeHtml(platformNote)} · 【发布前判断】看好不好(质量)、【🛡️合规检查】看能不能发(会不会封)。有问题改完点【保存修改】,不用回上一步。</div>
       ${copy ? `<textarea data-inline-copy style="width:100%;box-sizing:border-box;min-height:200px;max-height:420px;background:#faf7f1;border:1px solid #e6ddd0;border-radius:8px;padding:12px;font-size:13px;line-height:1.7;font-family:inherit;resize:vertical;">${escapeHtml(copy)}</textarea>
       ${state.copyEditNote ? `<div style="color:#2e7d32;font-size:12px;margin-top:6px;">${escapeHtml(state.copyEditNote)}</div>` : ""}
       ${renderPrecheckResults()}
+      ${renderComplianceGate()}
       ${renderOptimizeDiff()}` : `<div class="status-strip">还没确认文案，请先在上一步确认这版文案。</div>`}
     </div>
 
@@ -1715,7 +1896,7 @@ function renderProductionStep() {
 
     ${(!isWechat && !isVideo && !isMoments) ? `<h3 class="prod-section">② 做封面（小红书第一闸）</h3>${renderCoverPanel()}` : ""}
 
-    <h3 class="prod-section">${(!isWechat && !isVideo && !isMoments) ? "③" : "②"} 生成图文卡（按内容判断张数${plannedCardCount ? ` · 约 ${plannedCardCount} 张` : ""}）</h3>
+    <h3 class="prod-section">${(!isWechat && !isVideo && !isMoments) ? "③" : "②"} 生成内页配图（按内容判断张数${plannedCardCount ? ` · 约 ${plannedCardCount} 张` : ""}）</h3>
     <div class="production-grid">
       <article class="production-card ${locked ? "locked" : ""}">
         <b>${escapeHtml(visualRouteNameClean(state.visualStyle))}</b>
@@ -1726,10 +1907,209 @@ function renderProductionStep() {
     </div>
     ${renderCleanXhsCardPreview()}
     ${isWechat ? renderWechatArticleImageLayout(copy) : ""}
-    ${isVideo ? renderVideoProductionPreview(copy) : ""}
+    ${isVideo ? `<h3 class="prod-section">🎯 智能选片（按文案荐形态）</h3>${renderVideoFormatPicker(copy)}${renderSelectedVideoPanel(copy)}` : ""}
     ${files.length ? `<div class="status-strip success">${zh("&#24050;&#29983;&#25104;")} ${files.length} ${zh("&#24352;&#22270;&#29255;&#65292;&#21487;&#20197;&#23548;&#20986;&#25110;&#20445;&#23384;&#20026;&#27597;&#39064;&#36164;&#20135;&#12290;")}</div>` : ""}
+    ${(!isMoments && !isVideo) ? `<h3 class="prod-section">🎬 做短视频（即梦分镜，可选）</h3>${renderSeedanceVideoPanel()}` : ""}
     <div class="actions"><button class="ghost" data-step-target="9">返回改文案</button><button class="primary" data-step-target="11" ${state.copyConfirmed ? "" : "disabled"}>下一步：下载成品</button></div>
   </section>`;
+}
+
+// 🎯 智能选片:读本篇文案 → 推荐最配的视频形态 + 形态菜单(点选切换下方产线)
+function renderVideoFormatPicker(copy = "") {
+  const title = state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "";
+  const ws = state.businessLine || state.workspace || "";
+  const cls = classifyVideoFormats(copy, title, ws);
+  if (!state.videoFormat) state.videoFormat = cls.top.id; // 默认选中推荐形态
+  const chips = cls.ranked.map((f) => {
+    const active = state.videoFormat === f.id;
+    const isTop = f.id === cls.top.id;
+    return `<button class="vf-chip" data-video-format="${f.id}" style="font-size:12px;padding:6px 12px;border-radius:18px;border:1px solid ${active ? "#1a7f37" : "#e6ddd0"};background:${active ? "#eaf6ed" : "#fffdf8"};color:#3a2c1c;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
+      ${f.emoji} ${escapeHtml(f.name)}${isTop ? ` <span style="font-size:10px;color:#1a7f37;border:1px solid #1a7f37;border-radius:8px;padding:0 5px;">推荐</span>` : ""}${f.ready ? "" : ` <span style="font-size:10px;color:#9a8a70;border:1px solid #ddd;border-radius:8px;padding:0 5px;">建设中</span>`}
+    </button>`;
+  }).join("");
+  const sel = VIDEO_FORMATS.find((f) => f.id === state.videoFormat) || cls.top;
+  return `<div style="border:1px solid #e6ddd0;border-radius:10px;padding:14px;margin:8px 0 12px;background:#fbf9f4;">
+    <div style="font-size:13px;color:#3a2c1c;margin-bottom:10px;">系统看了这篇文案 → 推荐 <b>${cls.top.emoji} ${escapeHtml(cls.top.name)}</b><span style="color:#7a6a55;">(${escapeHtml(cls.reason)})</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">${chips}</div>
+    <div style="font-size:12px;color:#7a6a55;background:#fff;border:1px dashed #e6ddd0;border-radius:8px;padding:8px 10px;">${sel.emoji} <b>${escapeHtml(sel.name)}</b> · 适合 ${escapeHtml(sel.good)} · ${escapeHtml(sel.cost)} —— ${escapeHtml(sel.desc)}${sel.ready ? "" : "(此形态建设中,先用上面带「推荐」的形态)"}</div>
+  </div>`;
+}
+
+// 按选中形态路由到对应产线面板
+function renderSelectedVideoPanel(copy = "") {
+  const f = state.videoFormat || "ai";
+  if (f === "ai" || f === "clay") return renderSeedanceVideoPanel();
+  if (f === "oral" || f === "mix") return renderVideoProductionPreview(copy);
+  if (f === "comic") return renderComicPanel();
+  const meta = VIDEO_FORMATS.find((x) => x.id === f) || {};
+  return `<div style="border:1px solid #e6ddd0;border-radius:10px;padding:18px;margin:8px 0 12px;background:#fffdf8;text-align:center;color:#7a6a55;font-size:13px;">
+    ${meta.emoji || "🛠️"} <b>${escapeHtml(meta.name || "该形态")}</b> 建设中。<br>它最适合「${escapeHtml(meta.good || "")}」类文案,基座弹药已就位(${f === "comic" ? "baoyu-comic / 信息图 skill" : "remotion 程序化"}),很快接入。<br>现在可先点上面带「推荐」的形态出片。
+  </div>`;
+}
+
+// 🖼️ 小妹漫画:本篇文案 → xiaomei-scenes 分镜 → 小妹一致出镜分格漫画(后端 spawn comic_gen.py)
+function renderComicPanel() {
+  const locked = !state.copyConfirmed;
+  const loading = state.comicStatus === "loading";
+  const url = state.comicUrl ? apiPath(state.comicUrl) : "";
+  return `<div style="border:1px solid #e6ddd0;border-radius:10px;padding:14px;margin:8px 0 12px;background:#fffdf8;">
+    <div style="color:#7a6a55;font-size:13px;margin-bottom:8px;">把这篇文案变成<b>小妹卡通分格漫画</b>(真实物件 + 物理动作 + 短句,3 秒读懂)。小妹一致出镜,中文字幕后期叠真字体(不乱码)。</div>
+    <button class="primary" ${locked || loading ? "disabled" : ""} data-gen-comic style="background:#1a7f37;border-color:#1a7f37;">${loading ? "出漫画中…" : "🖼️ 生成小妹漫画(约 1 元)"}</button>
+    ${state.comicMessage ? `<div class="status-strip ${state.comicStatus === "error" ? "" : "success"}" style="margin-top:8px;">${escapeHtml(state.comicMessage)}</div>` : ""}
+    ${url ? `<div style="margin-top:10px;"><img src="${escapeHtml(url)}" style="max-width:320px;border-radius:8px;display:block;border:1px solid #eee;"><div style="margin-top:4px;font-size:12px;"><a href="${escapeHtml(url)}" download="小妹漫画.jpg">⬇️ 下载漫画</a></div></div>` : ""}
+  </div>`;
+}
+
+async function generateXiaomeiComic() {
+  if (!state.copyConfirmed) { state.comicStatus = "error"; state.comicMessage = "请先确认本篇文案。"; renderToday(); return; }
+  const title = state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "";
+  const body = confirmedCopyText() || "";
+  if (!body) { state.comicStatus = "error"; state.comicMessage = "没有文案内容。"; renderToday(); return; }
+  if (!window.confirm("生成小妹漫画:调用 AI 出图,约 1 元(¥)。确认?")) return;
+  const ws = state.businessLine || state.workspace || "";
+  const content = `本篇文案:标题《${title}》。\n${body}\n业务线:${ws}\n模式:comic\n画幅:3:4`;
+  state.comicStatus = "loading"; state.comicUrl = ""; state.comicMessage = "正在出小妹漫画(分镜 → 出图 → 叠字,约 1-2 分钟,别关页面)…"; renderToday();
+  try {
+    const jobId = `comic-${Date.now().toString(36)}`;
+    const res = await fetch(apiPath("/api/xiaomei-comic/start"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jobId, content }) });
+    const sj = await res.json().catch(() => ({}));
+    if (!res.ok || !sj.ok) throw new Error(sj.message || sj.error || "启动失败");
+    const realId = sj.jobId || jobId;
+    for (let i = 0; i < 45; i += 1) {
+      await new Promise((rs) => setTimeout(rs, 4000));
+      const st = await fetch(apiPath(`/api/xiaomei-comic/status?jobId=${encodeURIComponent(realId)}`)).then((x) => x.json()).catch(() => ({}));
+      if (st.status === "done" && st.url) { state.comicStatus = "done"; state.comicUrl = st.url; state.comicMessage = "✅ 小妹漫画出来了,可直接发。"; renderToday(); return; }
+      if (st.status === "error") throw new Error(st.error || "出漫画失败");
+      state.comicMessage = `出漫画中…(${st.done || 0}/${st.total || 4} 格)`; renderToday();
+    }
+    state.comicStatus = "error"; state.comicMessage = "超时,请重试。"; renderToday();
+  } catch (e) { state.comicStatus = "error"; state.comicMessage = `出漫画失败:${e.message}`; renderToday(); }
+}
+
+// 🎬 做短视频:本篇文案 → 即梦可粘贴的多镜头分镜 + 参考图清单(seedance-prompt 技能)
+function renderSeedanceVideoPanel() {
+  const locked = !state.copyConfirmed;
+  const loading = state.seedanceStatus === "loading";
+  const r = state.seedanceResult || null;
+  return `<div style="border:1px solid #e6ddd0;border-radius:10px;padding:14px;margin:8px 0 12px;background:#fffdf8;">
+    <div style="color:#7a6a55;font-size:13px;margin-bottom:8px;">把这篇文案变成一个<b>有故事的短视频分镜</b>(讲故事不说教 + 拟人角色不出真人 + 开头3秒钩子)。可粘进即梦,也可一键出片。文案为先,故事承载道理。</div>
+    ${state.videoFormat === "clay" ? `<div style="font-size:12px;color:#b8860b;background:#fdf6e3;border:1px solid #f0e3c0;border-radius:6px;padding:6px 10px;margin-bottom:8px;">🧸 泥人偶定格模式:分镜会按黏土定格动画风格出图(手作感、治愈、反 AI 塑料感)。</div>` : ""}
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <label style="font-size:12px;color:#7a6a55;">主角 <select data-seedance-role style="font-size:12px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;"><option value="小妹卡通形象(2D扁平插画,黑色低马尾,珊瑚橘短袖T恤+牛仔短裤,夏季清凉装,非真人脸,本账号IP主角)">小妹(本账号IP·默认)</option><option value="自动">自动(拟人动物)</option><option value="拟人化的猫或狗">拟人猫狗</option></select></label>
+      <label style="font-size:12px;color:#7a6a55;">时长 <select data-seedance-dur style="font-size:12px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;"><option value="15">15</option><option value="10">10</option><option value="5">5</option></select> 秒</label>
+      <label style="font-size:12px;color:#7a6a55;">画幅 <select data-seedance-aspect style="font-size:12px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;"><option value="9:16">9:16 竖</option><option value="16:9">16:9 横</option></select></label>
+      <button class="primary" ${locked || loading ? "disabled" : ""} data-gen-seedance>${loading ? "生成中…" : "🎬 生成故事分镜"}</button>
+    </div>
+    ${state.seedanceMessage ? `<div class="status-strip ${state.seedanceStatus === "error" ? "" : "success"}" style="margin-top:8px;">${escapeHtml(state.seedanceMessage)}</div>` : ""}
+    ${r ? renderSeedanceResult(r) : ""}
+  </div>`;
+}
+
+function renderSeedanceResult(r) {
+  const refs = Array.isArray(r.referenceImages) ? r.referenceImages : [];
+  return `<div style="margin-top:10px;">
+    ${r.hook3s ? `<div style="font-size:13px;margin-bottom:6px;"><b>开头3秒钩子:</b>${escapeHtml(r.hook3s)}</div>` : ""}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px;">
+      <button class="secondary" data-copy-seedance style="font-size:12px;padding:4px 10px;">📋 复制分镜(粘进即梦)</button>
+      <span style="font-size:12px;color:#9a8a70;">${r.durationSec || 15} 秒 · ${escapeHtml(r.aspect || "9:16")}</span>
+    </div>
+    <pre style="white-space:pre-wrap;font-size:12px;line-height:1.6;background:#faf7f1;border:1px solid #e6ddd0;border-radius:8px;padding:12px;max-height:340px;overflow:auto;">${escapeHtml(r.storyboardPrompt || "")}</pre>
+    ${r.character ? `<div style="font-size:12px;color:#7a6a55;margin-top:6px;"><b>主角:</b>${escapeHtml(r.character)}</div>` : ""}
+    ${refs.length ? `<div style="margin-top:8px;font-size:12px;color:#7a6a55;"><b>参考图清单</b>(传进即梦/出片做 @图片 引用,锁角色一致):</div><ol style="font-size:12px;color:#3a2c1c;margin:4px 0;padding-left:18px;line-height:1.6;">${refs.map((x) => `<li><b>${escapeHtml(x.slot || "")}</b>:${escapeHtml(x.desc || "")}</li>`).join("")}</ol>` : ""}
+    <div style="margin-top:10px;border-top:1px dashed #e6ddd0;padding-top:10px;">
+      <button class="primary" data-gen-film style="font-size:12px;padding:6px 14px;background:#1a7f37;border-color:#1a7f37;" ${state.filmStatus === "loading" ? "disabled" : ""}>${state.filmStatus === "loading" ? "出片中…" : `🎬 一键出视频(Kie · 约 ${Math.ceil((Number(r.durationSec) || 15) * 0.7)} 元)`}</button>
+      <span style="font-size:11px;color:#9a8a70;margin-left:8px;">480P最省档,点了会再确认价格。配音+BGM下一步加。</span>
+      ${state.filmMessage ? `<div class="status-strip ${state.filmStatus === "error" ? "" : "success"}" style="margin-top:8px;">${escapeHtml(state.filmMessage)}</div>` : ""}
+      ${state.filmUrl ? `<div style="margin-top:8px;"><video src="${escapeHtml(state.filmUrl)}" controls style="max-width:240px;border-radius:8px;display:block;"></video><div style="margin-top:4px;font-size:12px;"><a href="${escapeHtml(state.filmUrl)}" download="视频.mp4">⬇️ 下载视频(纯画面)</a></div></div>` : ""}
+    </div>
+    ${state.filmUrl ? `<div style="margin-top:10px;border-top:1px dashed #e6ddd0;padding-top:10px;">
+      <button class="primary" data-gen-final style="font-size:12px;padding:6px 14px;background:#b8860b;border-color:#b8860b;" ${state.finalFilmStatus === "loading" ? "disabled" : ""}>${state.finalFilmStatus === "loading" ? "成品合成中…" : "🎵 加配音+字幕+BGM 出成品"}</button>
+      <span style="font-size:11px;color:#9a8a70;margin-left:8px;">读旁白配音、烧字幕、垫治愈背景乐,合成可直接发的成片(免费)。</span>
+      ${state.finalFilmMessage ? `<div class="status-strip ${state.finalFilmStatus === "error" ? "" : "success"}" style="margin-top:8px;">${escapeHtml(state.finalFilmMessage)}</div>` : ""}
+      ${state.finalFilmUrl ? `<div style="margin-top:8px;"><video src="${escapeHtml(state.finalFilmUrl)}" controls style="max-width:240px;border-radius:8px;display:block;"></video><div style="margin-top:4px;font-size:12px;"><a href="${escapeHtml(state.finalFilmUrl)}" download="成品.mp4">⬇️ 下载成品(配音+字幕+BGM)</a></div></div>` : ""}
+    </div>` : ""}
+  </div>`;
+}
+
+async function generateSeedanceFilm() {
+  const r = state.seedanceResult;
+  if (!r || !r.storyboardPrompt) { state.filmStatus = "error"; state.filmMessage = "请先生成分镜。"; renderToday(); return; }
+  const dur = Math.min(15, Math.max(4, Number(r.durationSec) || 15));
+  const yuan = Math.ceil(dur * 0.7);
+  if (!window.confirm(`出这条视频:Kie Seedance,${dur}秒,480P,约 ${yuan} 元(¥)。确认出片?`)) return;
+  state.filmStatus = "loading"; state.filmUrl = ""; state.filmMessage = "正在用 Kie 出视频(约 1-3 分钟,别关页面)…"; renderToday();
+  try {
+    const aspect = r.aspect || "9:16";
+    const jobId = `sdfilm-${Date.now().toString(36)}`;
+    // 主角是小妹 → 传人设参考图,视频里小妹和图文/漫画同一形象
+    const isXiaomei = /小妹/.test(state.seedanceRole || "");
+    const refUrls = isXiaomei ? ["http://122.51.218.154/ai-native-v2/media/persona/full_flat.jpg"] : [];
+    const clip = { page: 1, prompt: r.storyboardPrompt };
+    if (refUrls.length) clip.referenceImageUrls = refUrls;
+    const res = await fetch(apiPath("/api/video-clip/start"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jobId, aspect, duration: dur, referenceImageUrls: refUrls, clips: [clip] }) });
+    const sj = await res.json().catch(() => ({}));
+    if (!res.ok || !sj.ok) throw new Error(sj.message || sj.error || "Kie 启动失败");
+    const realId = sj.jobId || jobId;
+    for (let i = 0; i < 90; i += 1) {
+      await new Promise((rs) => setTimeout(rs, 5000));
+      const st = await fetch(apiPath(`/api/video-clip/status?jobId=${encodeURIComponent(realId)}`)).then((x) => x.json()).catch(() => ({}));
+      const url = (st.manifest?.publicFiles || [])[0] || "";
+      if (url) { state.filmStatus = "done"; state.filmUrl = url; state.filmMessage = "✅ 视频出来了(纯画面)。下一步给它加配音+BGM+字幕。觉得行先拿去发。"; renderToday(); return; }
+      if (st.status === "error") throw new Error("Kie 出片失败");
+      state.filmMessage = `Kie 出片中…(${i + 1}/90,较慢请耐心)`; renderToday();
+    }
+    state.filmStatus = "done"; state.filmMessage = "出片较久,任务在 Kie 跑,稍后再点一次查询(不重复扣费)。"; renderToday();
+  } catch (e) { state.filmStatus = "error"; state.filmMessage = `出片失败:${e.message}`; renderToday(); }
+}
+
+// 出成品:已出的纯画面视频 + 旁白配音 + 烧字幕 + 治愈BGM → 可发成片(本地合成,免费)
+async function generateFinalFilm() {
+  const r = state.seedanceResult || {};
+  if (!state.filmUrl) { state.finalFilmStatus = "error"; state.finalFilmMessage = "请先出视频(纯画面)。"; renderToday(); return; }
+  const voiceover = String(r.voiceover || confirmedCopyText() || "").trim();
+  if (!voiceover) { state.finalFilmStatus = "error"; state.finalFilmMessage = "没有旁白稿(分镜里没生成 voiceover),无法配音。"; renderToday(); return; }
+  const dur = Math.min(15, Math.max(4, Number(r.durationSec) || 15));
+  state.finalFilmStatus = "loading"; state.finalFilmUrl = ""; state.finalFilmMessage = "正在配音 + 烧字幕 + 垫背景乐,合成成片(约 30-60 秒,别关页面)…"; renderToday();
+  try {
+    const jobId = `film-${Date.now().toString(36)}`;
+    const res = await fetch(apiPath("/api/seedance-film/finalize/start"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jobId, videoUrl: state.filmUrl, voiceover, durationSec: dur }) });
+    const sj = await res.json().catch(() => ({}));
+    if (!res.ok || !sj.ok) throw new Error(sj.message || sj.error || "合成启动失败");
+    const realId = sj.jobId || jobId;
+    for (let i = 0; i < 40; i += 1) {
+      await new Promise((rs) => setTimeout(rs, 4000));
+      const st = await fetch(apiPath(`/api/seedance-film/finalize/status?jobId=${encodeURIComponent(realId)}`)).then((x) => x.json()).catch(() => ({}));
+      if (st.status === "done" && st.url) { state.finalFilmStatus = "done"; state.finalFilmUrl = apiPath(st.url); state.finalFilmMessage = "✅ 成品出来了(配音 + 字幕 + 背景乐),可直接发。"; renderToday(); return; }
+      if (st.status === "error") throw new Error(st.error || "合成失败");
+      state.finalFilmMessage = `合成中…(${i + 1})`; renderToday();
+    }
+    state.finalFilmStatus = "error"; state.finalFilmMessage = "合成超时,请重试。"; renderToday();
+  } catch (e) { state.finalFilmStatus = "error"; state.finalFilmMessage = `合成失败:${e.message}`; renderToday(); }
+}
+
+async function generateSeedanceStoryboard() {
+  const title = state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "";
+  const body = confirmedCopyText() || "";
+  if (!body) { state.seedanceStatus = "error"; state.seedanceMessage = "请先确认本篇文案,再生成视频分镜。"; renderToday(); return; }
+  const dur = byId("workArea")?.querySelector("[data-seedance-dur]")?.value || "15";
+  const aspect = byId("workArea")?.querySelector("[data-seedance-aspect]")?.value || "9:16";
+  const role = byId("workArea")?.querySelector("[data-seedance-role]")?.value || "小妹卡通形象";
+  state.seedanceRole = role; // 记住主角,出片时小妹要传人设参考图锁一致
+  state.seedanceStatus = "loading"; state.seedanceResult = null;
+  state.seedanceMessage = "正在把文案变成故事分镜(拟人角色+故事+钩子)…约 20-60 秒";
+  renderToday();
+  try {
+    const clayStyle = state.videoFormat === "clay" ? "\n视觉风格:黏土定格动画(claymation / stop-motion),手工捏制质感、柔和影棚光、微距实拍感,温暖治愈,反 AI 塑料感。" : "";
+    const content = `本篇文案:标题《${title}》。\n${body}\n业务线:${state.businessLine || state.workspace || ""}\n主角偏好:${role}(卡通形象,非真人脸)\n时长:${dur}秒\n画幅:${aspect}${clayStyle}`;
+    const res = await fetch(apiPath("/api/skills/run"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ skill: "seedance-prompt", content }) });
+    const d = await res.json().catch(() => ({}));
+    const r = d?.result || {};
+    if (r && r.storyboardPrompt) {
+      state.seedanceResult = r; state.seedanceStatus = "done";
+      state.seedanceMessage = "分镜已生成。复制粘进即梦;按参考图清单出角色/场景图做 @图片 引用,人物就不跳戏。";
+    } else { state.seedanceStatus = "error"; state.seedanceMessage = d.message || d.error || "生成失败,稍后再试。"; }
+  } catch (e) { state.seedanceStatus = "error"; state.seedanceMessage = `失败:${e.message}`; }
+  renderToday();
 }
 
 function autoApplyRecommendedVisualStyle() {
@@ -1753,14 +2133,64 @@ function autoApplyRecommendedVisualStyle() {
   return rec;
 }
 
+// —— 配图方案墙:风格 × 打法 ——
+function visualPlayName(id) { return ((typeof VISUAL_PLAYS !== "undefined" ? VISUAL_PLAYS : []).find((p) => p.id === id) || {}).name || id; }
+function defaultPlayForStyle(id) {
+  if (["infographic-engine", "xhs-knowledge-card", "juju-organizing", "xiaohei-metaphor"].includes(id)) return "carousel";
+  if (["svarbova-poster", "typography-poster", "poster-cinematic"].includes(id)) return "magazine";
+  return "cover";
+}
+function styleEmoji(id) {
+  return ({ "xiaohei-metaphor": "🧸", "juju-organizing": "🗂️", "guizang-editorial": "📖", "xhs-knowledge-card": "🃏", "poster-cinematic": "🎬", "typography-poster": "🔤", "infographic-engine": "📊", "realistic-photo": "📷", "art-illustration": "🎨", "ink-poster": "🖌️", "product-commerce": "🛍️", "cute-3d-toy": "🧩", "svarbova-poster": "📰" })[id] || "🖼️";
+}
+function styleGradient(id) {
+  let h = 0; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  return `linear-gradient(135deg, hsl(${h} 36% 79%), hsl(${(h + 38) % 360} 30% 64%))`;
+}
+function changeVisualPlay(playId) {
+  if (!(typeof VISUAL_PLAYS !== "undefined" && VISUAL_PLAYS.some((p) => p.id === playId))) return;
+  state.visualPlay = playId; state.visualPlayTouched = true; renderToday();
+}
 function renderVisualRoutePickerClean(locked, recommendedId = "") {
-  const routes = [
-    { id: "xiaohei-metaphor", name: zh("&#23567;&#40657;&#28459;&#30011;"), use: zh("&#20154;&#29289;&#38544;&#21947;&#12289;&#36991;&#22353;&#12289;&#27969;&#31243;&#12289;&#24773;&#32490;&#22330;&#26223;&#65292;&#36866;&#21512;&#23567;&#32418;&#20070;&#35266;&#28857;&#22270;&#25991;&#12290;"), base: "ian-xiaohei-illustrations" },
-    { id: "juju-organizing", name: zh("&#21367;&#21367;&#25972;&#29702;"), use: zh("&#30333;&#24213;&#32440;&#38754;&#25163;&#32472;&#65292;&#25226;&#22797;&#26434;&#20869;&#23481;&#25972;&#29702;&#25104;&#21487;&#36827;&#20837;&#30340;&#29616;&#22330;&#12290;"), base: "juju-content-illustrations" },
-    { id: "guizang-editorial", name: zh("&#24402;&#34255;&#26434;&#24535;"), use: zh("&#39640;&#32423;&#26434;&#24535;&#21644; Deck &#24863;&#65292;&#36866;&#21512;&#26041;&#27861;&#35770;&#12289;&#34892;&#19994;&#27934;&#23519;&#12290;"), base: "guizang-social-card / Open Design" },
-    { id: "xhs-knowledge-card", name: zh("&#23453;&#29577;&#30693;&#35782;&#21345;"), use: zh("&#28165;&#21333;&#12289;&#27493;&#39588;&#12289;&#23545;&#27604;&#12289;&#25910;&#34255;&#22411;&#20869;&#23481;&#65292;&#19968;&#39029;&#19968;&#20010;&#37325;&#28857;&#12290;"), base: "baoyu-xhs-images / baoyu-infographic" },
-  ];
-  return `<div class="visual-route-grid">${routes.map((item) => `<button type="button" class="visual-route-card ${item.id === state.visualStyle ? "active" : ""}" data-visual-style="${escapeHtml(item.id)}" ${locked ? "disabled" : ""}><b>${escapeHtml(item.name)}</b><span>${escapeHtml(item.use)}</span>${item.id === recommendedId ? `<em>✓ 推荐</em>` : (item.id === state.visualStyle ? `<em>当前使用</em>` : "")}</button>`).join("")}</div>`;
+  const styles = (typeof visualStyles !== "undefined" && Array.isArray(visualStyles)) ? visualStyles : [];
+  const plays = (typeof VISUAL_PLAYS !== "undefined") ? VISUAL_PLAYS : [];
+  const curStyle = state.visualStyle, curPlay = state.visualPlay || defaultPlayForStyle(curStyle);
+  const sName = (id) => (styles.find((s) => s.id === id) || {}).title || id;
+  const prevBg = (id) => `url('${apiPath("/media/persona/style-previews/" + id + ".png")}') center/cover, ${styleGradient(id)}`; // 真预览图 + 渐变兜底(图没好/404 自动回退渐变)
+  // 推荐 3 个方案(风格 × 打法)
+  const recs = [];
+  const add = (s, p, reason) => { if (s && styles.some((x) => x.id === s) && !recs.some((r) => r.s === s)) recs.push({ s, p, reason }); };
+  add(recommendedId, defaultPlayForStyle(recommendedId), "最配这篇文案的画风");
+  add("svarbova-poster", "magazine", "高级杂志封面感,涨粉力强");
+  add("infographic-engine", "carousel", "干货拆成多页,收藏率高");
+  add("poster-cinematic", "cover", "冲击力主视觉,适合首图");
+  const rec3 = recs.slice(0, 3);
+  const css = `<style>
+.plan-wall{font-size:14px;}
+.plan-wall .pw-sec{font-size:15px;font-weight:800;margin:16px 0 10px;border-left:5px solid #c8761f;padding-left:10px;}
+.plan-wall .pw-tip{color:#8a7d68;font-size:13px;margin:-4px 0 12px;}
+.plan-wall .rec{display:flex;gap:12px;flex-wrap:wrap;}
+.plan-wall .plan-card{flex:1;min-width:200px;text-align:left;background:#fff;border:2px solid #ece3d4;border-radius:14px;overflow:hidden;padding:0;cursor:pointer;content-visibility:auto;contain-intrinsic-size:auto 190px;}
+.plan-wall .plan-card.on{border-color:#c8761f;}
+.plan-wall .plan-card .pv{height:128px;position:relative;}
+.plan-wall .plan-card .pv .play{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.5);color:#fff;font-size:12px;padding:2px 8px;border-radius:12px;}
+.plan-wall .plan-card .pv .star{position:absolute;right:8px;top:8px;background:#c8761f;color:#fff;font-size:12px;font-weight:700;padding:2px 8px;border-radius:12px;}
+.plan-wall .plan-card .cb{padding:9px 11px;}
+.plan-wall .plan-card .cb b{font-size:15px;}
+.plan-wall .plan-card .cb .ply{color:#c8761f;font-weight:700;font-size:13px;}
+.plan-wall .plan-card .cb p{color:#8a7d68;font-size:12px;margin-top:3px;line-height:1.4;}
+.plan-wall .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+.plan-wall .g{background:#fff;border:1px solid #ece3d4;border-radius:10px;overflow:hidden;content-visibility:auto;contain-intrinsic-size:auto 140px;}
+.plan-wall .g.on{border-color:#c8761f;box-shadow:0 0 0 1px #c8761f;}
+.plan-wall .g .gp{width:100%;height:76px;border:0;font-size:30px;cursor:pointer;display:block;}
+.plan-wall .g b{display:block;font-size:13px;padding:6px 8px 2px;}
+.plan-wall .g .t{display:flex;gap:4px;padding:2px 8px 8px;flex-wrap:wrap;}
+.plan-wall .g .tag{font-size:11px;background:#f3ece0;color:#9a8a70;border:0;border-radius:9px;padding:2px 7px;cursor:pointer;}
+.plan-wall .g .tag.on{background:#c8761f;color:#fff;}
+</style>`;
+  const recHtml = rec3.map((r, i) => `<button type="button" class="plan-card ${r.s === curStyle ? "on" : ""}" data-visual-style="${escapeHtml(r.s)}" data-visual-play="${escapeHtml(r.p)}" ${locked ? "disabled" : ""}><div class="pv" style="background:${prevBg(r.s)}"><span class="play">${escapeHtml(styleEmoji(r.s) + " " + visualPlayName(r.p))}</span>${i === 0 ? `<span class="star">✓ 推荐</span>` : ""}</div><div class="cb"><b>${escapeHtml(sName(r.s))}</b> <span class="ply">× ${escapeHtml(visualPlayName(r.p))}</span><p>${escapeHtml(r.reason)}</p></div></button>`).join("");
+  const gridHtml = styles.map((item) => `<div class="g ${item.id === curStyle ? "on" : ""}"><button type="button" class="gp" style="background:${prevBg(item.id)}" data-visual-style="${escapeHtml(item.id)}" ${locked ? "disabled" : ""} aria-label="${escapeHtml(item.title)}"></button><b>${escapeHtml(item.title)}${item.id === recommendedId ? " ⭐" : ""}</b><div class="t">${plays.map((p) => `<button type="button" class="tag ${item.id === curStyle && p.id === curPlay ? "on" : ""}" data-visual-style="${escapeHtml(item.id)}" data-visual-play="${escapeHtml(p.id)}" ${locked ? "disabled" : ""}>${escapeHtml(p.name)}</button>`).join("")}</div></div>`).join("");
+  return `${css}<div class="plan-wall"><div class="pw-sec">⭐ 为你推荐</div><div class="pw-tip">按这篇文案推荐 3 个方案(风格 × 打法),挑一个直接出;也可下面自由挑。</div><div class="rec">${recHtml}</div><div class="pw-sec">全部风格 · 选画风 + 打法</div><div class="grid">${gridHtml}</div></div>`;
 }
 
 function bindWorkAreaActions() {
@@ -1789,10 +2219,35 @@ function bindWorkAreaActions() {
   });
   byId("workArea")?.querySelector("[data-collect-x]")?.addEventListener("click", () => collectXAccounts());
   byId("workArea")?.querySelector("[data-generate-cover]")?.addEventListener("click", () => generateCoverFromContent());
+  byId("workArea")?.querySelector("[data-cover-watermark]")?.addEventListener("change", (e) => { state.coverWatermark = e.target.checked ? "longka" : ""; renderToday(); });
+  byId("workArea")?.querySelector("[data-make-magazine]")?.addEventListener("click", () => generateMagazineCover());
+  byId("workArea")?.querySelectorAll("[data-cover-mode]")?.forEach((b) => b.addEventListener("click", () => { state.coverMode = b.getAttribute("data-cover-mode"); renderToday(); }));
+  byId("workArea")?.querySelector("[data-judge-inner]")?.addEventListener("click", () => judgeInnerCards());
+  byId("workArea")?.querySelectorAll("[data-video-format]")?.forEach((b) => b.addEventListener("click", () => {
+    state.videoFormat = b.getAttribute("data-video-format"); renderToday();
+  }));
+  byId("workArea")?.querySelector("[data-gen-comic]")?.addEventListener("click", () => generateXiaomeiComic());
+  byId("workArea")?.querySelector("[data-gen-seedance]")?.addEventListener("click", () => generateSeedanceStoryboard());
+  byId("workArea")?.querySelector("[data-gen-film]")?.addEventListener("click", () => generateSeedanceFilm());
+  byId("workArea")?.querySelector("[data-gen-final]")?.addEventListener("click", () => generateFinalFilm());
+  byId("workArea")?.querySelector("[data-copy-seedance]")?.addEventListener("click", () => {
+    const t = state.seedanceResult?.storyboardPrompt || "";
+    if (t && typeof copyTextToClipboard === "function") copyTextToClipboard(t).then(() => { state.seedanceMessage = "✓ 分镜已复制,去即梦粘贴生成。"; renderToday(); });
+  });
   byId("workArea")?.querySelectorAll("[data-pick-ref]").forEach((b) => {
     b.addEventListener("click", () => { state.selectedReferenceImage = b.dataset.pickRef || ""; renderToday(); });
   });
+  byId("workArea")?.querySelectorAll("[data-pick-cover]").forEach((b) => {
+    b.addEventListener("click", () => {
+      const i = Number(b.dataset.pickCover);
+      const o = (Array.isArray(state.coverOptions) ? state.coverOptions : [])[i];
+      if (o && o.url) { state.coverImage = o.url; state.coverHook = o.hook || ""; renderToday(); }
+    });
+  });
   byId("workArea")?.querySelector("[data-run-precheck]")?.addEventListener("click", () => generateContentPrecheck());
+  byId("workArea")?.querySelector("[data-run-compliance]")?.addEventListener("click", () => runComplianceScan());
+  byId("workArea")?.querySelector("[data-compliance-rewrite]")?.addEventListener("click", () => runComplianceRewrite());
+  byId("workArea")?.querySelector("[data-apply-compliance]")?.addEventListener("click", () => applyComplianceRewrite());
   byId("workArea")?.querySelector("[data-optimize-by-precheck]")?.addEventListener("click", () => optimizeByPrecheck());
   byId("workArea")?.querySelector("[data-undo-optimize]")?.addEventListener("click", () => {
     const before = state.optimizeDiff?.before || "";
@@ -1832,8 +2287,11 @@ function bindWorkAreaActions() {
     state.signalKeywords = input.value.trim();
     loadSignalPanel(state.signalKeywords);
   });
-  // 信号卡片"生成选题"按钮 — 用 xcrawl 抓取信号原文 URL，构建新鲜选题
-  $("#workArea")?.addEventListener("click", async (event) => {
+  // 信号卡片"生成选题"按钮 — 委托绑在常驻 #workArea 上,加守卫防每次渲染重复绑定(否则监听器累积→内存泄漏+点击重复触发)
+  const _waSignalDelegate = $("#workArea");
+  if (_waSignalDelegate && !_waSignalDelegate.dataset.signalDelegateBound) {
+    _waSignalDelegate.dataset.signalDelegateBound = "1";
+    _waSignalDelegate.addEventListener("click", async (event) => {
     const btn = event.target.closest("[data-use-signal]");
     if (!btn) return;
     const kw = btn.dataset.useSignal;               // 信号标题（具体话题）
@@ -1855,7 +2313,8 @@ function bindWorkAreaActions() {
     renderToday();
     // 走 xcrawl 抓取原文 → 构建选题
     await readMaterials();
-  });
+    });
+  }
   byId("workArea")?.querySelector("[data-demo-materials]")?.addEventListener("click", () => readDemoMaterials());
   $$("#workArea [data-topic-id]").forEach((button) => {
     button.addEventListener("click", () => selectTopicForCreation(button.dataset.topicId));
@@ -1952,7 +2411,12 @@ function bindWorkAreaActions() {
   byId("workArea")?.querySelector("[data-corpus-search]")?.addEventListener("click", () => doCorpusSearch());
   byId("workArea")?.querySelector("#corpusQ")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doCorpusSearch(); });
   byId("workArea")?.querySelectorAll("[data-visual-style]").forEach((button) => {
-    button.addEventListener("click", () => changeVisualStyle(button.dataset.visualStyle));
+    button.addEventListener("click", () => {
+      const sid = button.dataset.visualStyle, pid = button.dataset.visualPlay;
+      if (pid) { state.visualPlay = pid; state.visualPlayTouched = true; }
+      if (sid && sid !== state.visualStyle) changeVisualStyle(sid); // changeVisualStyle 内部已重渲
+      else renderToday(); // 同风格只换打法 / 纯打法切换 → 重渲反映选中
+    });
   });
   byId("workArea")?.querySelector("[data-generate-xiaohei-cards]")?.addEventListener("click", () => generateXiaoheiCards());
   byId("workArea")?.querySelector("[data-restore-latest-xiaohei]")?.addEventListener("click", () => restoreLatestXiaoheiCards());

@@ -33,11 +33,12 @@ function parseResultUrls(resultJson) {
 async function createTask(prompt, aspectRatio, referenceImageUrl) {
   // 有真实参考图 → 用图生图/编辑模型（按参考图出，更对版）；没有 → 纯文生图（原行为）
   const hasRef = referenceImageUrl && /^https?:\/\//i.test(referenceImageUrl);
+  // 图生图/编辑用 nano-banana-edit(Gemini 图像编辑,角色一致性强;seedream/4.5-edit 已挂 422/500)
   const model = hasRef
-    ? (process.env.KIE_IMAGE_EDIT_MODEL || 'seedream/4.5-edit')
+    ? (process.env.KIE_IMAGE_EDIT_MODEL || 'google/nano-banana-edit')
     : (process.env.KIE_IMAGE_MODEL || 'gpt-image-2-text-to-image');
   const input = hasRef
-    ? { prompt, aspect_ratio: aspectRatio, image_urls: [referenceImageUrl] }
+    ? { prompt, image_urls: [referenceImageUrl] } // nano-banana-edit 跟随参考图比例,不收 aspect_ratio
     : { prompt, aspect_ratio: aspectRatio };
   const response = await fetch(`${JOBS_BASE}/createTask`, {
     method: 'POST',
@@ -93,6 +94,19 @@ export async function kieStartXiaoheiJob(payload) {
   if (job.cards.every((c) => c.state === 'fail')) job.status = 'error';
   jobs.set(jobId, job);
   return job;
+}
+
+// 单张同步生成：建任务 → 轮询到出图 → 返回图 URL。用于杂志海报打法"自己出无字底图"。
+export async function kieGenerateOne(prompt, aspect = '2:3', referenceImageUrl = '') {
+  const taskId = await createTask(String(prompt || '').slice(0, 4000), aspect, referenceImageUrl);
+  for (let i = 0; i < 50; i++) {
+    await new Promise((r) => setTimeout(r, 5000));
+    let d;
+    try { d = await getTask(taskId); } catch { continue; } // 瞬时错误重试
+    if (d.state === 'success') { const urls = parseResultUrls(d.resultJson); if (urls[0]) return urls[0]; }
+    if (d.state === 'fail') throw new Error(d.failMsg || 'kie_task_fail');
+  }
+  throw new Error('kie_timeout');
 }
 
 // 查询：轮询尚未完成的卡的 Kie 任务，回填 url / state。

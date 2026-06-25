@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Longka AI Native 内容生产中台</title>
-  <link rel="stylesheet" href="./workbench-v2-clean.css?v=20260618-optimize-2" />
+  <link rel="stylesheet" href="./workbench-v2-clean.css?v=20260624-perf-1" />
 </head>
 <body>
   <header class="topbar">
@@ -51,6 +51,10 @@
       <button class="nav-item" data-route="structures">
         <b>结构库</b>
         <span>开头、展开、转化、结尾</span>
+      </button>
+      <button class="nav-item" data-route="dashboard">
+        <b>数据看板</b>
+        <span>预估vs实际、爆款、准度一目了然</span>
       </button>
       <button class="nav-item" data-route="records">
         <b>作品记录</b>
@@ -135,6 +139,12 @@
         <div id="structureBoard" class="asset-board"></div>
       </section>
 
+      <section class="route-panel simple-panel" data-panel="dashboard" hidden>
+        <h2>数据看板</h2>
+        <p>一页看全：本周产出、累计成绩、每篇的系统预估 vs 真实表现、哪条爆了、预估准不准。</p>
+        <div id="dashboardBoard" class="asset-board"></div>
+      </section>
+
       <section class="route-panel simple-panel" data-panel="records" hidden>
         <h2>作品记录</h2>
         <p>记录已确认文案、已导出卡片、视频任务和发布后反馈，后续回流到母题资产库。</p>
@@ -182,18 +192,19 @@
   </main>
 
   <!-- 模块化架构 v20260611 — 按依赖顺序加载 -->
-  <script src="./state-manager.js?v=20260619-vsearch-4"></script>
-  <script src="./config.js?v=20260618-vgroup-1"></script>
-  <script src="./utils.js?v=20260618-factguard-1"></script>
-  <script src="./copy-manager.js?v=20260618-optimize-2"></script>
-  <script src="./visual-engine.js?v=20260619-vbroll-1"></script>
-  <script src="./topic-engine.js?v=20260619-corpus-3"></script>
+  <script src="./state-manager.js?v=20260623-judge3"></script>
+  <script src="./config.js?v=20260622-planwall"></script>
+  <script src="./utils.js?v=20260622-serieslock"></script>
+  <script src="./copy-manager.js?v=20260622-compliance-1"></script>
+  <script src="./visual-engine.js?v=20260623-judge3"></script>
+  <script src="./topic-engine.js?v=20260625-more-topics-1"></script>
   <script src="./title-engine.js?v=20260612-titlefix-4"></script>
   <script src="./content-creation-base.js?v=20260608-motif-compound-1"></script>
   <script src="./rewrite-engine.js?v=20260619-anchor-1"></script>
-  <script src="./asset-manager.js?v=20260619-bench-3"></script>
+  <script src="./asset-manager.js?v=20260625-dl-select-1"></script>
   <script src="./collector-panel.js?v=20260611-modular-1"></script>
   <script src="./material-flow.js?v=20260611-modular-1"></script>
-  <script src="./workbench-main.js?v=20260619-uiclean-4"></script>
+  <script src="./video-format-router.js?v=20260621-comic-1"></script>
+  <script src="./workbench-main.js?v=20260625-cover-mode-1"></script>
 </body>
 </html>

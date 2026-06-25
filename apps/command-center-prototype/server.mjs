@@ -1,17 +1,19 @@
 import { createServer, get as httpGet } from 'node:http';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { readFile, writeFile, mkdir, readdir, stat, rm } from 'node:fs/promises';
 import { existsSync, createReadStream, readFileSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { collectorHealth, confirmContentAsset, deleteCollectionRun, importLocalPlatformBatch, initCollectorHub, loadHot30Samples, loadLatestXBatch, loadRecentCollectionBatches, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch, saveBenchmarkAnchor, listBenchmarks } from './collector-hub.mjs';
+import { collectorHealth, confirmContentAsset, deleteCollectionRun, importLocalPlatformBatch, initCollectorHub, loadHot30Samples, loadLatestXBatch, loadRecentCollectionBatches, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch, saveBenchmarkAnchor, listBenchmarks, listSamplesNeedingCommentMining, saveCommentInsight, listCommentInsights, getCommentRealMaterial, getBenchmarkRubric } from './collector-hub.mjs';
 import { runSkill, listSkills } from './skills-runner.mjs';
-import { kieEnabled, kieStartXiaoheiJob, kieXiaoheiJobStatus } from './kie-image.mjs';
+import { prefilterComments, buildCommentBlock } from './comment-prefilter.mjs';
+import { kieEnabled, kieStartXiaoheiJob, kieXiaoheiJobStatus, kieGenerateOne } from './kie-image.mjs';
 import { kieVideoEnabled, kieStartVideoJob, kieVideoJobStatus } from './kie-video.mjs';
+import { visionJudgeEnabled, judgeCover } from './vision-judge.mjs';
 import { minimaxEnabled, synthesizeSpeech } from './tts-minimax.mjs';
-import { composeOralVideo } from './video-compose.mjs';
+import { composeOralVideo, finalizeFilm } from './video-compose.mjs';
 import { pexelsEnabled, translateToBrollQueries, fetchPexelsClip } from './broll-pexels.mjs';
 
 // 自动加载同目录下的 .env 文件（不依赖 dotenv 包）
@@ -34,6 +36,11 @@ const mediaCrawlerPythonDir = join(mediaCrawlerRoot, 'MediaCrawlerPro-Python');
 const mediaCrawlerDbPath = process.env.MEDIACRAWLER_DB_PATH || join(mediaCrawlerPythonDir, 'media_crawler.db');
 const mediaCrawlerPythonExe = resolveMediaCrawlerPythonExe();
 const mediaCrawlerSitePackages = join(root, 'Runtime', 'site-packages');
+// 采集账号扫码登录(122服务端): 无头浏览器抓小红书二维码 → 界面扫码 → cookie 进 CookieBridge
+// spec: docs/specs/2026-06-19-comment-mining-spec.md L1; 脚本 tools/xhs_qr_login.py
+const xhsLoginPython = process.env.XHS_LOGIN_PYTHON || '/home/ubuntu/xhs-login-venv/bin/python';
+const collectLoginDir = join(root, 'data', 'collect-login');
+let collectLoginChild = null;
 // P0-3: Clippings 路径从环境变量读取，不再硬编码 F:\
 const verifiedClippingsDir = process.env.WIKI_CLIPPINGS_PATH || '';
 const defaultClippingsDir = process.env.WIKI_CLIPPINGS_PATH || '';
@@ -203,6 +210,40 @@ await ensureAssetDb();
 
 // 口播片异步合成任务（避免长合成超 nginx 60s）
 const oralComposeJobs = new Map(); // jobId -> { status, total, done, url, withVideo, totalSeconds, error }
+
+// 成品合成:已有视频(Kie/即梦出的) + 配音(MiniMax读旁白) + (可选BGM) → 成片落122。投资人demo证路线跑通。
+const seedanceFilmJobs = new Map(); // jobId -> { status, done, total, url, error }
+async function runSeedanceFinalize(jobId, payload) {
+  const job = seedanceFilmJobs.get(jobId);
+  const workdir = join(root, 'media', 'seedance-film', jobId);
+  await mkdir(workdir, { recursive: true });
+  // 1) 下载已有视频
+  const vr = await fetch(payload.videoUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  if (!vr.ok) throw new Error('video_download_failed_' + vr.status);
+  const vbuf = Buffer.from(await vr.arrayBuffer());
+  if (vbuf.length < 1000) throw new Error('video_empty');
+  await writeFile(join(workdir, 'in.mp4'), vbuf);
+  if (job) job.done = 1;
+  // 2) 配音(MiniMax 读旁白)
+  const voiceover = String(payload.voiceover || '').trim();
+  if (!voiceover) throw new Error('no_voiceover');
+  const tts = await synthesizeSpeech(voiceover, { voiceId: payload.voiceId, model: payload.model, speed: payload.speed });
+  await writeFile(join(workdir, 'voice.mp3'), tts.buffer);
+  if (job) job.done = 2;
+  // 3) 合成(原视频 + 配音 + 烧字幕 + 可选BGM)。BGM:media/bgm/ 里有就用第一首。
+  // 输出时长 = 视频与旁白更长者 + 余量;视频末帧定格补齐,保证旁白说完不被切。
+  const voiceSec = (Number(tts.durationMs) || 0) / 1000;
+  const videoSec = Number(payload.durationSec) || 15;
+  const dur = Math.max(2, videoSec, voiceSec + 0.6);
+  let bgmFile = '';
+  try {
+    const bgmDir = join(root, 'media', 'bgm');
+    const files = (await readdir(bgmDir)).filter((f) => /\.(mp3|m4a|wav)$/i.test(f));
+    if (files.length) bgmFile = join(bgmDir, files[0]);
+  } catch { /* 无 BGM 就纯配音 */ }
+  await finalizeFilm({ workdir, videoFile: 'in.mp4', audioFile: 'voice.mp3', bgmFile, srtText: voiceover, durationSec: dur });
+  if (job) { job.status = 'done'; job.url = `media/seedance-film/${jobId}/film.mp4`; job.hasBgm = !!bgmFile; }
+}
 // 空镜素材库:按赛道(workspace)挑真实 B-roll 空镜,口播片自动配真实画面。
 // clips 放 media/broll/<赛道>/(如 女性成长),无则回落 media/broll/通用/,再无→纯色底。
 async function pickBrollClips(workspace) {
@@ -313,6 +354,46 @@ async function runBenchmarkAnchor(jobId, payload) {
     samples: deconstructed.map((d) => ({ hookType: d.hookType, mvpLine: d.mvpLine, topicDirection: d.topicDirection, impression: d._impression })),
   });
   if (job) { job.status = 'done'; job.result = { ...agg, account: payload.account || '对标账号', sampleCount: deconstructed.length, id: saved.id }; }
+}
+
+// ─── 评论深挖:对有评论未深挖的样本 批量(脚本预筛 → comment-miner skill 提炼 → 存洞察) ───
+// spec: docs/specs/2026-06-19-comment-mining-spec.md
+const commentMineJobs = new Map();
+async function runCommentMining(jobId, payload) {
+  const job = commentMineJobs.get(jobId);
+  const workspace = String(payload.workspace || '').trim();
+  const targets = await listSamplesNeedingCommentMining({
+    workspace,
+    limit: Math.min(Number(payload.limit) || 50, 200),
+    minComments: Number(payload.minComments) || 5,
+  });
+  if (job) { job.total = targets.length; job.done = 0; }
+  if (!targets.length) { if (job) { job.status = 'done'; job.result = { mined: 0, message: '没有「有评论、待深挖」的样本(先跑 L1 采集评论)。' }; } return; }
+  const cfg = await readOperatorAiConfig();
+  let mined = 0;
+  let aggReal = { painPoints: 0, objections: 0, goldenQuotes: 0 };
+  for (let i = 0; i < targets.length; i += 1) {
+    const t = targets[i];
+    try {
+      const { selected, stats } = prefilterComments(t.comments, { minLen: 6, topN: 30 });
+      if (!selected.length) { if (job) job.done = i + 1; continue; }
+      const block = buildCommentBlock(selected);
+      const content = `【帖子标题】${t.title || '(无)'}\n【精选评论(共${stats.selectedCount}条,从${stats.rawCount}条筛出)】\n${block}`;
+      const r = await runSkill('comment-miner', content, {}, cfg);
+      if (r && r.ok && r.result) {
+        await saveCommentInsight({
+          sampleId: t.id, workspace: t.workspace || workspace, platform: t.platform,
+          commentCount: stats.selectedCount, ...r.result,
+        });
+        mined += 1;
+        aggReal.painPoints += (r.result.painPoints || []).length;
+        aggReal.objections += (r.result.objections || []).length;
+        aggReal.goldenQuotes += (r.result.goldenQuotes || []).length;
+      }
+    } catch { /* 单帖失败跳过,不中断批次 */ }
+    if (job) job.done = i + 1;
+  }
+  if (job) { job.status = 'done'; job.result = { mined, total: targets.length, real: aggReal }; }
 }
 
 createServer(async (req, res) => {
@@ -433,6 +514,7 @@ createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/content-assets/unified') {
       const result = await loadUnifiedContentAssets({
         platform: url.searchParams.get('platform') || '',
+        workspace: url.searchParams.get('workspace') || url.searchParams.get('businessLine') || '',
         keywords: url.searchParams.get('keywords') || '',
         runIds: url.searchParams.get('runIds') || '',
         latestRunCount: url.searchParams.get('latestRunCount') || url.searchParams.get('latest_run_count') || 0,
@@ -451,6 +533,9 @@ createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/final-works') {
       const payload = await readJson(req);
       const work = normalizeFinalWork(payload.work || payload);
+      // 关键:把 Kie 临时图持久化到 122,记录存永久地址(否则链接过期、不可追溯、不能同源下载)
+      work.images = await persistWorkImages(work.id, work.images);
+      if (Array.isArray(work.coverAlts) && work.coverAlts.length) work.coverAlts = await persistWorkImages(`${work.id}-alt`, work.coverAlts);
       await mutateDb((db) => {
         const existing = Array.isArray(db.finalWorks) ? db.finalWorks : [];
         db.finalWorks = [work, ...existing.filter((item) => item.id !== work.id)].slice(0, 300);
@@ -600,6 +685,38 @@ createServer(async (req, res) => {
       if (!result) result = overseasFirst ? await fetchDirect() : await fetchVia43();
       if (result) return sendJson(res, result);
       return sendJson(res, { ok: false, error: '正文抓取失败：国内直抓与海外中转都没拿到（可能需登录或源站拒绝）' }, 502);
+    }
+
+    // 杂志海报打法:AI 封面图 + HTML 叠杂志大标题(cover-overlay 模板)→ 图文一体成品。纯本地 render,零云费。
+    if (req.method === 'POST' && url.pathname === '/api/visual/magazine-cover') {
+      const payload = await readJson(req);
+      let coverUrl = String(payload.coverUrl || '').trim();
+      const title = String(payload.title || '').trim();
+      const prompt = String(payload.prompt || '').trim();
+      if (!title) return sendJson(res, { ok: false, error: 'missing', message: '需要标题' }, 400);
+      try {
+        // 没给底图但给了提示词 → 自己出一张无字底图(避免复用带字封面导致双标题)
+        if (!/^https?:\/\//.test(coverUrl)) {
+          if (!prompt) return sendJson(res, { ok: false, error: 'missing', message: '需要封面图或出图提示词' }, 400);
+          if (!kieEnabled()) return sendJson(res, { ok: false, error: 'kie_off', message: '未配置 Kie 出图' }, 500);
+          coverUrl = await kieGenerateOne(prompt, String(payload.aspect || '3:4'), String(payload.referenceImageUrl || ''));
+        }
+        const ts = Date.now();
+        const outRel = `media/persona/magazine-${ts}.png`;
+        const data = JSON.stringify({ image: coverUrl, title, subtitle: String(payload.subtitle || '') });
+        await execFileAsync(process.execPath, [join(root, 'frame-render', 'render.mjs'), join(root, 'frame-render', 'templates', 'magazine-cover.html'), data, join(root, outRel), '1080', '1440'], { cwd: root, windowsHide: true, maxBuffer: 1024 * 1024 * 12 });
+        return sendJson(res, { ok: true, url: outRel, baseUrl: coverUrl });
+      } catch (e) {
+        return sendJson(res, { ok: false, error: 'render_failed', message: e.message, stderr: String(e.stderr || '').slice(-1500) }, 500);
+      }
+    }
+
+    // 封面视觉质检:GLM-5V 看图打分(锚点/缩略图/对题…),前端出图后逐张判,不过给改进建议。判图免费,不重出(重出花钱由用户点)。
+    if (req.method === 'POST' && url.pathname === '/api/visual/judge-cover') {
+      const payload = await readJson(req);
+      if (!visionJudgeEnabled()) return sendJson(res, { ok: false, error: 'zhipu_off', message: '未配置视觉质检' }, 200);
+      const result = await judgeCover({ imageUrl: String(payload.imageUrl || ''), hook: String(payload.hook || ''), topic: String(payload.topic || ''), mode: String(payload.mode || 'cover') });
+      return sendJson(res, result, 200);
     }
 
     if (req.method === 'GET' && url.pathname === '/api/customer-profile') {
@@ -1453,6 +1570,70 @@ createServer(async (req, res) => {
       return sendJson(res, { ok: true, status: job.status, done: job.done, total: job.total, url: job.url, withVideo: job.withVideo, totalSeconds: job.totalSeconds, error: job.error }, 200);
     }
 
+    // 成品合成:已有视频 + 配音(+BGM)→ 成片。异步。
+    if (req.method === 'POST' && url.pathname === '/api/seedance-film/finalize/start') {
+      if (!minimaxEnabled()) return sendJson(res, { ok: false, error: 'tts_disabled', message: '配音未启用(MINIMAX_API_KEY 未配置)。' }, 503);
+      const payload = await readJson(req);
+      if (!payload.videoUrl) return sendJson(res, { ok: false, error: 'missing_video', message: '缺少视频地址。' }, 400);
+      if (!String(payload.voiceover || '').trim()) return sendJson(res, { ok: false, error: 'missing_voiceover', message: '缺少配音稿。' }, 400);
+      const jobId = String(payload.jobId || `film-${Date.now().toString(36)}-${randomUUID().slice(0, 6)}`).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+      seedanceFilmJobs.set(jobId, { status: 'running', done: 0, total: 2, url: '', error: '' });
+      runSeedanceFinalize(jobId, payload).catch((error) => {
+        const j = seedanceFilmJobs.get(jobId);
+        if (j) { j.status = 'error'; j.error = String(error.message || error); }
+      });
+      return sendJson(res, { ok: true, jobId, status: 'running' }, 202);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/seedance-film/finalize/status') {
+      const jobId = url.searchParams.get('jobId') || '';
+      const job = seedanceFilmJobs.get(jobId);
+      if (!job) return sendJson(res, { ok: true, status: 'idle', done: 0, total: 2, url: '' }, 200);
+      return sendJson(res, { ok: true, status: job.status, done: job.done, total: job.total, url: job.url, error: job.error }, 200);
+    }
+
+    // 小妹漫画:文案 → xiaomei-scenes 分镜 → 每格 Kie 出图(小妹一致)→ PIL 叠中文 + 拼格。spawn python,状态走 status.json。
+    if (req.method === 'POST' && url.pathname === '/api/xiaomei-comic/start') {
+      const payload = await readJson(req);
+      const content = String(payload.content || '').trim();
+      if (!content) return sendJson(res, { ok: false, error: 'missing_content', message: '缺少文案。' }, 400);
+      const jobId = String(payload.jobId || `comic-${Date.now().toString(36)}-${randomUUID().slice(0, 6)}`).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+      const dir = join(root, 'media', 'comic', jobId);
+      await mkdir(dir, { recursive: true });
+      await writeFile(join(dir, 'content.txt'), content);
+      await writeFile(join(dir, 'status.json'), JSON.stringify({ status: 'running', done: 0, total: 4, url: '', error: '' }));
+      const py = spawn('python3', [join(root, 'tools', 'comic_gen.py'), jobId], { cwd: root, detached: true, stdio: 'ignore' });
+      py.unref();
+      return sendJson(res, { ok: true, jobId, status: 'running' }, 202);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/xiaomei-comic/status') {
+      const jobId = (url.searchParams.get('jobId') || '').replace(/[^a-zA-Z0-9_-]/g, '');
+      try {
+        const raw = await readFile(join(root, 'media', 'comic', jobId, 'status.json'), 'utf-8');
+        const st = JSON.parse(raw);
+        return sendJson(res, { ok: true, ...st }, 200);
+      } catch {
+        return sendJson(res, { ok: true, status: 'idle', done: 0, total: 4, url: '' }, 200);
+      }
+    }
+
+    // 合规门第1层:脚本硬扫(导流违规风险)。前端发布前一键检查,红黄绿一目了然。
+    if (req.method === 'POST' && url.pathname === '/api/compliance/scan') {
+      const payload = await readJson(req);
+      const text = `${String(payload.title || '')}\n${String(payload.body || '')}`;
+      const dir = join(root, 'media', 'tmp');
+      await mkdir(dir, { recursive: true });
+      const tmp = join(dir, `cscan-${Date.now().toString(36)}-${randomUUID().slice(0, 6)}.txt`);
+      await writeFile(tmp, text);
+      try {
+        const { stdout } = await execFileAsync('python3', [join(root, 'tools', 'compliance_scan.py'), tmp], { timeout: 15000, maxBuffer: 1 << 20 });
+        await rm(tmp).catch(() => {});
+        return sendJson(res, { ok: true, ...JSON.parse(stdout) }, 200);
+      } catch (error) {
+        await rm(tmp).catch(() => {});
+        return sendJson(res, { ok: false, error: String(error.message || error).slice(0, 200), risk: 'unknown', hits: [], advice: '合规扫描失败,请重试。' }, 200);
+      }
+    }
+
     if (req.method === 'POST' && url.pathname === '/api/xhs-cards/generate-xiaohei/start') {
       const payload = await readJson(req);
       const maxCards = Math.min(Math.max(Number(payload.maxCards) || 5, 1), 12); // 图文卡默认 5；视频关键帧传 maxCards 放开（上限 12 防跑飞）
@@ -1717,6 +1898,213 @@ createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/benchmark/list') {
       const rows = await listBenchmarks(url.searchParams.get('workspace') || '');
       return sendJson(res, { ok: true, items: rows });
+    }
+
+    // 评论深挖:批量把「有评论未深挖」的样本提炼成真实料
+    if (req.method === 'POST' && url.pathname === '/api/comments/mine/start') {
+      const payload = await readJson(req);
+      const pending = await listSamplesNeedingCommentMining({
+        workspace: payload.workspace || '',
+        limit: Math.min(Number(payload.limit) || 50, 200),
+        minComments: Number(payload.minComments) || 5,
+      });
+      if (!pending.length) return sendJson(res, { ok: false, error: 'no_pending', message: '没有「有评论、待深挖」的样本。先用 L1 给帖子采评论(详情模式,保号)。' }, 200);
+      const jobId = `cm-${Date.now().toString(36)}-${randomUUID().slice(0, 6)}`;
+      commentMineJobs.set(jobId, { status: 'running', total: pending.length, done: 0, result: null, error: '' });
+      runCommentMining(jobId, payload).catch((e) => { const j = commentMineJobs.get(jobId); if (j) { j.status = 'error'; j.error = String(e.message || e); } });
+      return sendJson(res, { ok: true, jobId, status: 'running', total: pending.length }, 202);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/comments/mine/status') {
+      const job = commentMineJobs.get(url.searchParams.get('jobId') || '');
+      if (!job) return sendJson(res, { ok: false, error: 'job_not_found' }, 404);
+      return sendJson(res, { ok: true, ...job });
+    }
+    // 已深挖洞察列表(UI"真实声音"块)
+    if (req.method === 'GET' && url.pathname === '/api/comments/insights') {
+      const rows = await listCommentInsights({ workspace: url.searchParams.get('workspace') || '', limit: Number(url.searchParams.get('limit')) || 100 });
+      return sendJson(res, { ok: true, items: rows });
+    }
+    // 聚合真实料(供创作 RAG 注入 / 选题缺口)
+    if (req.method === 'GET' && url.pathname === '/api/comments/real-material') {
+      const material = await getCommentRealMaterial({ workspace: url.searchParams.get('workspace') || '' });
+      return sendJson(res, { ok: true, ...material });
+    }
+
+    // 获客型短视频脚本:拉该领域真实料 → acquisition-video-script 三步框架产脚本
+    if (req.method === 'POST' && url.pathname === '/api/acquisition-video/generate') {
+      const body = await readJson(req);
+      const workspace = String(body.workspace || '').trim();
+      const cfg = await readOperatorAiConfig();
+      if (!cfg.apiKey) return sendJson(res, { ok: false, error: 'missing_ai_key', message: '缺少 AI API Key' });
+      const rv = await getCommentRealMaterial({ workspace }).catch(() => null);
+      const content = JSON.stringify({
+        行业关键词: String(body.keyword || body.businessLine || workspace || ''),
+        选题或源头: String(body.topic || '') || '(可从下面 真实料.选题缺口 里自选一个高需求方向)',
+        客户卖点: body.sellingPoints || '(未提供:从真实料和关键词推断通用卖点,但绝不编造具体战绩/客户/数字)',
+        真实料: rv ? {
+          痛点: (rv.painPoints || []).slice(0, 14).map((p) => (p && p.quote) ? p.quote : p),
+          异议: (rv.objections || []).slice(0, 8),
+          真人金句: (rv.goldenQuotes || []).slice(0, 14),
+          选题缺口: (rv.topicGaps || []).slice(0, 10),
+        } : '(该领域暂无真实料,请基于关键词写通用获客脚本,别编具体案例)',
+      }, null, 2);
+      const r = await runSkill('acquisition-video-script', content, {}, cfg);
+      if (!r || !r.ok) return sendJson(res, { ok: false, error: 'acq_failed', message: (r && r.message) || '获客脚本生成失败' });
+      // runSkill 把解析后的 JSON 放在 r.result,要解包到顶层(否则前端拿不到 hook/body)
+      return sendJson(res, { ok: true, ...(r.result || {}), hadRealVoices: Boolean(rv && (rv.painPoints || []).length) });
+    }
+
+    // 封面钩子:接 cover-from-content 专业 skill,从正文+真实痛点提炼"戳痛点"封面大字(替代写死模板)
+    if (req.method === 'POST' && url.pathname === '/api/cover/hook') {
+      const body = await readJson(req);
+      const cfg = await readOperatorAiConfig();
+      if (!cfg.apiKey) return sendJson(res, { ok: false, error: 'missing_ai_key', message: '缺少 AI API Key' });
+      const rv = await getCommentRealMaterial({ workspace: String(body.workspace || '').trim() }).catch(() => null);
+      const pains = rv ? (rv.painPoints || []).slice(0, 8).map((p) => (p && p.quote) ? p.quote : p) : [];
+      const content = [
+        `标题：${String(body.title || '')}`,
+        `正文：${String(body.copy || body.body || '').slice(0, 1500)}`,
+        pains.length ? `【这条线的真实痛点(评论原话,仅供参考措辞,只用跟本篇主题相关的)】${pains.join('；')}` : '',
+        '要求:封面大字钩子必须【紧扣本篇标题和正文的主题】,直接戳这篇主题里最痛的点(不是讲方法步骤);真实料里只用与本篇主题相关的痛点,跟本篇主题无关的痛点绝不能用(例:本篇讲"摆烂自救",就绝不能用"学车/驾照"这种不相关痛点);让目标人群1秒"这说的就是我";诚实不焦虑、数字照正文不臆造。coverHookOptions 第一个给最贴本篇、最戳痛的那条。',
+      ].filter(Boolean).join('\n\n');
+      const result = await runSkill('cover-from-content', content, {}, cfg);
+      return sendJson(res, { ...result, hadRealVoices: pains.length > 0 });
+    }
+
+    // === cheat 数据闭环:盲预测(写死) → T+3复盘(录真实) → 看板(对比+找赢家) ===
+    // P1 盲预测:只看草稿+rubric打分,写死存档(write-once),将来跟真实数据对比,绝不事后改
+    if (req.method === 'POST' && url.pathname === '/api/cheat/blind-predict') {
+      const body = await readJson(req);
+      const workId = String(body.workId || '').trim();
+      const workspace = String(body.workspace || '').trim();
+      if (!workId) return sendJson(res, { ok: false, error: 'missing_work_id' }, 400);
+      const db = await readDb();
+      const work = (db.finalWorks || []).find((w) => w.id === workId);
+      if (!work) return sendJson(res, { ok: false, error: 'work_not_found' }, 404);
+      if (work.prediction && work.prediction.frozen) {
+        return sendJson(res, { ok: true, alreadyPredicted: true, prediction: work.prediction });
+      }
+      const cfg = await readOperatorAiConfig();
+      if (!cfg.apiKey) return sendJson(res, { ok: false, error: 'missing_ai_key', message: '缺少 AI API Key' });
+      let rubricHint = '';
+      try {
+        const rb = await getBenchmarkRubric(workspace);
+        if (rb && Array.isArray(rb.signals)) {
+          const strong = rb.signals.filter((s) => s.verdict === '重要').map((s) => s.dim);
+          if (strong.length) rubricHint = `\n\n【这个号的评分侧重(对标起锚得出)】重点看:${strong.join('、')}`;
+        }
+      } catch { /* 无rubric用通用 */ }
+      const content = `标题：${work.title || ''}\n\n正文：${work.body || ''}${rubricHint}`;
+      const r = await runSkill('precheck-xhs', content, {}, cfg);
+      if (!r || !r.ok) return sendJson(res, { ok: false, error: 'precheck_failed', message: (r && r.message) || '盲打分失败' });
+      const pr = r.result || {};
+      const prediction = {
+        composite: Number(pr.composite) || 0,
+        dimensions: pr.dimensions || {},
+        weakest: pr.weakest || [],
+        verdict: pr.verdict || '',
+        rubricSource: workspace || 'global',
+        predictedAt: new Date().toISOString(),
+        frozen: true,
+      };
+      await mutateDb((d) => {
+        const w = (d.finalWorks || []).find((x) => x.id === workId);
+        if (w && !(w.prediction && w.prediction.frozen)) w.prediction = prediction;
+        d.updatedAt = new Date().toISOString();
+      });
+      return sendJson(res, { ok: true, prediction });
+    }
+    // P2 T+3复盘:录入真实数据,跟盲预测对比(预测冻结不动,只补真实+校准)
+    if (req.method === 'POST' && url.pathname === '/api/cheat/retro') {
+      const body = await readJson(req);
+      const workId = String(body.workId || '').trim();
+      const m = (body.metrics && typeof body.metrics === 'object') ? body.metrics : {};
+      if (!workId) return sendJson(res, { ok: false, error: 'missing_work_id' }, 400);
+      const num = (v) => Number(v) || 0;
+      const metrics = { views: num(m.views), likes: num(m.likes), collects: num(m.collects), comments: num(m.comments), inquiries: num(m.inquiries) };
+      const realEngagement = Math.round(metrics.likes + metrics.comments * 2.5 + metrics.collects * 1.5);
+      let out = null;
+      await mutateDb((d) => {
+        const w = (d.finalWorks || []).find((x) => x.id === workId);
+        if (!w) return;
+        w.publishMetrics = { ...metrics, realEngagement, recordedAt: new Date().toISOString() };
+        w.calibration = {
+          predictedComposite: w.prediction ? (w.prediction.composite || 0) : null,
+          realEngagement,
+          inquiries: metrics.inquiries,
+          isWinner: metrics.inquiries > 0 || realEngagement >= 300,
+          recordedAt: new Date().toISOString(),
+        };
+        d.updatedAt = new Date().toISOString();
+        out = { metrics: w.publishMetrics, calibration: w.calibration };
+      });
+      if (!out) return sendJson(res, { ok: false, error: 'work_not_found' }, 404);
+      return sendJson(res, { ok: true, ...out });
+    }
+    // 看板:盲预测 vs 真实表现 + 找赢家 + rubric准不准(>=5条有数据才给信号)
+    if (req.method === 'GET' && url.pathname === '/api/cheat/board') {
+      const db = await readDb();
+      const works = (db.finalWorks || []).filter((w) => w.prediction && w.prediction.frozen);
+      const rows = works.map((w) => ({
+        id: w.id, title: w.title, platform: w.platform,
+        predictedComposite: w.prediction.composite || 0,
+        predictedVerdict: w.prediction.verdict || '',
+        realEngagement: w.calibration ? (w.calibration.realEngagement ?? null) : null,
+        inquiries: w.calibration ? (w.calibration.inquiries ?? null) : null,
+        isWinner: Boolean(w.calibration && w.calibration.isWinner),
+        hasMetrics: Boolean(w.publishMetrics && w.publishMetrics.recordedAt),
+      }));
+      const withMetrics = rows.filter((r) => r.hasMetrics);
+      let rubricSignal = '数据还太少,多复盘几条(≥5)才能看出 rubric 准不准';
+      if (withMetrics.length >= 5) {
+        const byPred = [...withMetrics].sort((a, b) => b.predictedComposite - a.predictedComposite);
+        const topHalf = byPred.slice(0, Math.ceil(byPred.length / 2));
+        const won = topHalf.filter((r) => r.isWinner).length;
+        rubricSignal = `预测分前一半的 ${topHalf.length} 条里,${won} 条真跑赢 —— ${won >= topHalf.length * 0.6 ? 'rubric 方向基本准' : 'rubric 要调,预测和现实对不上'}`;
+      }
+      return sendJson(res, { ok: true, total: rows.length, withMetrics: withMetrics.length, winners: rows.filter((r) => r.isWinner).length, rubricSignal, rows });
+    }
+
+    // 采集账号扫码登录(122服务端无头浏览器抓码 → 界面显示 → 扫码 → cookie 进 CookieBridge)
+    if (req.method === 'POST' && url.pathname === '/api/collect/login/start') {
+      const platform = url.searchParams.get('platform') || 'xhs';
+      if (collectLoginChild && collectLoginChild.exitCode === null && collectLoginChild.signalCode === null) {
+        return sendJson(res, { ok: true, already: true, message: '登录会话已在运行。' });
+      }
+      if (!existsSync(xhsLoginPython)) {
+        return sendJson(res, { ok: false, error: 'login_env_missing', message: '扫码登录环境未就绪(此功能仅 122 可用)。' });
+      }
+      await mkdir(join(collectLoginDir, 'cmds'), { recursive: true });
+      await rm(join(collectLoginDir, 'frame.png'), { force: true }).catch(() => {});
+      await writeFile(join(collectLoginDir, 'status.json'), JSON.stringify({ status: 'starting', ts: Math.floor(Date.now() / 1000) }), 'utf8');
+      collectLoginChild = spawn(xhsLoginPython, [join(root, 'tools', 'xhs_login_session.py'), '--platform', platform, '--outdir', collectLoginDir, '--timeout', '300'], { cwd: root, detached: true, stdio: 'ignore' });
+      collectLoginChild.unref();
+      return sendJson(res, { ok: true, started: true, message: '正在打开登录画面…' }, 202);
+    }
+    // 实时画面帧(整个登录模态;用户在上面点/输入,所见即所得)
+    if (req.method === 'GET' && url.pathname === '/api/collect/login/frame') {
+      const framePath = join(collectLoginDir, 'frame.png');
+      if (!existsSync(framePath)) return sendJson(res, { ok: false, error: 'no_frame' }, 404);
+      res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'no-store' });
+      return createReadStream(framePath).pipe(res);
+    }
+    // 转发用户操作(点击/输入/按键/刷新)到 122 浏览器
+    if (req.method === 'POST' && url.pathname === '/api/collect/login/cmd') {
+      const body = await readJson(req);
+      const action = String(body.action || '');
+      if (!['click', 'type', 'key', 'reload'].includes(action)) return sendJson(res, { ok: false, error: 'bad_action' }, 400);
+      await mkdir(join(collectLoginDir, 'cmds'), { recursive: true });
+      const name = `${Date.now()}-${randomUUID().slice(0, 6)}.json`;
+      await writeFile(join(collectLoginDir, 'cmds', name), JSON.stringify({
+        action, x: Number(body.x) || 0, y: Number(body.y) || 0, value: String(body.value ?? ''),
+      }), 'utf8');
+      return sendJson(res, { ok: true });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/collect/login/status') {
+      const stPath = join(collectLoginDir, 'status.json');
+      let status = { status: 'idle' };
+      if (existsSync(stPath)) { try { status = JSON.parse(readFileSync(stPath, 'utf8')); } catch { /* ignore */ } }
+      return sendJson(res, { ok: true, ...status });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/xiaomei/video-job') {
@@ -4158,6 +4546,9 @@ function normalizeFinalWork(input = {}) {
   const images = Array.isArray(input.images)
     ? input.images.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 20)
     : [];
+  const coverAlts = Array.isArray(input.coverAlts)
+    ? input.coverAlts.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 5)
+    : [];
   const body = String(input.body || '').trim();
   if (!body) {
     const error = new Error('final_work_missing_body');
@@ -4173,8 +4564,11 @@ function normalizeFinalWork(input = {}) {
     topic: String(input.topic || '').trim(),
     sourceUrl: String(input.sourceUrl || '').trim(),
     sourcePlatform: String(input.sourcePlatform || '').trim(),
+    workspace: String(input.workspace || '').trim(), // 业务线,获客脚本/真实料按它取
     body,
     images,
+    coverAlts, // 备选封面(没选中的,留作A/B/换封面)
+
     visualStyleId: String(input.visualStyleId || '').trim(),
     visualStyle: String(input.visualStyle || '').trim(),
     jobId: String(input.jobId || '').trim(),
@@ -4189,6 +4583,34 @@ function normalizeFinalWork(input = {}) {
     sampleLabel: String(input.sampleLabel || '').trim(),
     sampleLabeledAt: input.sampleLabeledAt || null,
   };
+}
+
+// 把出图结果(Kie临时图 tempfile.aiquickdraw.com 等)下载持久化到 122,记录里换成 122 永久地址。
+// 否则作品记录存的是会过期的临时链接,封面/图都不可追溯,也没法同源下载。
+async function persistWorkImages(workId, images) {
+  if (!Array.isArray(images) || !images.length) return Array.isArray(images) ? images : [];
+  const safeId = String(workId || `work-${Date.now()}`).replace(/[^\w.-]+/g, '-').slice(0, 80);
+  const dir = join(root, 'media', 'xhs-works', safeId);
+  const out = [];
+  for (let i = 0; i < images.length; i += 1) {
+    const u = String(images[i] || '');
+    // 已是本地/122 的不重复下载;非 http 的跳过
+    if (!/^https?:\/\//i.test(u) || u.includes('/media/') || u.includes('122.51.218.154')) { out.push(u); continue; }
+    try {
+      const resp = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0', Referer: 'https://www.xiaohongshu.com/' } });
+      if (!resp.ok) { out.push(u); continue; }
+      const buf = Buffer.from(await resp.arrayBuffer());
+      if (!buf.length) { out.push(u); continue; }
+      await mkdir(dir, { recursive: true });
+      const ext = (u.match(/\.(png|jpe?g|webp)(?:\?|$)/i)?.[1] || 'png').toLowerCase();
+      const name = `p${i + 1}.${ext}`;
+      await writeFile(join(dir, name), buf);
+      out.push(`media/xhs-works/${safeId}/${name}`);
+    } catch {
+      out.push(u); // 下载失败保留原链接,不丢图
+    }
+  }
+  return out;
 }
 
 function normalizeWorkbench(workbench = {}) {
@@ -4778,6 +5200,38 @@ function defaultConversionPath(angle = '') {
   return '引导低成本评估，再决定下一步。';
 }
 
+// 铁律2 守门:把「整条业务线」的真实痛点按当前选题做相关性过滤,只留贴合选题的,
+// 防止高频但无关的痛点(如女性成长线的"不敢开车")把别的选题(如"衣品")的标题带跑。
+// 判据=中文 2-gram 重叠(剔除超高频虚词)或命中关键词;脚本判断,零模型成本(符合"脚本>大模型")。
+const PAIN_FILTER_STOP_BIGRAMS = new Set([
+  '自己', '怎么', '什么', '没有', '就是', '这个', '那个', '可以', '因为', '所以',
+  '但是', '如果', '一个', '一直', '已经', '还是', '真的', '觉得', '时候', '不是',
+  '这样', '那样', '一样', '现在', '想要', '需要', '很多', '一些', '不会', '不能',
+]);
+function topicBigramSet(text = '') {
+  const cleaned = String(text || '').replace(/[^一-龥]+/g, ' ').trim();
+  const set = new Set();
+  for (const seg of cleaned.split(/\s+/)) {
+    for (let i = 0; i + 2 <= seg.length; i++) {
+      const gram = seg.slice(i, i + 2);
+      if (!PAIN_FILTER_STOP_BIGRAMS.has(gram)) set.add(gram);
+    }
+  }
+  return set;
+}
+function filterPainsRelevantToTopic(pains = [], topicText = '', keywords = '') {
+  const topicGrams = topicBigramSet(topicText);
+  const kws = String(keywords || '').split(/[\s,，、]+/).map((k) => k.trim()).filter((k) => k.length >= 2);
+  if (topicGrams.size === 0 && kws.length === 0) return []; // 选题文本太弱,宁可不灌也不乱灌
+  return pains.filter((pain) => {
+    const p = String(pain || '');
+    if (kws.some((k) => p.includes(k))) return true;
+    const painGrams = topicBigramSet(p);
+    for (const g of painGrams) if (topicGrams.has(g)) return true;
+    return false;
+  });
+}
+
 async function generateTitleChoices(payload = {}) {
   const cfg = await readOperatorAiConfig();
   if (!cfg.apiKey) return { ok: false, error: 'missing_ai_key', choices: [] };
@@ -4788,12 +5242,47 @@ async function generateTitleChoices(payload = {}) {
   const signal = payload.signal || {};
   const titleAssets = Array.isArray(payload.titleAssets) ? payload.titleAssets.slice(0, 10) : [];
 
+  // 优先用 dbs-xhs-title 爆款公式库 skill(75公式+5铁律),结合真实痛点;失败再回退下面通用生成
+  const ws = String(payload.workspace || payload.industry || payload.businessLine || '').trim();
+  const skillPain = topic.pain || topic.theme || topic.title || '';
+  // 铁律2(不跑题):评论真实料是「整条业务线」的高频痛点,跟当前选题不一定相关。
+  // 直接灌进标题会被高频但无关的痛点带跑(如衣品选题被"不敢开车"带偏)。
+  // 必须先按当前选题做相关性过滤,只留跟选题真正相关的痛点;无相关的就不灌。
+  const topicTextForPainFilter = [topic.title, topic.theme, topic.content, topic.body, skillPain, keywords]
+    .filter(Boolean).join(' ');
+  let realPains = [];
+  try {
+    const rv = await getCommentRealMaterial({ workspace: ws });
+    const allPains = (rv?.painPoints || []).map((p) => (p && p.quote) ? p.quote : p).filter(Boolean);
+    realPains = filterPainsRelevantToTopic(allPains, topicTextForPainFilter, keywords).slice(0, 8);
+  } catch { /* 无真实料就纯公式 */ }
+  const topicForSkill = [
+    `源头选题：${topic.title || topic.theme || skillPain}`,
+    (skillPain && skillPain !== (topic.title || '')) ? `核心角度：${skillPain}` : '',
+    realPains.length ? `与本选题相关的真实痛点(评论原话,仅当确实贴合源头选题时才参考)：${realPains.join('；')}` : '',
+    '硬规则【绝不跑题】：标题必须只围绕「源头选题」这一个主题/场景展开;绝不准漂移到任何源头里没有的主题、场景、人群或工具(哪怕它是本业务线里的高频话题)。例:源头讲"衣品/穿搭"就只能写穿搭,绝不准变成"不敢开车""内耗"等别的话题。上面的真实痛点只是可选参考,只要跟源头选题对不上就一律忽略,绝不为了套用痛点而偏题。',
+  ].filter(Boolean).join('\n');
+  try {
+    const sk = await runSkill('dbs-xhs-title', '', {
+      topic: topicForSkill,
+      industry: ws || keywords,
+      keywords,
+      targetLength: publishTarget === 'wechat' ? '≤30字' : '≤20字(含标点)',
+    }, cfg);
+    const skChoices = (sk && sk.ok && Array.isArray(sk.result?.choices)) ? sk.result.choices : [];
+    const mapped = skChoices
+      .map((c) => ({ title: String(c.title || '').trim(), reason: [c.formulaName, c.reason].filter(Boolean).join(' · ') }))
+      .filter((c) => c.title);
+    if (mapped.length >= 3) return { ok: true, choices: mapped.slice(0, 6), engine: 'dbs-xhs-title' };
+  } catch { /* skill 失败,走下面通用生成 */ }
+
   const system = [
     '你是小红书爆款标题专家，熟悉 DBS 内容体系。',
     '根据提供的源头选题生成 5 个候选标题。',
     '硬规则：标题必须紧扣 sourceAngle（源头核心角度），不得偏移到相关但不同的子话题。',
     '  例：源头是"月薪多少才能送孩子上私校"，标题必须围绕钱/收入/支出展开，不能写成教育理念或升学方法。',
     '  例：源头是"某行业如何起号"，标题必须围绕起号/内容展开，不能写成人生感悟。',
+    '硬规则【绝不擅自加主题/工具】：标题里绝不能出现源头选题里没有的主题、工具或产品名（尤其"AI"、某品牌、某方法论）。源头讲"做3件事自救"就只写自救，绝不准变成"用AI自救""AI这3招"。historicalTitles 只用来参考句式和节奏，绝对不许照搬它们的主题词（历史库可能混入了别的业务线，照抄主题就是跑题）。',
     '如果 sourceComments 提供了评论，标题要回应评论里最高频的焦虑或问题。',
     '标题要求：有具体信息点（数字/场景/反差）、情绪密度高、不超过 20 字（小红书）或 30 字（公众号）。',
     '禁止：泛化励志话、空洞口号、重复同一句式、偏离 sourceAngle 的标题。',
@@ -4878,6 +5367,11 @@ async function generateSopRewriteDraft(payload = {}) {
   const sourceRawText = asText(payload.topic?.content || payload.sourcePost?.content || payload.sourceTopic?.content);
   const verbatimAnchors = extractVerbatimAnchors(sourceRawText);
   const sourceLight = sourceRawText.replace(/\s+/g, '').length < 60;
+  // L3: 注入该领域评论深挖出的"真实声音库"(痛点/异议/金句/选题缺口),让正文有真人真实感
+  const realVoices = await getCommentRealMaterial({
+    workspace: asText(payload.workspace || payload.industry || payload.businessLine || payload.keyword || ''),
+  }).catch(() => null);
+  const hasRealVoices = Boolean(realVoices && ((realVoices.painPoints || []).length || (realVoices.goldenQuotes || []).length));
   const system = [
     '你是 Longka AI Native 内容生产系统的资深小红书/短视频内容策划。',
     '你必须严格按”爆款采集分析 SOP：从爬虫样本到自己的内容框架”工作。',
@@ -4891,13 +5385,19 @@ async function generateSopRewriteDraft(payload = {}) {
     '硬约束：xhsCopy.title 必须逐字使用 payload.selectedTitle，禁止模型自拟新标题。',
     '硬约束：正文必须围绕 payload.topic/sourcePost 的 title、content、pain、comments 写，不得跳到无关案例、无关行业或无关主题。',
     '硬约束：除非源头素材明确提供真实经历，不得虚构”我上周帮客户””我见过一个客户””医生说”等第一人称或权威案例。',
+    '硬约束【绝不编案例·铁律3·最高优先级】：qualityFeedback / 发布前判断里给出的“举例/比如…”只是格式示范，绝对不准把它当真实内容抄进正文。需要补真实案例、客户原话、具体数字时，如果源头素材里没有真实的，就只能留一个占位符“【真实案例：在这里补一条你真实的经历或真实客户原话】”，绝不替用户编造任何学员/客户/数字/故事/时间。宁可留空让用户填，也绝不编。',
     sourceLight
       ? '注意：本次源头素材很薄（基本只有标题，没有真实正文、案例或数据）。请写“通用但可执行”的第二人称建议——用普适方法、步骤清单、常见误区、注意事项来支撑正文，把读者当“你”来讲。绝对不要编造第一人称客户案例、具体客户、虚构数字、权威背书或个人战绩；宁可写得朴实通用，也不要编。'
       : '',
     '硬约束【大白话·诚实语气】：正文要像一个真实的人在跟朋友唠嗑、随手发小红书，不是写范文、不是写公众号范本。用短句、口语、大白话；可以有“说实话/其实/我跟你讲/反正/对吧”这类口头表达，允许不完美、半截话、轻微口语重复。读起来要“像真人在诚实地说”，而不是“排版工整、辞藻漂亮”。',
     '硬约束【杀AI味】：禁止工整排比、禁止整齐编号清单、禁止“首先/其次/最后”、禁止“赋能/闭环/抓手/底层逻辑/综上/值得注意的是/在这个信息爆炸的时代”等 AI 腔词，禁止金句对仗收尾和空泛升华、喊口号。宁可朴实直白、甚至有点啰嗦，也不要工整漂亮的 AI 范文。多写具体真实的细节、数字、场景，少写泛泛的概括和正确的废话。',
+    '硬约束【会卖·翻译】：每个观点/方法/卖点都要从“功能层”翻译成“价值层”——用户只关心“这跟我有什么关系”。不要写“有1对1带教”，要写“卡住的时候有人手把手拉你一把，不用一个人瞎熬”。心里装着定位公式：帮助【谁】、在【什么时候】、解决【什么问题】，每一句都让用户感到“说的就是我”。写给“一个具体的人”，照顾他的场景、情绪、和“看完后他想成为谁”。',
+    '硬约束【搜索词】：把用户真会去搜的词（人群词/场景词/类目词，参考 keywords）自然地织进标题和正文里反复出现，不是在结尾堆井号。让用户搜这些词时能搜到这篇。',
     verbatimAnchors.length >= 2
       ? `硬约束【降低AI检测】：必须从 sourceEvidence.verbatimAnchors 中选取至少 2 个短语，原文一字不改地嵌入正文段落中（可用破折号引出或自然融入叙述，不要加引号）。不可跳过此规则。`
+      : '',
+    hasRealVoices
+      ? '硬约束【真实声音地基】：sourceEvidence.realVoices 是这个领域真人评论里挖出来的真实痛点/原话/异议/选题缺口。写正文时必须用这些真人真实表达来支撑——痛点要贴近 realVoices.painPoints（用她们真在愁的事，不要泛泛而谈）；至少把 realVoices.goldenQuotes 里 1-2 句真人原话一字不改自然嵌进正文（不加引号）；如果正文涉及 realVoices.objections 里的顾虑，要正面回应而不是回避。这是让内容有真实感、不像 AI 废话的关键，不可跳过。'
       : '',
     '输出必须是 JSON，不要 Markdown，不要解释。',
   ].filter(Boolean).join('\n');
@@ -4932,6 +5432,13 @@ async function generateSopRewriteDraft(payload = {}) {
       ],
     } : null,
     qualityFeedback: payload.qualityFeedback || null,
+    realVoices: hasRealVoices ? {
+      painPoints: (realVoices.painPoints || []).slice(0, 12).map((p) => (p && p.quote) ? p.quote : p),
+      objections: (realVoices.objections || []).slice(0, 8),
+      goldenQuotes: (realVoices.goldenQuotes || []).slice(0, 12),
+      topicGaps: (realVoices.topicGaps || []).slice(0, 8),
+      note: '这些是该领域真人评论里的真实表达,优先用来支撑正文(痛点贴真人/金句可原话嵌入/正面回应异议)。',
+    } : null,
     requiredOutput: {
       titleChoices: '6 个标题。每个标题必须从源头帖不同角度改写，不能只有一个源头标题变体。',
       selectedTitle: '使用用户已选择标题；如果为空，使用第一个标题。',

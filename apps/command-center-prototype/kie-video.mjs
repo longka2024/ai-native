@@ -67,7 +67,7 @@ async function getTask(taskId) {
 // Hailuo: image_url(单图) + duration("6"/"10") + resolution("768P"/"1080P")
 // Seedance(默认): first_frame_url/last_frame_url + aspect_ratio + resolution(480p/720p) + duration(数字)
 // Veo: 入参待后台核准，先留分支（未接入档位前不会走到）
-function buildVideoInput(model, { prompt, imageUrl, lastImageUrl, aspect, resolution, duration, generateAudio }) {
+function buildVideoInput(model, { prompt, imageUrl, lastImageUrl, referenceImageUrls, aspect, resolution, duration, generateAudio }) {
   const m = String(model || '').toLowerCase();
   if (m.includes('hailuo')) {
     const res = /1080/.test(String(resolution)) ? '1080P' : '768P';
@@ -91,6 +91,8 @@ function buildVideoInput(model, { prompt, imageUrl, lastImageUrl, aspect, resolu
   };
   if (imageUrl) input.first_frame_url = imageUrl;
   if (lastImageUrl) input.last_frame_url = lastImageUrl;
+  // 多图引用 = 即梦的 @图片 一致性玩法(角色/场景跨镜不跳戏),Kie seedance-2 官方支持 reference_image_urls
+  if (Array.isArray(referenceImageUrls) && referenceImageUrls.length) input.reference_image_urls = referenceImageUrls.slice(0, 9);
   return input;
 }
 
@@ -112,8 +114,11 @@ export async function kieStartVideoJob(payload) {
     const duration = Math.min(15, Math.max(4, Number(clip.duration || defaultDuration)));
     const imageUrl = clip.imageUrl || clip.first_frame_url || '';
     const lastImageUrl = clip.lastImageUrl || clip.last_frame_url || '';
+    const referenceImageUrls = Array.isArray(clip.referenceImageUrls) ? clip.referenceImageUrls
+      : (Array.isArray(clip.reference_image_urls) ? clip.reference_image_urls
+        : (Array.isArray(payload.referenceImageUrls) ? payload.referenceImageUrls : []));
     const input = buildVideoInput(model, {
-      prompt, imageUrl, lastImageUrl, aspect, resolution, duration,
+      prompt, imageUrl, lastImageUrl, referenceImageUrls, aspect, resolution, duration,
       generateAudio: Boolean(clip.generateAudio || payload.generateAudio || false),
     });
     const entry = { page, taskId: '', url: '', state: 'waiting', error: '' };

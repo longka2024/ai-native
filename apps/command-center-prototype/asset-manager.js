@@ -11,6 +11,10 @@ function renderAssetPage(route) {
     renderRecords();
     return;
   }
+  if (route === "dashboard") {
+    renderDashboard();
+    return;
+  }
   if (route === "sources") {
     renderBenchmarkPanel();
     return;
@@ -175,8 +179,12 @@ async function renderAssets() {
     target.innerHTML = `<article class="empty-state"><b>${zh("&#20869;&#23481;&#36164;&#20135;&#24211;&#35835;&#21462;&#22833;&#36133;")}</b><span>${escapeHtml(error.message)}</span></article>`;
     return;
   }
+  // 分页止血:作品卡极重(每张几十节点),只渲染前 N 张 + 加载更多,避免 300 张一次性注入卡死弱机
+  const _assetShow = state._assetShowCount || 30;
+  const _shownWorks = state.finalWorks.slice(0, _assetShow);
+  const _moreWorks = state.finalWorks.length - _shownWorks.length;
   const finalWorksHtml = state.finalWorks.length
-    ? `<div class="title-group-head"><b>${zh("&#24050;&#23436;&#25104;&#20316;&#21697;")}</b><span>${state.finalWorks.length} ${zh("&#20010;&#21487;&#22797;&#29992;&#25104;&#31295;")}</span></div><div class="asset-grid">${state.finalWorks.map(renderFinalWorkAsset).join("")}</div>`
+    ? `<div class="title-group-head"><b>${zh("&#24050;&#23436;&#25104;&#20316;&#21697;")}</b><span>${state.finalWorks.length} ${zh("&#20010;&#21487;&#22797;&#29992;&#25104;&#31295;")}</span></div><div class="asset-grid">${_shownWorks.map(renderFinalWorkAsset).join("")}</div>${_moreWorks > 0 ? `<button class="secondary" id="loadMoreWorks" type="button" style="margin-top:12px;width:100%;">加载更多（还有 ${_moreWorks} 个）</button>` : ""}`
     : `<article class="empty-state"><b>${zh("&#36824;&#27809;&#26377;&#20445;&#23384;&#36807;&#25104;&#31295;&#20316;&#21697;")}</b><span>${zh("&#20174;&#20170;&#26085;&#24037;&#20316;&#21488;&#23436;&#25104;&#20986;&#22270;&#21518;&#65292;&#22312;&#31532;12&#27493;&#20445;&#23384;&#65292;&#36825;&#37324;&#20250;&#20986;&#29616;&#21487;&#22797;&#30424;&#12289;&#21487;&#36716;&#24179;&#21488;&#30340;&#20316;&#21697;&#21345;&#12290;")}</span></article>`;
   const opsSummary = buildAssetOpsSummary(state.finalWorks);
   const topicCards = topics.map((item) => `<article class="asset-item"><b>${escapeHtml(item.theme)}</b><span>${escapeHtml(item.reason)}</span><p><strong>${zh("&#36866;&#21512;&#22797;&#29992;&#65306;")}</strong>${zh("&#23567;&#32418;&#20070;&#22270;&#25991;&#12289;&#20844;&#20247;&#21495;&#38271;&#25991;&#12289;&#26379;&#21451;&#22280;&#12289;&#30701;&#35270;&#39057;&#33050;&#26412;")}</p>${item.url ? `<a class="source-link" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">${zh("&#25171;&#24320;&#26469;&#28304;")}</a>` : ""}</article>`).join("") || `<article class="empty-state"><b>${zh("&#26242;&#26080;&#28304;&#32032;&#26448;")}</b><span>${zh("&#20808;&#35835;&#21462;&#21382;&#21490;&#36164;&#20135;&#12289;&#37319;&#38598; X &#36134;&#21495;&#65292;&#25110;&#23548;&#20837;&#32032;&#26448;&#12290;")}</span></article>`;
@@ -214,6 +222,17 @@ async function renderAssets() {
       <div class="title-group-head"><b>${zh("&#28304;&#32032;&#26448; / &#27597;&#39064;&#20505;&#36873;")}</b><span>${zh("&#29992;&#20110;&#32487;&#32493;&#25214;&#36873;&#39064;&#21644;&#19968;&#40060;&#22810;&#21507;&#12290;")}</span></div>
       <div class="asset-grid">${topicCards}</div>
     </section>`;
+  // “加载更多”委托:绑常驻 #assetBoard 一次(守卫防重复绑定→泄漏),每次多渲染 30 张
+  const _abDelegate = $("#assetBoard");
+  if (_abDelegate && !_abDelegate.dataset.loadMoreBound) {
+    _abDelegate.dataset.loadMoreBound = "1";
+    _abDelegate.addEventListener("click", (e) => {
+      if (e.target.closest("#loadMoreWorks")) {
+        state._assetShowCount = (state._assetShowCount || 30) + 30;
+        renderAssets();
+      }
+    });
+  }
 }
 
 function renderFinalWorkAsset(item) {
@@ -500,6 +519,24 @@ async function copyFinalWorkBody(id) {
   alert("已复制完整文案。");
 }
 
+// 下载单张图:优先 blob 抓取强制保存(同源/允许CORS必成),失败回退直链点击(浏览器自行处理/手机可长按)。
+async function downloadOneImage(url, name) {
+  try {
+    const resp = await fetch(url, { mode: "cors" });
+    if (!resp.ok) throw new Error("http " + resp.status);
+    const blob = await resp.blob();
+    const obj = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = obj; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(obj), 5000);
+  } catch {
+    const a = document.createElement("a");
+    a.href = url; a.download = name; a.target = "_blank"; a.rel = "noreferrer";
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+}
+
 async function copyFinalWorkImages(id) {
   const work = state.finalWorks.find((item) => item.id === id);
   const images = Array.isArray(work?.images) ? work.images : [];
@@ -668,35 +705,484 @@ async function renderRecords() {
       state.finalWorks = [...m.values()].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
     }
   } catch (e) { /* 122 读不到就用本机缓存 */ }
-  const works = Array.isArray(state.finalWorks) ? state.finalWorks : [];
-  if (!works.length) {
-    target.innerHTML = `<div class="empty-state"><b>还没有作品</b><span>在今日工作台做完一条内容、点「✅ 完成」，它就会出现在这里。</span></div>`;
-    return;
-  }
+  paintRecords();
+}
+
+// 预估 vs 实际 一句话(大白话,不露rubric/composite等黑话)
+function normalizePredScore(raw) {
+  let p = Number(raw || 0);
+  if (p > 0 && p <= 10) p = Math.round(p * 10); // 0-10 制 → 0-100 制,统一显示/判准
+  return p;
+}
+function calibText(pred, cal) {
+  if (!cal) return "";
+  const p = normalizePredScore(pred && (pred.composite != null ? pred.composite : pred.score));
+  const win = !!cal.isWinner;
+  if (!p) return win ? "出效果了" : "";
+  if (p >= 70 && win) return "预估准 ✓";
+  if (p >= 70 && !win) return "预估偏高了";
+  if (p < 70 && win) return "低估了，实际更好";
+  return "预估准（都一般）";
+}
+
+// 效果看板:已做/有数据/出效果 + 预估准度。异步填进 #cheatBoardStrip。
+async function loadCheatBoard() {
+  const el = byId("cheatBoardStrip");
+  if (!el) return;
+  try {
+    const r = await fetch(apiPath("/api/cheat/board"));
+    const d = await r.json();
+    if (!d || !d.ok) { el.style.display = "none"; return; }
+    const sig = d.rubricSignal;
+    let note = "";
+    if (typeof sig === "string") note = sig;
+    else if (sig && typeof sig === "object") note = sig.note || sig.text || sig.verdict || sig.accuracy || "";
+    if (!note && (d.withMetrics || 0) < 5) note = `再发布并复盘 ${Math.max(0, 5 - (d.withMetrics || 0))} 篇，就能看出预估准不准`;
+    el.innerHTML = `<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:13px;color:#3a2c1c;background:#f3ede1;border-radius:10px;padding:10px 14px;">
+      <b style="color:#7a6a55;">📊 效果看板</b>
+      <span>已做 <b>${d.total || 0}</b> 篇</span>
+      <span>有数据 <b>${d.withMetrics || 0}</b> 篇</span>
+      <span>出效果 <b style="color:#1a7f37;">${d.winners || 0}</b> 篇</span>
+      ${note ? `<span style="color:#7a6a55;">${escapeHtml(note)}</span>` : ""}
+    </div>`;
+  } catch (e) { el.style.display = "none"; }
+}
+
+// 获客短视频脚本结果渲染(大白话,不露skill名)
+function acqScriptHtml(d) {
+  const sp = d.sellingPoints || {};
+  const shots = Array.isArray(d.shots) ? d.shots : [];
+  const terms = Array.isArray(d.searchTerms) ? d.searchTerms : [];
+  const row = (label, val) => val ? `<div style="margin-top:6px;"><b>${label}：</b>${escapeHtml(String(val))}</div>` : "";
+  return `<div style="font-size:12px;line-height:1.7;color:#3a2c1c;background:#fbf7f0;border-radius:8px;padding:12px;">
+    <div style="color:${d.hadRealVoices ? "#1a7f37" : "#b08a6a"};margin-bottom:4px;">${d.hadRealVoices ? "✅ 用了该业务线真实评论料" : "⚠️ 该业务线暂无真实料，先出通用脚本（建议先采评论补料）"}</div>
+    ${row("定位", d.positioning)}
+    ${row("锁定人群", d.targetAudience)}
+    ${row("🎣 钩子（前3秒）", d.hook)}
+    <div style="margin-top:6px;"><b>口播正文：</b><pre style="white-space:pre-wrap;font-family:inherit;background:#fff;border-radius:6px;padding:8px;margin:4px 0;">${escapeHtml(d.body || "")}</pre></div>
+    ${(sp.product || sp.service || sp.vsPeers || sp.persona) ? `<div style="margin-top:6px;"><b>卖点：</b>${escapeHtml([sp.product, sp.service, sp.vsPeers, sp.persona].filter(Boolean).join(" / "))}</div>` : ""}
+    ${row("📣 结尾引导", d.cta)}
+    ${shots.length ? `<div style="margin-top:6px;"><b>分镜：</b><ol style="margin:4px 0;padding-left:18px;">${shots.map((s) => `<li>${escapeHtml(s.scene || "")}${s.line ? ` —— “${escapeHtml(s.line)}”` : ""}</li>`).join("")}</ol></div>` : ""}
+    ${terms.length ? row("🔍 搜索词", terms.join(" / ")) : ""}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+      <button class="secondary" data-copy-acq style="font-size:12px;padding:5px 14px;">📋 复制全文</button>
+      <button class="primary" data-gen-acq-video style="font-size:12px;padding:5px 14px;background:#1a7f37;border-color:#1a7f37;">🎬 生成成品视频（自动配音+画面+字幕，不用实拍）</button>
+    </div>
+    <div class="acq-video-result" style="margin-top:8px;"></div>
+  </div>`;
+}
+
+// 获客脚本 → 成品视频:口播文字配音(MiniMax) + Pexels空镜画面 + 烧字幕 + ffmpeg拼,零实拍
+async function generateAcqVideoInline(d, resultEl, ws) {
+  if (!resultEl) return;
+  const shots = Array.isArray(d.shots) && d.shots.length ? d.shots : [];
+  let beats;
+  if (shots.length) beats = shots.map((s) => ({ text: String(s.line || s.scene || "").trim() })).filter((b) => b.text);
+  else beats = String(d.body || "").split(/(?<=[。！？!?\n])/).map((t) => t.trim()).filter((t) => t.length > 1).slice(0, 12).map((t) => ({ text: t }));
+  if (!beats.length) { resultEl.innerHTML = `<span style="color:#c0392b;font-size:12px;">没有可合成的口播文本。</span>`; return; }
+  resultEl.innerHTML = `<div style="font-size:12px;color:#7a6a55;">正在配音 + 配画面 + 烧字幕合成成品视频…（${beats.length} 段，约 1-3 分钟，别关页面）</div>`;
+  try {
+    const jobId = `acqvideo-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`;
+    const startRes = await fetch(apiPath("/api/oral-video/compose/start"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jobId, beats, workspace: ws || "" }) });
+    const start = await startRes.json().catch(() => ({}));
+    if (!startRes.ok || !start.ok) throw new Error(start.message || start.error || `HTTP ${startRes.status}`);
+    const realId = start.jobId || jobId;
+    for (let round = 0; round < 120; round += 1) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const r = await fetch(apiPath(`/api/oral-video/compose/status?jobId=${encodeURIComponent(realId)}`));
+      const st = await r.json().catch(() => ({}));
+      if (st.status === "done" && st.url) {
+        resultEl.innerHTML = `<video src="${escapeHtml(st.url)}" controls style="max-width:240px;border-radius:8px;display:block;"></video><div style="margin-top:4px;font-size:12px;"><a href="${escapeHtml(st.url)}" download="获客视频.mp4">⬇️ 下载成品视频</a> · 约 ${st.totalSeconds || 0} 秒，${st.withVideo || 0} 段真实画面</div>`;
+        return;
+      }
+      if (st.status === "error") throw new Error(st.error || "合成失败");
+      resultEl.innerHTML = `<div style="font-size:12px;color:#7a6a55;">合成中…（${st.done || 0}/${st.total || beats.length} 段）</div>`;
+    }
+    resultEl.innerHTML = `<div style="font-size:12px;color:#7a6a55;">合成耗时较久，稍后再点一次或刷新查看。</div>`;
+  } catch (e) { resultEl.innerHTML = `<span style="color:#c0392b;font-size:12px;">合成失败：${escapeHtml(e.message)}</span>`; }
+}
+function buildAcqCopyText(d) {
+  const shots = Array.isArray(d.shots) ? d.shots : [];
+  const terms = Array.isArray(d.searchTerms) ? d.searchTerms : [];
+  return [
+    d.positioning ? `【定位】${d.positioning}` : "",
+    d.hook ? `【钩子】${d.hook}` : "",
+    "", d.body || "", "",
+    d.cta ? `【结尾引导】${d.cta}` : "",
+    shots.length ? "【分镜】\n" + shots.map((s, i) => `${i + 1}. ${s.scene || ""}${s.line ? ` | ${s.line}` : ""}`).join("\n") : "",
+    terms.length ? `【搜索词】${terms.join(" / ")}` : "",
+  ].filter(Boolean).join("\n");
+}
+
+// 作品记录的卡片(单条)
+function recordCardHtml(w) {
   const pName = (p) => ((typeof publishTargets !== "undefined" && publishTargets.find((t) => t.id === p)?.title) || p || "");
-  target.innerHTML = works.map((w) => {
-    const published = w.publishRecord?.status === "published";
-    const status = published ? "已发布" : "已保存";
-    const titleText = String(w.title || w.theme || w.topic || "(无标题)").slice(0, 44);
-    const imgs = Array.isArray(w.images) ? w.images.length : 0;
-    const date = String(w.createdAt || "").slice(0, 10);
-    // 作品的 platform 可能存 id(xhs)或中文名(小红书图文),都比对,排掉自己
-    const wpid = ((typeof publishTargets !== "undefined" && publishTargets.find((t) => t.id === w.platform || t.title === w.platform)?.id) || w.platform);
-    const others = (typeof publishTargets !== "undefined" ? publishTargets : []).filter((t) => t.id !== wpid).slice(0, 4);
-    return `<article class="asset-item" style="border:1px solid #e6ddd0;border-radius:10px;padding:14px;margin-bottom:10px;background:#fff;">
+  const published = w.publishRecord?.status === "published";
+  const status = published ? "已发布" : "已保存";
+  const titleText = String(w.title || w.theme || w.topic || "(无标题)").slice(0, 44);
+  const imgs = Array.isArray(w.images) ? w.images.length : 0;
+  const date = String(w.createdAt || "").slice(0, 10);
+  const wpid = ((typeof publishTargets !== "undefined" && publishTargets.find((t) => t.id === w.platform || t.title === w.platform)?.id) || w.platform);
+  const others = (typeof publishTargets !== "undefined" ? publishTargets : []).filter((t) => t.id !== wpid).slice(0, 4);
+  // 数据闭环:系统预估 / 实际数据 / 准不准
+  const pred = w.prediction || null;
+  const rawScore = pred && (pred.composite != null ? pred.composite : (pred.score != null ? pred.score : ""));
+  const predScore = rawScore === "" ? "" : normalizePredScore(rawScore);
+  const predVerdict = pred ? String(pred.verdict || pred.bucket || "").slice(0, 40) : "";
+  const mx = w.publishMetrics || null;
+  const cal = w.calibration || null;
+  const hasMetrics = !!(mx && (mx.likes != null || mx.views != null || mx.collects != null || mx.comments != null || mx.inquiries != null));
+  return `<article class="asset-item" style="border:1px solid #e6ddd0;border-radius:10px;padding:14px;margin-bottom:10px;background:#fff;">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
         <b style="font-size:15px;color:#3a2c1c;">${escapeHtml(titleText)}</b>
         <span style="font-size:12px;padding:2px 10px;border-radius:10px;background:${published ? "#e6f4ea" : "#f3ede1"};color:${published ? "#1a7f37" : "#7a6a55"};">${status}</span>
       </div>
       <div style="color:#9a8a70;font-size:12px;margin:6px 0;">${escapeHtml(pName(w.platform))}${imgs ? " · " + imgs + " 张图" : ""}${date ? " · " + date : ""}</div>
+      <button class="secondary" data-toggle-detail="${escapeHtml(w.id)}" style="font-size:12px;padding:4px 10px;margin-top:4px;">📄 点开看正文+图</button>
+      <div class="record-detail" data-detail="${escapeHtml(w.id)}" style="display:none;margin-top:10px;border-top:1px dashed #e6ddd0;padding-top:10px;">
+        <div style="white-space:pre-wrap;font-size:13px;color:#3a2c1c;line-height:1.75;max-height:360px;overflow:auto;background:#fbf7f0;border-radius:8px;padding:12px;">${escapeHtml((typeof cleanPublishBodyForCopy === "function" ? cleanPublishBodyForCopy(w.body || "") : String(w.body || "")) || "(这条没存正文)")}</div>
+        <div style="margin-top:8px;"><button class="secondary" data-copy-work="${escapeHtml(w.id)}" style="font-size:12px;padding:4px 10px;">📋 复制文案</button><span style="font-size:11px;color:#9a8a70;margin-left:8px;">标题+正文，粘到平台直接发</span></div>
+        ${imgs ? `<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><button class="primary" data-download-selected="${escapeHtml(w.id)}" style="font-size:12px;padding:5px 12px;">⬇️ 一次性下载选中的图</button><button class="ghost" data-toggle-pick-all="${escapeHtml(w.id)}" style="font-size:11px;padding:3px 8px;">全选/全不选</button><span style="font-size:11px;color:#9a8a70;">默认全选 · 取消勾选就不下 · P1 是封面 · 手机也可长按图保存</span></div><div class="record-img-grid" data-img-grid="${escapeHtml(w.id)}" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">${(Array.isArray(w.images) ? w.images : []).slice(0, 9).map((url, i) => `<label style="width:92px;position:relative;display:block;cursor:pointer;"><input type="checkbox" class="record-img-pick" data-img-url="${escapeHtml(url)}" data-img-name="P${i + 1}.png" checked style="position:absolute;top:6px;left:6px;width:18px;height:18px;z-index:2;cursor:pointer;accent-color:#1a7f37;" /><a href="${escapeHtml(url)}" download="P${i + 1}.png" title="点击下载 P${i + 1}"><img src="${escapeHtml(url)}" alt="P${i + 1}" loading="lazy" style="width:92px;height:122px;object-fit:cover;border-radius:6px;border:1px solid #e6ddd0;" /><span style="display:block;text-align:center;font-size:11px;color:#7a6a55;">${i === 0 ? "封面" : "P" + (i + 1)}</span></a></label>`).join("")}</div>` : `<div style="font-size:12px;color:#b08a6a;margin-top:8px;">这条没存图片。</div>`}
+        ${(Array.isArray(w.coverAlts) && w.coverAlts.length) ? `<div style="margin-top:12px;border-top:1px dashed #efe6d8;padding-top:8px;"><div style="font-size:12px;color:#7a6a55;margin-bottom:6px;">🖼 封面备选（生成时没选的，可下载 / 设为主封面 / 做A/B，没浪费）</div><div style="display:flex;gap:8px;flex-wrap:wrap;">${w.coverAlts.map((url, i) => `<div style="width:88px;"><a href="${escapeHtml(url)}" download="封面备选${i + 1}.png"><img src="${escapeHtml(url)}" alt="备选${i + 1}" loading="lazy" style="width:88px;height:117px;object-fit:cover;border-radius:6px;border:1px solid #e6ddd0;" /></a><button class="secondary" data-set-cover="${escapeHtml(w.id)}" data-set-cover-url="${escapeHtml(url)}" style="width:100%;margin-top:4px;font-size:11px;padding:3px;">设为主封面</button></div>`).join("")}</div></div>` : ""}
+      </div>
       <div style="margin-top:8px;font-size:12px;color:#7a6a55;">用这个母题再做一篇：</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
         <button class="secondary" data-reuse-work="${escapeHtml(w.id)}" data-reuse-target="${escapeHtml(wpid)}" style="font-size:12px;padding:4px 10px;">✍️ 同平台换角度再写</button>
         ${others.map((t) => { const sfx = (t.id === "douyin" || t.id === "video-account") ? "脚本" : ""; return `<button class="secondary" data-reuse-work="${escapeHtml(w.id)}" data-reuse-target="${escapeHtml(t.id)}" style="font-size:12px;padding:4px 10px;">改成${escapeHtml(t.title)}${sfx}</button>`; }).join("")}
+        <button class="secondary" data-gen-acq="${escapeHtml(w.id)}" style="font-size:12px;padding:4px 10px;">🎬 获客短视频脚本</button>
+        <button class="ghost" data-delete-work="${escapeHtml(w.id)}" style="font-size:12px;padding:4px 10px;color:#c0392b;margin-left:auto;">🗑 删除</button>
+      </div>
+      <div class="acq-panel" data-acq="${escapeHtml(w.id)}" style="display:none;margin-top:10px;"></div>
+      <div style="margin-top:10px;border-top:1px dashed #e6ddd0;padding-top:10px;">
+        <div style="font-size:12px;color:#7a6a55;margin-bottom:6px;">📊 发布后复盘 · 看系统预估准不准</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:12px;color:#3a2c1c;">
+          ${predScore !== "" ? `<span>系统预估:<b>${predScore}分</b>${predVerdict ? ` · ${escapeHtml(predVerdict)}` : ""}</span>` : `<button class="secondary" data-blind-predict="${escapeHtml(w.id)}" style="font-size:12px;padding:4px 10px;">看系统预估</button>`}
+          ${hasMetrics
+      ? `<span style="color:#1a7f37;">实际:阅${mx.views || 0}/赞${mx.likes || 0}/藏${mx.collects || 0}/评${mx.comments || 0}/问${mx.inquiries || 0}</span><span style="font-weight:600;color:${cal && cal.isWinner ? "#1a7f37" : "#b08a6a"};">${cal && cal.isWinner ? "✅ 出效果了" : "未到爆款线"}${calibText(pred, cal) ? " · " + escapeHtml(calibText(pred, cal)) : ""}</span><button class="ghost" data-toggle-retro="${escapeHtml(w.id)}" style="font-size:11px;padding:3px 8px;">改数据</button>`
+      : `<button class="secondary" data-toggle-retro="${escapeHtml(w.id)}" style="font-size:12px;padding:4px 10px;">填发布后数据（T+3）</button>`}
+        </div>
+        <div class="retro-form" data-retro="${escapeHtml(w.id)}" style="display:none;margin-top:8px;background:#fbf7f0;border-radius:8px;padding:10px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${[["views", "阅读"], ["likes", "点赞"], ["collects", "收藏"], ["comments", "评论"], ["inquiries", "有人来问"]].map(([k, lab]) => `<label style="font-size:12px;color:#7a6a55;">${lab}<br><input type="number" min="0" data-retro-field="${k}" value="${mx && mx[k] != null ? mx[k] : ""}" style="width:78px;padding:5px;border:1px solid #ddd;border-radius:6px;" /></label>`).join("")}
+          </div>
+          <button class="primary" data-save-retro="${escapeHtml(w.id)}" style="font-size:12px;padding:5px 14px;margin-top:8px;">保存复盘</button>
+        </div>
       </div>
     </article>`;
-  }).join("");
+}
+
+// 渲染作品记录:搜索框 + 按月分组(可折叠,最新月默认展开)+ 删除。不重新拉取,只重画。
+function paintRecords() {
+  const target = byId("recordBoard");
+  if (!target) return;
+  const all = Array.isArray(state.finalWorks) ? state.finalWorks : [];
+  if (!all.length) {
+    target.innerHTML = `<div class="empty-state"><b>还没有作品</b><span>在今日工作台做完一条内容、点「✅ 完成」，它就会出现在这里。</span></div>`;
+    return;
+  }
+  const q = String(state.recordSearch || "").trim().toLowerCase();
+  const works = q
+    ? all.filter((w) => `${w.title || ""} ${w.theme || ""} ${w.topic || ""} ${w.body || ""}`.toLowerCase().includes(q))
+    : all;
+  // 按月分组
+  const groups = new Map();
+  works.forEach((w) => { const mo = String(w.createdAt || "").slice(0, 7) || "未知"; if (!groups.has(mo)) groups.set(mo, []); groups.get(mo).push(w); });
+  const months = [...groups.keys()].sort((a, b) => b.localeCompare(a));
+  const monthLabel = (mo) => mo === "未知" ? "未知日期" : `${mo.slice(0, 4)}年${Number(mo.slice(5, 7))}月`;
+  const openSet = state.recordOpenMonths instanceof Set ? state.recordOpenMonths : null;
+  const searchBox = `<div style="margin-bottom:12px;"><input type="text" data-record-search placeholder="🔍 搜标题/正文关键词，快速找作品" value="${escapeHtml(state.recordSearch || "")}" style="width:100%;max-width:380px;padding:9px 13px;border:1px solid #ddd;border-radius:10px;font-size:14px;box-sizing:border-box;" /></div>`;
+  const body = works.length
+    ? months.map((mo, mi) => {
+      const list = groups.get(mo);
+      const open = q ? true : (openSet ? openSet.has(mo) : mi === 0); // 搜索时全展开;否则最新月默认开
+      const cards = list.map((w) => recordCardHtml(w)).join("");
+      return `<div class="record-month" style="margin-bottom:14px;">
+        <button data-toggle-month="${escapeHtml(mo)}" style="width:100%;text-align:left;background:#f3ede1;border:none;border-radius:8px;padding:10px 14px;font-size:14px;font-weight:600;color:#3a2c1c;cursor:pointer;">${open ? "▼" : "▶"} ${escapeHtml(monthLabel(mo))} <span style="color:#9a8a70;font-weight:400;">（${list.length} 篇）</span></button>
+        <div class="record-month-body" data-month-body="${escapeHtml(mo)}" style="display:${open ? "block" : "none"};margin-top:8px;">${cards}</div>
+      </div>`;
+    }).join("")
+    : `<div class="empty-state"><b>没找到匹配的作品</b><span>换个关键词试试，或清空搜索框。</span></div>`;
+  target.innerHTML = searchBox + body; // 看板已挪到独立的「数据看板」页,这里只留搜索+列表
+
+  // 搜索框(实时过滤,保持焦点)
+  const si = target.querySelector("[data-record-search]");
+  if (si) {
+    si.addEventListener("input", (e) => { state.recordSearch = e.target.value; state._recordSearchActive = true; paintRecords(); });
+    if (state._recordSearchActive) { si.focus(); si.setSelectionRange(si.value.length, si.value.length); }
+  }
+  // 月份折叠
+  target.querySelectorAll("[data-toggle-month]").forEach((b) => b.addEventListener("click", () => {
+    const mo = b.dataset.toggleMonth;
+    const set = state.recordOpenMonths instanceof Set ? state.recordOpenMonths : new Set(months.slice(0, 1));
+    if (set.has(mo)) set.delete(mo); else set.add(mo);
+    state.recordOpenMonths = set; state._recordSearchActive = false;
+    paintRecords();
+  }));
+  // 复用 / 详情 / 下载 / 删除
   target.querySelectorAll("[data-reuse-work]").forEach((b) => b.addEventListener("click", () => reuseFinalWork(b.dataset.reuseWork, b.dataset.reuseTarget)));
+  target.querySelectorAll("[data-toggle-detail]").forEach((b) => b.addEventListener("click", () => {
+    const id = b.dataset.toggleDetail;
+    const d = target.querySelector(`.record-detail[data-detail="${(window.CSS && CSS.escape) ? CSS.escape(id) : id}"]`);
+    if (!d) return;
+    const open = d.style.display !== "none";
+    d.style.display = open ? "none" : "block";
+    b.textContent = open ? "📄 点开看正文+图" : "🔼 收起";
+  }));
+  // 全选/全不选:翻转这条作品图片网格里的勾选框
+  target.querySelectorAll("[data-toggle-pick-all]").forEach((b) => b.addEventListener("click", () => {
+    const id = b.dataset.togglePickAll;
+    const grid = target.querySelector(`.record-img-grid[data-img-grid="${(window.CSS && CSS.escape) ? CSS.escape(id) : id}"]`);
+    if (!grid) return;
+    const boxes = [...grid.querySelectorAll(".record-img-pick")];
+    const allChecked = boxes.every((x) => x.checked);
+    boxes.forEach((x) => { x.checked = !allChecked; });
+  }));
+  // 一次性下载选中的图(默认全选)。用 blob 强制保存(同源必成);跨域抓取失败回退直链点击。
+  target.querySelectorAll("[data-download-selected]").forEach((b) => b.addEventListener("click", async () => {
+    const id = b.dataset.downloadSelected;
+    const grid = target.querySelector(`.record-img-grid[data-img-grid="${(window.CSS && CSS.escape) ? CSS.escape(id) : id}"]`);
+    if (!grid) return;
+    const picks = [...grid.querySelectorAll(".record-img-pick")].filter((x) => x.checked)
+      .map((x) => ({ url: x.dataset.imgUrl, name: x.dataset.imgName || "image.png" }))
+      .filter((p) => p.url);
+    if (!picks.length) { alert("一张都没勾选。先勾上要下载的图。"); return; }
+    const label = b.textContent;
+    b.disabled = true;
+    for (let i = 0; i < picks.length; i += 1) {
+      b.textContent = `下载中…(${i + 1}/${picks.length})`;
+      await downloadOneImage(picks[i].url, picks[i].name);
+      await new Promise((r) => setTimeout(r, 450));
+    }
+    b.textContent = label;
+    b.disabled = false;
+  }));
+  target.querySelectorAll("[data-copy-work]").forEach((b) => b.addEventListener("click", () => copyFinalWorkBody(b.dataset.copyWork)));
+  target.querySelectorAll("[data-delete-work]").forEach((b) => b.addEventListener("click", async () => {
+    const id = b.dataset.deleteWork;
+    if (!confirm("确定删除这条作品记录吗？删了不可恢复。")) return;
+    try { await fetch(apiPath(`/api/final-works/${encodeURIComponent(id)}`), { method: "DELETE" }); } catch (e) { /* 本地也删 */ }
+    state.finalWorks = (Array.isArray(state.finalWorks) ? state.finalWorks : []).filter((w) => w.id !== id);
+    if (typeof persistWorkbenchSnapshot === "function") persistWorkbenchSnapshot();
+    state._recordSearchActive = false;
+    paintRecords();
+  }));
+  // 设为主封面:把备选封面换成 P1,旧封面降为备选,重存
+  target.querySelectorAll("[data-set-cover]").forEach((b) => b.addEventListener("click", async () => {
+    const id = b.dataset.setCover;
+    const url = b.dataset.setCoverUrl;
+    const w = (state.finalWorks || []).find((x) => x.id === id);
+    if (!w || !url) return;
+    const imgs = Array.isArray(w.images) ? [...w.images] : [];
+    const oldCover = imgs[0];
+    imgs[0] = url;
+    let alts = (Array.isArray(w.coverAlts) ? w.coverAlts : []).filter((u) => u !== url);
+    if (oldCover && oldCover !== url) alts = [oldCover, ...alts];
+    w.images = imgs; w.coverAlts = alts;
+    b.disabled = true; b.textContent = "切换中…";
+    try { await fetch(apiPath("/api/final-works"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ work: w }) }); } catch (e) { /* 本地也已换 */ }
+    if (typeof persistWorkbenchSnapshot === "function") persistWorkbenchSnapshot();
+    state._recordSearchActive = false;
+    paintRecords();
+  }));
+  // 数据闭环:看系统预估(盲预测冻结)
+  target.querySelectorAll("[data-blind-predict]").forEach((b) => b.addEventListener("click", async () => {
+    const id = b.dataset.blindPredict;
+    const w = (state.finalWorks || []).find((x) => x.id === id);
+    b.disabled = true; b.textContent = "预估中…";
+    try {
+      const r = await fetch(apiPath("/api/cheat/blind-predict"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workId: id, workspace: (w && w.workspace) || state.workspace || "" }) });
+      const d = await r.json();
+      if (d && d.ok && d.prediction && w) { w.prediction = d.prediction; if (typeof persistWorkbenchSnapshot === "function") persistWorkbenchSnapshot(); state._recordSearchActive = false; paintRecords(); return; }
+      alert("预估没出来，稍后再试。"); b.disabled = false; b.textContent = "看系统预估";
+    } catch (e) { alert("预估失败：" + e.message); b.disabled = false; b.textContent = "看系统预估"; }
+  }));
+  // 展开/收起 填发布后数据
+  target.querySelectorAll("[data-toggle-retro]").forEach((b) => b.addEventListener("click", () => {
+    const id = b.dataset.toggleRetro;
+    const f = target.querySelector(`.retro-form[data-retro="${(window.CSS && CSS.escape) ? CSS.escape(id) : id}"]`);
+    if (f) f.style.display = f.style.display === "none" ? "block" : "none";
+  }));
+  // 保存复盘:填的真实数据 → /api/cheat/retro → 算准不准
+  target.querySelectorAll("[data-save-retro]").forEach((b) => b.addEventListener("click", async () => {
+    const id = b.dataset.saveRetro;
+    const f = target.querySelector(`.retro-form[data-retro="${(window.CSS && CSS.escape) ? CSS.escape(id) : id}"]`);
+    if (!f) return;
+    const metrics = {};
+    f.querySelectorAll("[data-retro-field]").forEach((inp) => { metrics[inp.dataset.retroField] = Number(inp.value || 0); });
+    b.disabled = true; b.textContent = "保存中…";
+    try {
+      const r = await fetch(apiPath("/api/cheat/retro"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workId: id, metrics }) });
+      const d = await r.json();
+      const w = (state.finalWorks || []).find((x) => x.id === id);
+      if (d && d.ok && w) { w.publishMetrics = d.metrics || metrics; if (d.calibration) w.calibration = d.calibration; if (typeof persistWorkbenchSnapshot === "function") persistWorkbenchSnapshot(); state._recordSearchActive = false; paintRecords(); return; }
+      alert("保存失败，稍后再试。"); b.disabled = false; b.textContent = "保存复盘";
+    } catch (e) { alert("保存失败：" + e.message); b.disabled = false; b.textContent = "保存复盘"; }
+  }));
+  // 获客短视频脚本:用这条母题 + 该业务线真实料,按获客三步框架出脚本
+  target.querySelectorAll("[data-gen-acq]").forEach((b) => b.addEventListener("click", async () => {
+    const id = b.dataset.genAcq;
+    const w = (state.finalWorks || []).find((x) => x.id === id);
+    const panel = target.querySelector(`.acq-panel[data-acq="${(window.CSS && CSS.escape) ? CSS.escape(id) : id}"]`);
+    if (!panel) return;
+    panel.style.display = "block";
+    panel.innerHTML = `<div style="font-size:12px;color:#7a6a55;background:#fbf7f0;border-radius:8px;padding:12px;">生成中…（拉真实料 + 按获客三步框架写，约 15-40 秒）</div>`;
+    b.disabled = true;
+    try {
+      const ws = (w && (w.workspace || w.businessLine)) || state.workspace || state.businessLine || "";
+      const r = await fetch(apiPath("/api/acquisition-video/generate"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspace: ws, keyword: ws, topic: (w && (w.title || w.topic)) || "" }) });
+      const d = await r.json();
+      if (d && (d.hook || d.body)) {
+        panel.innerHTML = acqScriptHtml(d);
+        const cp = panel.querySelector("[data-copy-acq]");
+        if (cp) cp.addEventListener("click", () => copyTextToClipboard(buildAcqCopyText(d)).then(() => { cp.textContent = "✓ 已复制"; }));
+        const gv = panel.querySelector("[data-gen-acq-video]");
+        if (gv) gv.addEventListener("click", () => { gv.disabled = true; gv.textContent = "合成中…(1-3分钟)"; generateAcqVideoInline(d, panel.querySelector(".acq-video-result"), ws); });
+      } else {
+        panel.innerHTML = `<div style="color:#c0392b;font-size:12px;background:#fbf7f0;border-radius:8px;padding:12px;">没生成出来：${escapeHtml(d.message || d.error || "稍后再试")}</div>`;
+      }
+    } catch (e) { panel.innerHTML = `<div style="color:#c0392b;font-size:12px;">失败：${escapeHtml(e.message)}</div>`; }
+    b.disabled = false;
+  }));
+}
+
+// ============ 数据看板:统一看预估vs实际、爆款、准度 ============
+async function renderDashboard() {
+  const target = byId("dashboardBoard");
+  if (!target) return;
+  target.innerHTML = `<div class="empty-state"><b>正在汇总数据…</b><span>读取作品 + 预估/真实表现。</span></div>`;
+  try {
+    const res = await fetch(apiPath("/api/final-works"));
+    if (res.ok) {
+      const d = await res.json();
+      const remote = Array.isArray(d.finalWorks) ? d.finalWorks : (Array.isArray(d.works) ? d.works : []);
+      const m = new Map();
+      [...remote, ...(Array.isArray(state.finalWorks) ? state.finalWorks : [])].forEach((w) => { if (w?.id) m.set(w.id, w); });
+      state.finalWorks = [...m.values()].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+    }
+  } catch (e) { /* 用本机缓存 */ }
+  state.dashBoard = null;
+  try { state.dashBoard = await (await fetch(apiPath("/api/cheat/board"))).json(); } catch (e) { /* 看板取不到不影响明细 */ }
+  paintDashboard();
+}
+
+function dashWinner(w) { return !!(w.calibration && w.calibration.isWinner); }
+function dashHasMetrics(w) { const m = w.publishMetrics; return !!(m && (m.likes != null || m.views != null || m.collects != null || m.comments != null || m.inquiries != null)); }
+function dashPublished(w) { return !!(w.publishRecord && w.publishRecord.status === "published"); }
+
+function paintDashboard() {
+  const target = byId("dashboardBoard");
+  if (!target) return;
+  const works = Array.isArray(state.finalWorks) ? state.finalWorks : [];
+  if (!works.length) {
+    target.innerHTML = `<div class="empty-state"><b>还没有作品</b><span>做完一条内容点「完成」，这里就有数据了。</span></div>`;
+    return;
+  }
+  const board = state.dashBoard || {};
+  const total = works.length;
+  const published = works.filter(dashPublished).length;
+  const withMetrics = works.filter(dashHasMetrics).length;
+  const winners = works.filter(dashWinner).length;
+  const sig = board.rubricSignal;
+  const accNote = typeof sig === "string" ? sig : ((sig && (sig.note || sig.text || sig.verdict)) || (withMetrics < 5 ? `再复盘 ${Math.max(0, 5 - withMetrics)} 篇就能看出预估准度` : ""));
+  const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
+  const inWeek = (w) => { const t = Date.parse(w.createdAt || ""); return t && t >= weekAgo; };
+  const weekWorks = works.filter(inWeek);
+  const card = (label, val, color) => `<div style="flex:1;min-width:104px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:15px 16px;"><div style="font-size:28px;font-weight:590;letter-spacing:-0.5px;line-height:1;color:${color || "#f7f8f8"};">${val}</div><div style="font-size:12px;font-weight:510;color:#8a8f98;margin-top:7px;">${label}</div></div>`;
+  const lbl = (t) => `<div style="font-size:11px;font-weight:590;letter-spacing:0.6px;text-transform:uppercase;color:#62666d;margin:0 0 10px;">${t}</div>`;
+  const summary = `
+    <div style="margin-bottom:18px;">${lbl("本周 · 近 7 天")}
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">${card("做了(篇)", weekWorks.length)}${card("出效果", weekWorks.filter(dashWinner).length, "#10b981")}${card("待复盘", weekWorks.filter((w) => !dashHasMetrics(w)).length, "#7170ff")}</div>
+    </div>
+    <div style="margin-bottom:18px;">${lbl("累计")}
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">${card("做了(篇)", total)}${card("已发布", published)}${card("有数据", withMetrics)}${card("爆款", winners, "#10b981")}</div>
+      ${accNote ? `<div style="font-size:12px;color:#8a8f98;margin-top:10px;">📈 预估准度：${escapeHtml(accNote)}</div>` : ""}
+    </div>`;
+  const lines = [...new Set(works.map((w) => w.workspace || "").filter(Boolean))];
+  const fLine = state.dashFilterLine || "";
+  const winnerOnly = !!state.dashWinnerOnly;
+  const pendingOnly = !!state.dashPendingOnly;
+  let rows = works.filter((w) => (!fLine || w.workspace === fLine) && (!winnerOnly || dashWinner(w)) && (!pendingOnly || (dashPublished(w) && !dashHasMetrics(w))));
+  const sortKey = state.dashSort || "date";
+  const dir = state.dashDir === "asc" ? 1 : -1;
+  const predOf = (w) => normalizePredScore(w.prediction && (w.prediction.composite != null ? w.prediction.composite : w.prediction.score));
+  const engOf = (w) => (w.publishMetrics && w.publishMetrics.realEngagement) || 0;
+  const inqOf = (w) => (w.publishMetrics && w.publishMetrics.inquiries) || 0;
+  rows = rows.sort((a, b) => {
+    if (sortKey === "pred") return (predOf(a) - predOf(b)) * dir;
+    if (sortKey === "eng") return (engOf(a) - engOf(b)) * dir;
+    if (sortKey === "inq") return (inqOf(a) - inqOf(b)) * dir;
+    return String(a.createdAt || "").localeCompare(String(b.createdAt || "")) * dir;
+  });
+  const sortBtn = (key, label) => `<button data-dash-sort="${key}" style="font-size:12px;font-weight:510;padding:5px 12px;border:1px solid ${sortKey === key ? "#5e6ad2" : "rgba(255,255,255,0.08)"};border-radius:9999px;background:${sortKey === key ? "rgba(94,106,210,0.18)" : "transparent"};color:${sortKey === key ? "#828fff" : "#d0d6e0"};cursor:pointer;">${label}${sortKey === key ? (dir === 1 ? " ↑" : " ↓") : ""}</button>`;
+  const th = `padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.08);`;
+  const filterBar = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+      <select data-dash-line style="font-size:12px;padding:6px 10px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;background:#191a1b;color:#d0d6e0;"><option value="">全部业务线</option>${lines.map((l) => `<option value="${escapeHtml(l)}" ${l === fLine ? "selected" : ""}>${escapeHtml(l)}</option>`).join("")}</select>
+      <label style="font-size:12px;color:#8a8f98;cursor:pointer;"><input type="checkbox" data-dash-winner ${winnerOnly ? "checked" : ""}/> 只看爆款</label>
+      <label style="font-size:12px;color:#8a8f98;cursor:pointer;"><input type="checkbox" data-dash-pending ${pendingOnly ? "checked" : ""}/> 只看待复盘</label>
+      <span style="font-size:12px;color:#62666d;margin-left:auto;">排序</span>${sortBtn("date", "日期")}${sortBtn("pred", "预估分")}${sortBtn("eng", "互动")}${sortBtn("inq", "询盘")}
+    </div>`;
+  const head = `<tr style="text-align:left;color:#62666d;font-size:11px;font-weight:590;text-transform:uppercase;letter-spacing:0.4px;"><th style="${th}">标题</th><th style="${th}">业务线</th><th style="${th}">预估</th><th style="${th}">阅读</th><th style="${th}">赞/藏</th><th style="${th}">评</th><th style="${th}">询盘</th><th style="${th}">出效果</th><th style="${th}">准不准</th><th style="${th}"></th></tr>`;
+  const bodyRows = rows.map((w) => {
+    const m = w.publishMetrics || {};
+    const pred = predOf(w);
+    const has = dashHasMetrics(w);
+    const win = dashWinner(w);
+    const calib = w.calibration ? calibText(w.prediction, w.calibration) : "";
+    const pubNoData = dashPublished(w) && !has;
+    const td = `padding:9px 10px;`;
+    const dash = "<span style='color:#62666d'>—</span>";
+    return `<tr class="od-row" style="border-top:1px solid rgba(255,255,255,0.06);font-size:13px;color:#d0d6e0;">
+      <td style="${td}max-width:220px;color:#f7f8f8;font-weight:510;">${escapeHtml(String(w.title || w.topic || "(无标题)").slice(0, 30))}</td>
+      <td style="${td}color:#8a8f98;">${escapeHtml(w.workspace || "—")}</td>
+      <td style="${td}color:${pred ? "#828fff" : "#62666d"};font-weight:510;">${pred || "—"}</td>
+      <td style="${td}">${has ? (m.views || 0) : dash}</td>
+      <td style="${td}">${has ? `${m.likes || 0}/${m.collects || 0}` : dash}</td>
+      <td style="${td}">${has ? (m.comments || 0) : dash}</td>
+      <td style="${td}">${has ? (m.inquiries || 0) : dash}</td>
+      <td style="${td}">${has ? (win ? "<span style='color:#10b981'>✅</span>" : dash) : ""}</td>
+      <td style="${td}color:#8a8f98;">${has ? escapeHtml(calib) : (pubNoData ? "<span style='color:#7170ff'>待复盘</span>" : dash)}</td>
+      <td style="${td}">${has ? "" : `<button data-dash-retro="${escapeHtml(w.id)}" style="font-size:11px;font-weight:510;padding:4px 10px;border:1px solid rgba(255,255,255,0.12);color:#d0d6e0;border-radius:6px;background:rgba(255,255,255,0.04);cursor:pointer;">填数据</button>`}</td>
+    </tr>
+    <tr class="dash-retro-row" data-dash-retro-row="${escapeHtml(w.id)}" style="display:none;"><td colspan="10" style="padding:12px;background:rgba(255,255,255,0.02);">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+        ${[["views", "阅读"], ["likes", "点赞"], ["collects", "收藏"], ["comments", "评论"], ["inquiries", "有人来问"]].map(([k, lab]) => `<label style="font-size:12px;color:#8a8f98;">${lab}<br><input type="number" min="0" data-dr-field="${k}" value="${m[k] != null ? m[k] : ""}" style="width:74px;padding:6px;border:1px solid rgba(255,255,255,0.1);border-radius:6px;background:#191a1b;color:#f7f8f8;margin-top:4px;" /></label>`).join("")}
+        <button data-dash-retro-save="${escapeHtml(w.id)}" style="font-size:12px;font-weight:510;padding:8px 16px;border:none;border-radius:6px;background:#5e6ad2;color:#fff;cursor:pointer;">保存复盘</button>
+      </div>
+    </td></tr>`;
+  }).join("");
+  target.innerHTML = `<style>#dashboardBoard .od-row:hover{background:rgba(255,255,255,0.03);}#dashboardBoard select option{background:#191a1b;}</style>
+    <div style="background:#0f1011;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:22px;font-family:'Inter Variable',Inter,-apple-system,system-ui,'Segoe UI',Roboto,sans-serif;font-feature-settings:'cv01','ss03';color:#f7f8f8;">
+      ${summary}${filterBar}
+      <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">${head}${bodyRows}</table></div>
+    </div>`;
+
+  const ls = target.querySelector("[data-dash-line]"); if (ls) ls.addEventListener("change", (e) => { state.dashFilterLine = e.target.value; paintDashboard(); });
+  const wc = target.querySelector("[data-dash-winner]"); if (wc) wc.addEventListener("change", (e) => { state.dashWinnerOnly = e.target.checked; paintDashboard(); });
+  const pc = target.querySelector("[data-dash-pending]"); if (pc) pc.addEventListener("change", (e) => { state.dashPendingOnly = e.target.checked; paintDashboard(); });
+  target.querySelectorAll("[data-dash-sort]").forEach((b) => b.addEventListener("click", () => {
+    const k = b.dataset.dashSort;
+    if (state.dashSort === k) state.dashDir = state.dashDir === "asc" ? "desc" : "asc"; else { state.dashSort = k; state.dashDir = "desc"; }
+    paintDashboard();
+  }));
+  target.querySelectorAll("[data-dash-retro]").forEach((b) => b.addEventListener("click", () => {
+    const row = target.querySelector(`.dash-retro-row[data-dash-retro-row="${(window.CSS && CSS.escape) ? CSS.escape(b.dataset.dashRetro) : b.dataset.dashRetro}"]`);
+    if (row) row.style.display = row.style.display === "none" ? "table-row" : "none";
+  }));
+  target.querySelectorAll("[data-dash-retro-save]").forEach((b) => b.addEventListener("click", async () => {
+    const id = b.dataset.dashRetroSave;
+    const row = target.querySelector(`.dash-retro-row[data-dash-retro-row="${(window.CSS && CSS.escape) ? CSS.escape(id) : id}"]`);
+    if (!row) return;
+    const metrics = {};
+    row.querySelectorAll("[data-dr-field]").forEach((inp) => { metrics[inp.dataset.drField] = Number(inp.value || 0); });
+    b.disabled = true; b.textContent = "保存中…";
+    try {
+      const r = await fetch(apiPath("/api/cheat/retro"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workId: id, metrics }) });
+      const d = await r.json();
+      const w = (state.finalWorks || []).find((x) => x.id === id);
+      if (d && d.ok && w) { w.publishMetrics = d.metrics || metrics; if (d.calibration) w.calibration = d.calibration; paintDashboard(); return; }
+      alert("保存失败，稍后再试。"); b.disabled = false; b.textContent = "保存复盘";
+    } catch (e) { alert("保存失败：" + e.message); b.disabled = false; b.textContent = "保存复盘"; }
+  }));
 }
 
 function sampleAssetItems(label) {

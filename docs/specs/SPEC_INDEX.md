@@ -163,6 +163,19 @@
   - 改 Pixelle 源码只允许加 provider 适配器,不动核心;MP4 持久化依赖 OSS(blocked),A1 先用本地/临时。
 - 配套:`docs/strategy/pixelle-video-integration-digest.md`(深挖结论)。
 
+### 内容工厂自驱动管线（2026-06-24，素材→自动匹配→出片）
+
+- 文件:`docs/specs/2026-06-24-content-factory-pipeline-spec.md`
+- 触发说法:
+  - "按内容工厂管线" / "素材自动匹配" / "档库+匹配器"
+  - "别再给单客户手搓"
+- 开发边界:
+  - 别一单一手搓 DESIGN/手配镜头;升成系统:素材自动梳理打标(GLM-5V)+入库(**本地 SQLite 先跑通**)+ffmpeg归一化 → 风格档库 + 内容→档匹配器(吃文案吐可渲染 Script,零手搓)。
+  - 阶段1+2 本期做;阶段3 质量门自动回炉闭环列 backlog。
+  - 复用 Remotion 效果引擎(engine/rules+EffectEngine+factory.mjs)+ IndexTTS2 配音档 + GLM-5V 打标 + mizan 暖金定稿(=风格档库第一张)。
+  - 不暴露内部名/不重构前端/不烧钱出片(渲染配音本机免费可放量)/新客户走匹配器选档不手搓。
+- 配套:`video-studio/mizan-line/DESIGN.md`(暖金视觉定稿)。
+
 ## 使用规则
 
 1. 开发前先读 spec。

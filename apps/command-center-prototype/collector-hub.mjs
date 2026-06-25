@@ -146,6 +146,7 @@ export async function loadUnifiedContentAssets(input = {}) {
   const limit = clampNumber(input.limit || 200, 1, 500);
   const poolLimit = clampNumber(input.poolLimit || Math.max(limit * 5, 200), limit, 1000);
   const platform = normalizeText(input.platform || '');
+  const workspace = normalizeText(input.workspace || input.businessLine || '');
   const keywords = parseSearchWords(input.keywords || input.keyword || '');
   let runIds = parseSearchWords(input.runIds || input.run_ids || '');
   const latestRunCount = clampNumber(input.latestRunCount || input.latest_run_count || 0, 0, 20);
@@ -160,11 +161,12 @@ export async function loadUnifiedContentAssets(input = {}) {
       author_name, author_id, title, body, markdown, language, keyword, label_type,
       metrics, comments, raw_json, published_at, collected_at, created_at
     from longka_content_samples
-    where ($1 = '' or platform = $1)
+    where ($1 = '' or platform = $1 or ($1 in ('xiaohongshu','xhs') and platform in ('xiaohongshu','xhs')))
       and ($3::text[] is null or run_id = any($3::text[]))
+      and ($4 = '' or workspace = $4 or workspace ilike '%'||$4||'%' or $4 ilike '%'||coalesce(nullif(workspace,''),'__none__')||'%')
     order by collected_at desc, created_at desc
     limit $2
-  `, [platform, poolLimit, runIds.length ? runIds : null]);
+  `, [platform, poolLimit, runIds.length ? runIds : null, workspace]);
   const samples = result.rows.map(dbRowToContentSample);
   const preparedSamples = platform === 'x' ? evaluateXContentSamples(samples).rows : samples;
   let assets = preparedSamples
@@ -878,6 +880,161 @@ async function ensureCollectorSchema() {
     )
   `);
   await pgPool.query('create index if not exists idx_longka_benchmark_workspace on longka_benchmark(workspace)');
+  // 评论深挖洞察:一帖一行,把评论提炼成的真实料(痛点/欲望/异议/金句/选题缺口)
+  // spec: docs/specs/2026-06-19-comment-mining-spec.md
+  await pgPool.query(`
+    create table if not exists longka_comment_insights (
+      id text primary key,
+      sample_id text references longka_content_samples(id) on delete cascade,
+      workspace text not null default '',
+      platform text not null default '',
+      comment_count int not null default 0,
+      pain_points jsonb not null default '[]'::jsonb,
+      desires jsonb not null default '[]'::jsonb,
+      objections jsonb not null default '[]'::jsonb,
+      golden_quotes jsonb not null default '[]'::jsonb,
+      emotions jsonb not null default '[]'::jsonb,
+      topic_gaps jsonb not null default '[]'::jsonb,
+      created_at timestamptz not null default now(),
+      unique(sample_id)
+    )
+  `);
+  await pgPool.query('create index if not exists idx_longka_comment_insights_workspace on longka_comment_insights(workspace, created_at desc)');
+}
+
+// 找「有评论、但还没深挖」的样本(L1 已回填 comments → L2 待挖)
+// jsonb_array_length(comments) > 0 且无对应 insight 行
+export async function listSamplesNeedingCommentMining(input = {}) {
+  await requireCollectorDb();
+  const workspace = normalizeText(input.workspace || '');
+  const limit = clampNumber(input.limit || 50, 1, 300);
+  const minComments = clampNumber(input.minComments || 5, 1, 100);
+  const result = await pgPool.query(`
+    select s.id, s.platform, s.title, s.body, s.keyword, s.comments,
+           coalesce(s.workspace, '') as workspace,
+           jsonb_array_length(s.comments) as comment_count
+    from longka_content_samples s
+    left join longka_comment_insights i on i.sample_id = s.id
+    where i.id is null
+      and jsonb_typeof(s.comments) = 'array'
+      and jsonb_array_length(s.comments) >= $1
+      and ($2 = '' or coalesce(s.workspace, '') = $2)
+    order by jsonb_array_length(s.comments) desc
+    limit $3
+  `, [minComments, workspace, limit]);
+  return result.rows.map((row) => ({
+    id: row.id,
+    platform: row.platform,
+    title: normalizeText(row.title || ''),
+    body: normalizeText(row.body || '').slice(0, 500),
+    keyword: row.keyword,
+    workspace: row.workspace,
+    commentCount: Number(row.comment_count) || 0,
+    comments: Array.isArray(row.comments) ? row.comments : [],
+  }));
+}
+
+// 存一帖的评论深挖洞察(幂等:sample_id 唯一)
+export async function saveCommentInsight(input = {}) {
+  await requireCollectorDb();
+  const sampleId = normalizeText(input.sampleId || input.sample_id || '');
+  if (!sampleId) return { ok: false, error: 'missing_sample_id' };
+  const id = `ci-${randomUUID().slice(0, 12)}`;
+  const arr = (v) => JSON.stringify(Array.isArray(v) ? v : []);
+  await pgPool.query(`
+    insert into longka_comment_insights
+      (id, sample_id, workspace, platform, comment_count, pain_points, desires, objections, golden_quotes, emotions, topic_gaps)
+    values ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8::jsonb,$9::jsonb,$10::jsonb,$11::jsonb)
+    on conflict (sample_id) do update set
+      workspace = excluded.workspace,
+      platform = excluded.platform,
+      comment_count = excluded.comment_count,
+      pain_points = excluded.pain_points,
+      desires = excluded.desires,
+      objections = excluded.objections,
+      golden_quotes = excluded.golden_quotes,
+      emotions = excluded.emotions,
+      topic_gaps = excluded.topic_gaps,
+      created_at = now()
+  `, [
+    id, sampleId, normalizeText(input.workspace || ''), normalizeText(input.platform || ''),
+    Number(input.commentCount) || 0,
+    arr(input.painPoints), arr(input.desires), arr(input.objections),
+    arr(input.goldenQuotes), arr(input.emotions), arr(input.topicGaps),
+  ]);
+  return { ok: true, id };
+}
+
+// 列出某 workspace 已深挖的洞察(供 UI"真实声音"块)
+export async function listCommentInsights(input = {}) {
+  await requireCollectorDb();
+  const workspace = normalizeText(input.workspace || '');
+  const limit = clampNumber(input.limit || 100, 1, 300);
+  const result = await pgPool.query(`
+    select i.id, i.sample_id, i.workspace, i.platform, i.comment_count,
+           i.pain_points, i.desires, i.objections, i.golden_quotes, i.emotions, i.topic_gaps,
+           i.created_at, s.title
+    from longka_comment_insights i
+    left join longka_content_samples s on s.id = i.sample_id
+    where ($1 = '' or i.workspace = $1)
+    order by i.created_at desc
+    limit $2
+  `, [workspace, limit]);
+  return result.rows.map((row) => ({
+    id: row.id,
+    sampleId: row.sample_id,
+    workspace: row.workspace,
+    platform: row.platform,
+    title: normalizeText(row.title || ''),
+    commentCount: row.comment_count,
+    painPoints: row.pain_points || [],
+    desires: row.desires || [],
+    objections: row.objections || [],
+    goldenQuotes: row.golden_quotes || [],
+    emotions: row.emotions || [],
+    topicGaps: row.topic_gaps || [],
+    createdAt: row.created_at,
+  }));
+}
+
+// 聚合某 workspace 的真实料,供创作 RAG 注入(去重 + 按复现/赞排序)
+export async function getCommentRealMaterial(input = {}) {
+  await requireCollectorDb();
+  const workspace = normalizeText(input.workspace || '');
+  const result = await pgPool.query(`
+    select pain_points, desires, objections, golden_quotes, topic_gaps
+    from longka_comment_insights
+    where ($1 = '' or workspace = $1)
+    order by created_at desc
+    limit 200
+  `, [workspace]);
+  const painMap = new Map(); // quote → freq 累加
+  const objections = new Set();
+  const desires = new Set();
+  const quotes = new Set();
+  const topicGaps = new Set();
+  for (const row of result.rows) {
+    for (const p of (row.pain_points || [])) {
+      const q = normalizeText(p?.quote || p);
+      if (q) painMap.set(q, (painMap.get(q) || 0) + (Number(p?.freq) || 1));
+    }
+    for (const d of (row.desires || [])) { const q = normalizeText(d?.quote || d); if (q) desires.add(q); }
+    for (const o of (row.objections || [])) { const q = normalizeText(o?.quote || o); if (q) objections.add(q); }
+    for (const g of (row.golden_quotes || [])) { const q = normalizeText(g); if (q) quotes.add(q); }
+    for (const t of (row.topic_gaps || [])) { const q = normalizeText(t); if (q) topicGaps.add(q); }
+  }
+  const painPoints = [...painMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([quote, freq]) => ({ quote, freq }));
+  return {
+    workspace: workspace || 'all',
+    insightCount: result.rows.length,
+    painPoints: painPoints.slice(0, 30),
+    desires: [...desires].slice(0, 30),
+    objections: [...objections].slice(0, 30),
+    goldenQuotes: [...quotes].slice(0, 40),
+    topicGaps: [...topicGaps].slice(0, 30),
+  };
 }
 
 // 保存一次对标起锚结果

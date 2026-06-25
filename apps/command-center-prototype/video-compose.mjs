@@ -139,3 +139,33 @@ export async function composeOralVideo({ workdir, beats, outName = 'final.mp4' }
   await concatSegments(workdir, segs, outName);
   return { outName, segments: segs.length };
 }
+
+// 成品合成:原视频(画面不动,直接copy)+ 配音(apad补静音到视频长)+ 可选BGM(循环·压低·混音)。
+// videoFile/audioFile/bgmFile 都相对 workdir;durationSec=视频时长(秒)。
+export async function finalizeFilm({ workdir, videoFile, audioFile, bgmFile = '', srtText = '', durationSec = 15, outName = 'film.mp4' }) {
+  await mkdir(workdir, { recursive: true });
+  const dur = Math.max(2, Number(durationSec) || 15);
+  // 视频:有字幕则烧字幕(需重编码),否则直接 copy
+  // tpad:把视频末帧定格延长到 dur(= 视频与旁白更长者),保证旁白说完不被切。
+  let vmap, vcodec, fcV;
+  if (String(srtText || '').trim()) {
+    await writeFile(join(workdir, 'sub.srt'), buildSrt(srtText, dur));
+    fcV = `[0:v]tpad=stop_mode=clone:stop_duration=60,${subFilter('sub.srt')}[v]`; vmap = '[v]';
+    vcodec = ['-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-r', '30'];
+  } else {
+    fcV = '[0:v]tpad=stop_mode=clone:stop_duration=60[v]'; vmap = '[v]';
+    vcodec = ['-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-r', '30'];
+  }
+  // 音频:配音补静音到视频长 + 可选 BGM(循环·压低·混音)
+  const fcA = bgmFile
+    ? '[1:a]apad[va];[2:a]volume=0.14[b];[va][b]amix=inputs=2:duration=longest:dropout_transition=0[a]'
+    : '[1:a]apad[a]';
+  const fc = fcV ? `${fcV};${fcA}` : fcA;
+  const inputs = bgmFile
+    ? ['-i', videoFile, '-i', audioFile, '-stream_loop', '-1', '-i', bgmFile]
+    : ['-i', videoFile, '-i', audioFile];
+  const args = ['-y', ...inputs, '-filter_complex', fc, '-map', vmap, '-map', '[a]',
+    ...vcodec, '-c:a', 'aac', '-b:a', '160k', '-ar', '44100', '-t', String(dur), outName];
+  await run(FFMPEG, args, { cwd: workdir, maxBuffer: 1 << 25, timeout: FF_TIMEOUT });
+  return { outName };
+}

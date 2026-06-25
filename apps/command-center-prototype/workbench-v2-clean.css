@@ -8,7 +8,7 @@
   --red: #b94335;
   --amber: #936829;
   --soft: #fbf8f1;
-  --shadow: 0 18px 54px rgba(49, 63, 52, .08);
+  --shadow: 0 6px 20px rgba(49, 63, 52, .07);
 }
 
 * { box-sizing: border-box; }

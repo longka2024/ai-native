@@ -77,3 +77,14 @@ external/pixelle-video/
 video-studio/
 _ref/
 external/
+
+# Remotion/HyperFrames 构建依赖 + 渲染产物(几百MB,本地用,源码进 git/产物不进)
+apps/command-center-prototype/video-remotion/node_modules/
+apps/command-center-prototype/video-remotion/public/
+apps/command-center-prototype/video-hf/
+# 视频归一化片段 + 渲染中间产物(大二进制,本地用)
+apps/command-center-prototype/tools/norm_clips/
+apps/command-center-prototype/media/clips/
+# 小妹工作台草稿快照(真实客户私有数据,绝不进 public 仓库)
+apps/command-center-prototype/data/workbench-snapshots/
+apps/command-center-prototype/data/customer-assets/
