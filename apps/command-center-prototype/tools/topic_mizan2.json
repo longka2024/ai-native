@@ -1,0 +1,17 @@
+{
+  "industry": "商超采购 供应链",
+  "brand": "源头供应链 · mizan",
+  "title": "进口超市的货\n源头价拿",
+  "titleHl": ["源头价"],
+  "beats": [
+    { "text": "海外超市的货，凭什么比国内贵三倍？", "kind": "contrast", "feature": "wall", "hl": ["贵三倍"] },
+    { "text": "中间商一层层加价，钱都被赚走了。", "kind": "contrast", "feature": "people", "hl": ["一层层加价"] },
+    { "text": "米站，直接对接源头工厂。", "kind": "selling", "feature": "drone", "hl": ["源头工厂"] },
+    { "text": "省掉中间环节，工厂价拿货。", "kind": "number", "feature": "wall", "hl": ["工厂价"], "num": { "to": 50, "unit": "%", "label": "中间差价省掉", "decimals": 0 } },
+    { "text": "十万款商品，二十六个大类。", "kind": "number", "feature": "product", "hl": ["十万款"], "num": { "to": 10, "unit": "万", "label": "SKU 一站齐", "decimals": 0 } },
+    { "text": "美妆、数码、家居、五金，一站配齐。", "kind": "selling", "feature": "product", "hl": ["美妆", "数码", "家居", "五金"] },
+    { "text": "八成商品一件起订，小本也能进。", "kind": "number", "feature": "product", "hl": ["一件起订"], "num": { "to": 80, "unit": "%", "label": "一件起订", "decimals": 0 } },
+    { "text": "西葡智墨，海外仓就近发货。", "kind": "selling", "feature": "loading", "hl": ["海外仓"] },
+    { "text": "海外开店进货，认准米站。", "kind": "closing", "feature": "drone", "hl": ["认准米站"] }
+  ]
+}

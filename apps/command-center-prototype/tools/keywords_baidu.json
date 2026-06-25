@@ -1,0 +1,3710 @@
+{
+  "industry": "商超采购 供应链",
+  "source": "baidu_sug",
+  "note": "意图来自真实联想词;无搜索量(量待 MediaCrawler/指数层)",
+  "by_region": {
+    "西班牙": {
+      "transaction": [
+        {
+          "keyword": "去西班牙开店要什么条件",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "西班牙开店进货"
+        },
+        {
+          "keyword": "在西班牙开店有多难",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "西班牙开店进货"
+        },
+        {
+          "keyword": "西班牙华人批发市场",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "西班牙华人超市进货"
+        },
+        {
+          "keyword": "西班牙华人超市怎么进货",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "西班牙华人超市"
+        },
+        {
+          "keyword": "西班牙华人超市进货多少钱",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "西班牙华人超市进货"
+        },
+        {
+          "keyword": "西班牙华人超市进货要求",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "西班牙华人超市进货"
+        },
+        {
+          "keyword": "西班牙开店一年赚多少",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "西班牙开店进货"
+        },
+        {
+          "keyword": "西班牙开店流程",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "西班牙开店进货"
+        },
+        {
+          "keyword": "西班牙开店进货多少钱",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "西班牙开店进货"
+        },
+        {
+          "keyword": "西班牙开店进货流程",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "西班牙开店进货"
+        },
+        {
+          "keyword": "西班牙开店进货要求",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "西班牙开店进货"
+        },
+        {
+          "keyword": "西班牙百元店都卖什么产品",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "西班牙百元店"
+        },
+        {
+          "keyword": "西班牙超市进货流程",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "西班牙超市进货"
+        },
+        {
+          "keyword": "西班牙超市进货渠道",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "西班牙超市进货"
+        },
+        {
+          "keyword": "西班牙超市进货要求",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "西班牙超市进货"
+        }
+      ],
+      "info": [
+        {
+          "keyword": "在西班牙开什么店最赚钱",
+          "intent": "info",
+          "score": 3,
+          "seed": "西班牙开店进货"
+        },
+        {
+          "keyword": "在西班牙开超市赚钱吗",
+          "intent": "info",
+          "score": 3,
+          "seed": "西班牙开店进货"
+        },
+        {
+          "keyword": "西班牙华人开超市赚钱吗",
+          "intent": "info",
+          "score": 3,
+          "seed": "西班牙华人超市进货"
+        },
+        {
+          "keyword": "西班牙华人超市叫什么",
+          "intent": "info",
+          "score": 3,
+          "seed": "西班牙华人超市"
+        },
+        {
+          "keyword": "西班牙华人超市在哪里",
+          "intent": "info",
+          "score": 3,
+          "seed": "西班牙华人超市"
+        },
+        {
+          "keyword": "西班牙华人超市有哪些",
+          "intent": "info",
+          "score": 3,
+          "seed": "西班牙华人超市"
+        },
+        {
+          "keyword": "西班牙华人超市现状",
+          "intent": "info",
+          "score": 3,
+          "seed": "西班牙华人超市"
+        },
+        {
+          "keyword": "西班牙百元店是什么意思",
+          "intent": "info",
+          "score": 3,
+          "seed": "西班牙百元店"
+        },
+        {
+          "keyword": "西班牙百元店生意好做吗",
+          "intent": "info",
+          "score": 3,
+          "seed": "西班牙百元店"
+        },
+        {
+          "keyword": "西班牙百元店管道工是什么",
+          "intent": "info",
+          "score": 3,
+          "seed": "西班牙百元店"
+        },
+        {
+          "keyword": "西班牙百货是什么牌子",
+          "intent": "info",
+          "score": 3,
+          "seed": "西班牙百货"
+        },
+        {
+          "keyword": "西班牙超市品牌有哪些",
+          "intent": "info",
+          "score": 3,
+          "seed": "西班牙超市进货"
+        }
+      ],
+      "other": [
+        {
+          "keyword": "西班牙华人商店",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙华人超市"
+        },
+        {
+          "keyword": "西班牙华人超市app",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙华人超市"
+        },
+        {
+          "keyword": "西班牙哪里有中国超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙华人超市进货"
+        },
+        {
+          "keyword": "西班牙大型超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙超市进货"
+        },
+        {
+          "keyword": "西班牙开网店",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙开店进货"
+        },
+        {
+          "keyword": "西班牙最便宜超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙超市进货"
+        },
+        {
+          "keyword": "西班牙本土超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙华人超市进货"
+        },
+        {
+          "keyword": "西班牙百元店一天几个小时",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙百元店"
+        },
+        {
+          "keyword": "西班牙百元店五金词汇",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙百元店"
+        },
+        {
+          "keyword": "西班牙百元店单词",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙百元店"
+        },
+        {
+          "keyword": "西班牙百元店名字大全",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙百元店"
+        },
+        {
+          "keyword": "西班牙百元店日常用语",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙百元店"
+        },
+        {
+          "keyword": "西班牙百元店转让",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙百元店"
+        },
+        {
+          "keyword": "西班牙百货ECI",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙百货"
+        },
+        {
+          "keyword": "西班牙百货上海办事处",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙百货"
+        },
+        {
+          "keyword": "西班牙百货公司",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙百货"
+        },
+        {
+          "keyword": "西班牙百货公司高德英格利斯",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙百货"
+        },
+        {
+          "keyword": "西班牙百货官网",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙百货"
+        },
+        {
+          "keyword": "西班牙百货店",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙百货"
+        },
+        {
+          "keyword": "西班牙百货服装品牌",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙百货"
+        },
+        {
+          "keyword": "西班牙百货的logo",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙百货"
+        },
+        {
+          "keyword": "西班牙百货英文全称",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙百货"
+        },
+        {
+          "keyword": "西班牙的超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙超市进货"
+        },
+        {
+          "keyword": "西班牙网上超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙超市进货"
+        },
+        {
+          "keyword": "西班牙超市必买清单",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙超市进货"
+        },
+        {
+          "keyword": "西班牙连锁超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "西班牙超市进货"
+        }
+      ]
+    },
+    "意大利": {
+      "transaction": [
+        {
+          "keyword": "在意大利开店难不难",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "意大利开店进货"
+        },
+        {
+          "keyword": "在意大利开店需要什么手续",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "意大利开店进货"
+        },
+        {
+          "keyword": "怎么在意大利开店",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "意大利开店进货"
+        },
+        {
+          "keyword": "意大利华人代购",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "意大利华人超市进货"
+        },
+        {
+          "keyword": "意大利华人批发市场",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "意大利华人超市"
+        },
+        {
+          "keyword": "意大利华人超市进货价多少",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "意大利华人超市进货"
+        },
+        {
+          "keyword": "意大利华人食品批发",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "意大利华人超市"
+        },
+        {
+          "keyword": "意大利开店要交多少税",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "意大利开店进货"
+        },
+        {
+          "keyword": "意大利开店进货流程",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "意大利开店进货"
+        },
+        {
+          "keyword": "意大利开店进货要多少钱",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "意大利开店进货"
+        },
+        {
+          "keyword": "意大利开店进货要求",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "意大利开店进货"
+        },
+        {
+          "keyword": "意大利开店需要多少钱",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "意大利开店进货"
+        },
+        {
+          "keyword": "意大利货源在哪里找",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "意大利开店进货"
+        },
+        {
+          "keyword": "意大利超市进货价格表",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "意大利超市进货"
+        },
+        {
+          "keyword": "意大利超市进货流程",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "意大利超市进货"
+        },
+        {
+          "keyword": "意大利超市进货要求",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "意大利超市进货"
+        }
+      ],
+      "info": [
+        {
+          "keyword": "意大利华人超市叫什么",
+          "intent": "info",
+          "score": 3,
+          "seed": "意大利华人超市"
+        },
+        {
+          "keyword": "意大利华人超市在哪里",
+          "intent": "info",
+          "score": 3,
+          "seed": "意大利华人超市"
+        },
+        {
+          "keyword": "意大利华人超市有哪些",
+          "intent": "info",
+          "score": 3,
+          "seed": "意大利华人超市"
+        },
+        {
+          "keyword": "意大利百元店有哪些",
+          "intent": "info",
+          "score": 3,
+          "seed": "意大利百元店"
+        },
+        {
+          "keyword": "意大利的超市叫什么",
+          "intent": "info",
+          "score": 3,
+          "seed": "意大利超市进货"
+        }
+      ],
+      "other": [
+        {
+          "keyword": "意大利 超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利超市进货"
+        },
+        {
+          "keyword": "意大利便宜的本土品牌",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百元店"
+        },
+        {
+          "keyword": "意大利出名的店铺",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百元店"
+        },
+        {
+          "keyword": "意大利华人百货店买卖",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利华人超市"
+        },
+        {
+          "keyword": "意大利华人购物app",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利华人超市"
+        },
+        {
+          "keyword": "意大利华人购物网站",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利华人超市"
+        },
+        {
+          "keyword": "意大利华人超市的养乐多是正品吗",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利华人超市"
+        },
+        {
+          "keyword": "意大利品牌价值100",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百元店"
+        },
+        {
+          "keyword": "意大利大型超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利华人超市进货"
+        },
+        {
+          "keyword": "意大利开什么店好",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利开店进货"
+        },
+        {
+          "keyword": "意大利有没有名牌打折店",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百元店"
+        },
+        {
+          "keyword": "意大利本土超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利华人超市进货"
+        },
+        {
+          "keyword": "意大利百元店烟花年龄限制说明",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百元店"
+        },
+        {
+          "keyword": "意大利百元店烟花爆竹售卖说明书",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百元店"
+        },
+        {
+          "keyword": "意大利百货",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百元店"
+        },
+        {
+          "keyword": "意大利百货公司",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百元店"
+        },
+        {
+          "keyword": "意大利百货商场",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百元店"
+        },
+        {
+          "keyword": "意大利百货商店食品高清照片",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百货"
+        },
+        {
+          "keyword": "意大利百货店",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百货"
+        },
+        {
+          "keyword": "意大利百货店单词",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百货"
+        },
+        {
+          "keyword": "意大利百货店取名",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百货"
+        },
+        {
+          "keyword": "意大利百货店名字大全",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百货"
+        },
+        {
+          "keyword": "意大利百货店电影",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百货"
+        },
+        {
+          "keyword": "意大利百货店空礼盒图片",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百货"
+        },
+        {
+          "keyword": "意大利百货店铺起名",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百货"
+        },
+        {
+          "keyword": "意大利百货连锁公司",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利百货"
+        },
+        {
+          "keyword": "意大利超市几点开门",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利超市进货"
+        },
+        {
+          "keyword": "意大利超市必买品十种",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利超市进货"
+        },
+        {
+          "keyword": "意大利超市必买清单",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利超市进货"
+        },
+        {
+          "keyword": "意大利超市有什么值得买的",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利超市进货"
+        },
+        {
+          "keyword": "意大利连锁超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "意大利超市进货"
+        }
+      ]
+    },
+    "阿根廷": {
+      "transaction": [
+        {
+          "keyword": "阿根廷华人超市进货多少钱",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "阿根廷华人超市进货"
+        },
+        {
+          "keyword": "阿根廷华人超市进货流程",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "阿根廷华人超市进货"
+        },
+        {
+          "keyword": "阿根廷开店进货多少钱",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "阿根廷开店进货"
+        },
+        {
+          "keyword": "阿根廷开店进货流程",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "阿根廷开店进货"
+        },
+        {
+          "keyword": "阿根廷开店进货要求",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "阿根廷开店进货"
+        },
+        {
+          "keyword": "阿根廷超市进货价格表",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "阿根廷超市进货"
+        },
+        {
+          "keyword": "阿根廷超市进货流程",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "阿根廷超市进货"
+        },
+        {
+          "keyword": "阿根廷超市进货软件",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "阿根廷超市进货"
+        }
+      ],
+      "info": [
+        {
+          "keyword": "在阿根廷开超市至少一个月挣多少钱",
+          "intent": "info",
+          "score": 3,
+          "seed": "阿根廷开店进货"
+        },
+        {
+          "keyword": "在阿根廷开超市赚钱吗",
+          "intent": "info",
+          "score": 3,
+          "seed": "阿根廷开店进货"
+        },
+        {
+          "keyword": "阿根廷华人超市现在怎么样",
+          "intent": "info",
+          "score": 3,
+          "seed": "阿根廷华人超市"
+        },
+        {
+          "keyword": "阿根廷华人超市现状",
+          "intent": "info",
+          "score": 3,
+          "seed": "阿根廷华人超市"
+        },
+        {
+          "keyword": "阿根廷华人超市能赚多少钱",
+          "intent": "info",
+          "score": 3,
+          "seed": "阿根廷华人超市进货"
+        },
+        {
+          "keyword": "阿根廷生意好做吗",
+          "intent": "info",
+          "score": 3,
+          "seed": "阿根廷开店进货"
+        },
+        {
+          "keyword": "阿根廷百元店有哪些",
+          "intent": "info",
+          "score": 3,
+          "seed": "阿根廷百元店"
+        }
+      ],
+      "other": [
+        {
+          "keyword": "2020年阿根廷华人超市前景",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷华人超市进货"
+        },
+        {
+          "keyword": "2020年阿根廷超市能赚多少",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷超市进货"
+        },
+        {
+          "keyword": "2021阿根廷华人超市老板",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷华人超市进货"
+        },
+        {
+          "keyword": "阿根廷 便宜",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷百元店"
+        },
+        {
+          "keyword": "阿根廷 超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷超市进货"
+        },
+        {
+          "keyword": "阿根廷100元图片",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷百元店"
+        },
+        {
+          "keyword": "阿根廷低价",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷百元店"
+        },
+        {
+          "keyword": "阿根廷做生意",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷开店进货"
+        },
+        {
+          "keyword": "阿根廷区折扣",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷百元店"
+        },
+        {
+          "keyword": "阿根廷华人超市公会陈大明",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷华人超市"
+        },
+        {
+          "keyword": "阿根廷华人超市出现第二波关店潮",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷华人超市"
+        },
+        {
+          "keyword": "阿根廷华人超市完了",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷华人超市进货"
+        },
+        {
+          "keyword": "阿根廷华人超市打工工资",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷华人超市"
+        },
+        {
+          "keyword": "阿根廷华人超市最新情况",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷华人超市"
+        },
+        {
+          "keyword": "阿根廷华人超市深夜突发火灾",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷华人超市"
+        },
+        {
+          "keyword": "阿根廷商场",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷百货"
+        },
+        {
+          "keyword": "阿根廷商城",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷百货"
+        },
+        {
+          "keyword": "阿根廷商店",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷百元店"
+        },
+        {
+          "keyword": "阿根廷大型超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷百货"
+        },
+        {
+          "keyword": "阿根廷官方旗舰店",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷百货"
+        },
+        {
+          "keyword": "阿根廷开超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷开店进货"
+        },
+        {
+          "keyword": "阿根廷必买清单",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷百元店"
+        },
+        {
+          "keyword": "阿根廷百货商店食品高清照片",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷百货"
+        },
+        {
+          "keyword": "阿根廷的价格",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷百元店"
+        },
+        {
+          "keyword": "阿根廷购物",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷百元店"
+        },
+        {
+          "keyword": "阿根廷购物必买清单",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷百货"
+        },
+        {
+          "keyword": "阿根廷购物网站",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷百元店"
+        },
+        {
+          "keyword": "阿根廷超市今后趋势",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷超市进货"
+        },
+        {
+          "keyword": "阿根廷超市物价",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷超市进货"
+        },
+        {
+          "keyword": "阿根廷超市转让",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷超市进货"
+        },
+        {
+          "keyword": "阿根廷进口商品",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷开店进货"
+        },
+        {
+          "keyword": "阿根廷连锁超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷百货"
+        },
+        {
+          "keyword": "阿根廷首都地区华人超市出现关店潮,向内陆迁移",
+          "intent": "other",
+          "score": 2,
+          "seed": "阿根廷华人超市进货"
+        }
+      ]
+    },
+    "智利": {
+      "transaction": [
+        {
+          "keyword": "去智利做小商品批发生意",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "智利超市进货"
+        },
+        {
+          "keyword": "在智利开店需要多少钱",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "智利开店进货"
+        },
+        {
+          "keyword": "智利华人超市进货价多少",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "智利华人超市进货"
+        },
+        {
+          "keyword": "智利华人超市进货价格",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "智利华人超市进货"
+        },
+        {
+          "keyword": "智利华人超市进货渠道",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "智利华人超市进货"
+        },
+        {
+          "keyword": "智利开店利润高吗",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "智利开店进货"
+        },
+        {
+          "keyword": "智利开店进货流程",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "智利开店进货"
+        },
+        {
+          "keyword": "智利开店进货要多少钱",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "智利开店进货"
+        },
+        {
+          "keyword": "智利开店进货要求",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "智利开店进货"
+        },
+        {
+          "keyword": "智利批发市场",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "智利开店进货"
+        },
+        {
+          "keyword": "智利超市进货价格",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "智利超市进货"
+        },
+        {
+          "keyword": "智利超市进货流程",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "智利超市进货"
+        },
+        {
+          "keyword": "智利超市进货渠道在哪",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "智利超市进货"
+        }
+      ],
+      "info": [
+        {
+          "keyword": "智利开超市能赚钱吗",
+          "intent": "info",
+          "score": 3,
+          "seed": "智利超市进货"
+        },
+        {
+          "keyword": "智利百货商行在哪个城市",
+          "intent": "info",
+          "score": 3,
+          "seed": "智利百货"
+        }
+      ],
+      "other": [
+        {
+          "keyword": "去智利开超市一年赚多少",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利开店进货"
+        },
+        {
+          "keyword": "智利 超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利华人超市"
+        },
+        {
+          "keyword": "智利100",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利百元店"
+        },
+        {
+          "keyword": "智利1000元图片",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利百元店"
+        },
+        {
+          "keyword": "智利华人主要经营什么",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利华人超市"
+        },
+        {
+          "keyword": "智利华人做什么生意",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利华人超市进货"
+        },
+        {
+          "keyword": "智利华人天下",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利华人超市"
+        },
+        {
+          "keyword": "智利华人群",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利华人超市"
+        },
+        {
+          "keyword": "智利华人超市地址",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利华人超市"
+        },
+        {
+          "keyword": "智利华人超市官网",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利华人超市"
+        },
+        {
+          "keyword": "智利华人超市打工工资",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利华人超市"
+        },
+        {
+          "keyword": "智利华人都做什么生意",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利华人超市"
+        },
+        {
+          "keyword": "智利华裔",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利华人超市"
+        },
+        {
+          "keyword": "智利品牌",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利百元店"
+        },
+        {
+          "keyword": "智利商品",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利超市进货"
+        },
+        {
+          "keyword": "智利商场",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利百货"
+        },
+        {
+          "keyword": "智利商店",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利百元店"
+        },
+        {
+          "keyword": "智利大型超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利超市进货"
+        },
+        {
+          "keyword": "智利有啥值得买",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利百元店"
+        },
+        {
+          "keyword": "智利生意",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利开店进货"
+        },
+        {
+          "keyword": "智利百元内性价比高的红酒",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利百元店"
+        },
+        {
+          "keyword": "智利百货公司",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利百元店"
+        },
+        {
+          "keyword": "智利百货商店",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利百元店"
+        },
+        {
+          "keyword": "智利百货店休闲怎么打反盗了",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利百货"
+        },
+        {
+          "keyword": "智利百货店名字",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利百货"
+        },
+        {
+          "keyword": "智利百货店顾客对雇主拍视频有拉扯会被告吗",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利百货"
+        },
+        {
+          "keyword": "智利的华人",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利华人超市"
+        },
+        {
+          "keyword": "智利知名品牌",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利百元店"
+        },
+        {
+          "keyword": "智利购物",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利百元店"
+        },
+        {
+          "keyword": "智利购物网站",
+          "intent": "other",
+          "score": 2,
+          "seed": "智利百货"
+        }
+      ]
+    },
+    "葡萄牙": {
+      "transaction": [
+        {
+          "keyword": "葡萄牙华人超市进货多少钱",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "葡萄牙华人超市进货"
+        },
+        {
+          "keyword": "葡萄牙开店进货多少钱",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "葡萄牙开店进货"
+        },
+        {
+          "keyword": "葡萄牙开店进货流程",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "葡萄牙开店进货"
+        },
+        {
+          "keyword": "葡萄牙开店进货要求",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "葡萄牙开店进货"
+        },
+        {
+          "keyword": "葡萄牙超市进货价格",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "葡萄牙超市进货"
+        },
+        {
+          "keyword": "葡萄牙超市进货流程",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "葡萄牙超市进货"
+        },
+        {
+          "keyword": "葡萄牙超市进货渠道",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "葡萄牙超市进货"
+        }
+      ],
+      "info": [
+        {
+          "keyword": "葡萄牙华人超市叫什么",
+          "intent": "info",
+          "score": 3,
+          "seed": "葡萄牙华人超市"
+        },
+        {
+          "keyword": "葡萄牙华人超市在哪里",
+          "intent": "info",
+          "score": 3,
+          "seed": "葡萄牙华人超市"
+        },
+        {
+          "keyword": "葡萄牙华人超市有哪些",
+          "intent": "info",
+          "score": 3,
+          "seed": "葡萄牙华人超市"
+        },
+        {
+          "keyword": "葡萄牙电商平台有哪些",
+          "intent": "info",
+          "score": 3,
+          "seed": "葡萄牙开店进货"
+        },
+        {
+          "keyword": "葡萄牙百元店有哪些",
+          "intent": "info",
+          "score": 3,
+          "seed": "葡萄牙百元店"
+        }
+      ],
+      "other": [
+        {
+          "keyword": "葡萄牙 商站",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙百货"
+        },
+        {
+          "keyword": "葡萄牙三百店",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙百元店"
+        },
+        {
+          "keyword": "葡萄牙中国超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙华人超市"
+        },
+        {
+          "keyword": "葡萄牙买化妆品便宜吗",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙华人超市进货"
+        },
+        {
+          "keyword": "葡萄牙做生意",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙开店进货"
+        },
+        {
+          "keyword": "葡萄牙华人商会",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙华人超市"
+        },
+        {
+          "keyword": "葡萄牙华人街",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙华人超市"
+        },
+        {
+          "keyword": "葡萄牙华人门户网站",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙华人超市"
+        },
+        {
+          "keyword": "葡萄牙商人",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙华人超市进货"
+        },
+        {
+          "keyword": "葡萄牙商品",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙超市进货"
+        },
+        {
+          "keyword": "葡萄牙商场",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙百元店"
+        },
+        {
+          "keyword": "葡萄牙商机",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙开店进货"
+        },
+        {
+          "keyword": "葡萄牙商铺",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙开店进货"
+        },
+        {
+          "keyword": "葡萄牙小众品牌",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙百元店"
+        },
+        {
+          "keyword": "葡萄牙必买奢侈品",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙百元店"
+        },
+        {
+          "keyword": "葡萄牙最值得买的大牌",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙百元店"
+        },
+        {
+          "keyword": "葡萄牙电商",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙开店进货"
+        },
+        {
+          "keyword": "葡萄牙百元店是正品吗",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙百元店"
+        },
+        {
+          "keyword": "葡萄牙百货商店食品高清照片",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙百货"
+        },
+        {
+          "keyword": "葡萄牙的大商站",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙百货"
+        },
+        {
+          "keyword": "葡萄牙购物",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙百元店"
+        },
+        {
+          "keyword": "葡萄牙购物网站",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙百货"
+        },
+        {
+          "keyword": "葡萄牙超市品牌",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙百元店"
+        },
+        {
+          "keyword": "葡萄牙超市必买清单",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙华人超市"
+        },
+        {
+          "keyword": "葡萄牙超市物价",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙超市进货"
+        },
+        {
+          "keyword": "葡萄牙连锁超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "葡萄牙华人超市"
+        }
+      ]
+    },
+    "墨西哥": {
+      "transaction": [
+        {
+          "keyword": "墨西哥中国超市批发商",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "墨西哥超市进货"
+        },
+        {
+          "keyword": "墨西哥华人批发市场",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "墨西哥华人超市进货"
+        },
+        {
+          "keyword": "墨西哥华人超市进货价格",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "墨西哥华人超市进货"
+        },
+        {
+          "keyword": "墨西哥华人超市进货多少钱",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "墨西哥华人超市进货"
+        },
+        {
+          "keyword": "墨西哥华人超市进货流程",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "墨西哥华人超市进货"
+        },
+        {
+          "keyword": "墨西哥卖什么好卖",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "墨西哥开店进货"
+        },
+        {
+          "keyword": "墨西哥城华人批发市场",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "墨西哥华人超市"
+        },
+        {
+          "keyword": "墨西哥小商品批发市场",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "墨西哥超市进货"
+        },
+        {
+          "keyword": "墨西哥开店进货流程",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "墨西哥开店进货"
+        },
+        {
+          "keyword": "墨西哥开店进货渠道",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "墨西哥开店进货"
+        },
+        {
+          "keyword": "墨西哥开店进货要求",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "墨西哥开店进货"
+        },
+        {
+          "keyword": "墨西哥批发市场",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "墨西哥超市进货"
+        },
+        {
+          "keyword": "墨西哥批发市场在哪里",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "墨西哥开店进货"
+        },
+        {
+          "keyword": "墨西哥超市进货流程",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "墨西哥超市进货"
+        },
+        {
+          "keyword": "墨西哥超市进货渠道",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "墨西哥超市进货"
+        },
+        {
+          "keyword": "墨西哥超市进货要求",
+          "intent": "transaction",
+          "score": 5,
+          "seed": "墨西哥超市进货"
+        }
+      ],
+      "info": [
+        {
+          "keyword": "墨西哥华人超市叫什么",
+          "intent": "info",
+          "score": 3,
+          "seed": "墨西哥华人超市"
+        },
+        {
+          "keyword": "墨西哥华人超市在哪里",
+          "intent": "info",
+          "score": 3,
+          "seed": "墨西哥华人超市"
+        },
+        {
+          "keyword": "墨西哥华人超市有哪些",
+          "intent": "info",
+          "score": 3,
+          "seed": "墨西哥华人超市"
+        },
+        {
+          "keyword": "墨西哥百货店一天赚多少钱",
+          "intent": "info",
+          "score": 3,
+          "seed": "墨西哥百货"
+        },
+        {
+          "keyword": "墨西哥百货生意好做吗",
+          "intent": "info",
+          "score": 3,
+          "seed": "墨西哥百元店"
+        }
+      ],
+      "other": [
+        {
+          "keyword": "墨西哥 购物",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥百元店"
+        },
+        {
+          "keyword": "墨西哥liverpool百货",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥百元店"
+        },
+        {
+          "keyword": "墨西哥做生意",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥开店进货"
+        },
+        {
+          "keyword": "墨西哥品牌",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥百元店"
+        },
+        {
+          "keyword": "墨西哥商场",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥百货"
+        },
+        {
+          "keyword": "墨西哥商店",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥百元店"
+        },
+        {
+          "keyword": "墨西哥商超",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥华人超市"
+        },
+        {
+          "keyword": "墨西哥城的中国超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥华人超市"
+        },
+        {
+          "keyword": "墨西哥大型超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥华人超市"
+        },
+        {
+          "keyword": "墨西哥店铺",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥开店进货"
+        },
+        {
+          "keyword": "墨西哥本土购物网站",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥百元店"
+        },
+        {
+          "keyword": "墨西哥爆款产品",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥百元店"
+        },
+        {
+          "keyword": "墨西哥百货公司排行榜",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥百元店"
+        },
+        {
+          "keyword": "墨西哥百货商店取名大全",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥百货"
+        },
+        {
+          "keyword": "墨西哥百货商店食品高清照片",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥百货"
+        },
+        {
+          "keyword": "墨西哥百货店可以卖吃的东西吗",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥百货"
+        },
+        {
+          "keyword": "墨西哥百货店名字",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥百货"
+        },
+        {
+          "keyword": "墨西哥百货店铺名字大全",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥百货"
+        },
+        {
+          "keyword": "墨西哥百货收到取名",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥百货"
+        },
+        {
+          "keyword": "墨西哥的超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥华人超市"
+        },
+        {
+          "keyword": "墨西哥超市排名",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥华人超市"
+        },
+        {
+          "keyword": "墨西哥连锁店",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥百元店"
+        },
+        {
+          "keyword": "墨西哥连锁超市",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥华人超市"
+        },
+        {
+          "keyword": "墨西哥零售商",
+          "intent": "other",
+          "score": 2,
+          "seed": "墨西哥开店进货"
+        }
+      ]
+    }
+  },
+  "all": [
+    {
+      "keyword": "墨西哥中国超市批发商",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "墨西哥超市进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥华人批发市场",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "墨西哥华人超市进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥华人超市进货价格",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "墨西哥华人超市进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥华人超市进货多少钱",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "墨西哥华人超市进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥华人超市进货流程",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "墨西哥华人超市进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥卖什么好卖",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "墨西哥开店进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥城华人批发市场",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "墨西哥华人超市",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥小商品批发市场",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "墨西哥超市进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥开店进货流程",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "墨西哥开店进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥开店进货渠道",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "墨西哥开店进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥开店进货要求",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "墨西哥开店进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥批发市场",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "墨西哥超市进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥批发市场在哪里",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "墨西哥开店进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥超市进货流程",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "墨西哥超市进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥超市进货渠道",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "墨西哥超市进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥超市进货要求",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "墨西哥超市进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "在意大利开店难不难",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "意大利开店进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "在意大利开店需要什么手续",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "意大利开店进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "怎么在意大利开店",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "意大利开店进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利华人代购",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "意大利华人超市进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利华人批发市场",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "意大利华人超市",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利华人超市进货价多少",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "意大利华人超市进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利华人食品批发",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "意大利华人超市",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利开店要交多少税",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "意大利开店进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利开店进货流程",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "意大利开店进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利开店进货要多少钱",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "意大利开店进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利开店进货要求",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "意大利开店进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利开店需要多少钱",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "意大利开店进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利货源在哪里找",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "意大利开店进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利超市进货价格表",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "意大利超市进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利超市进货流程",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "意大利超市进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利超市进货要求",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "意大利超市进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "去智利做小商品批发生意",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "智利超市进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "在智利开店需要多少钱",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "智利开店进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利华人超市进货价多少",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "智利华人超市进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利华人超市进货价格",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "智利华人超市进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利华人超市进货渠道",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "智利华人超市进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利开店利润高吗",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "智利开店进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利开店进货流程",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "智利开店进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利开店进货要多少钱",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "智利开店进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利开店进货要求",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "智利开店进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利批发市场",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "智利开店进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利超市进货价格",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "智利超市进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利超市进货流程",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "智利超市进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利超市进货渠道在哪",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "智利超市进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "葡萄牙华人超市进货多少钱",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "葡萄牙华人超市进货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙开店进货多少钱",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "葡萄牙开店进货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙开店进货流程",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "葡萄牙开店进货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙开店进货要求",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "葡萄牙开店进货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙超市进货价格",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "葡萄牙超市进货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙超市进货流程",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "葡萄牙超市进货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙超市进货渠道",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "葡萄牙超市进货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "去西班牙开店要什么条件",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "西班牙开店进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "在西班牙开店有多难",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "西班牙开店进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙华人批发市场",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "西班牙华人超市进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙华人超市怎么进货",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "西班牙华人超市",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙华人超市进货多少钱",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "西班牙华人超市进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙华人超市进货要求",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "西班牙华人超市进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙开店一年赚多少",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "西班牙开店进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙开店流程",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "西班牙开店进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙开店进货多少钱",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "西班牙开店进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙开店进货流程",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "西班牙开店进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙开店进货要求",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "西班牙开店进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百元店都卖什么产品",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "西班牙百元店",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙超市进货流程",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "西班牙超市进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙超市进货渠道",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "西班牙超市进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙超市进货要求",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "西班牙超市进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "阿根廷华人超市进货多少钱",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "阿根廷华人超市进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷华人超市进货流程",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "阿根廷华人超市进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷开店进货多少钱",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "阿根廷开店进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷开店进货流程",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "阿根廷开店进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷开店进货要求",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "阿根廷开店进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷超市进货价格表",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "阿根廷超市进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷超市进货流程",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "阿根廷超市进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷超市进货软件",
+      "intent": "transaction",
+      "score": 5,
+      "seed": "阿根廷超市进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "墨西哥华人超市叫什么",
+      "intent": "info",
+      "score": 3,
+      "seed": "墨西哥华人超市",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥华人超市在哪里",
+      "intent": "info",
+      "score": 3,
+      "seed": "墨西哥华人超市",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥华人超市有哪些",
+      "intent": "info",
+      "score": 3,
+      "seed": "墨西哥华人超市",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥百货店一天赚多少钱",
+      "intent": "info",
+      "score": 3,
+      "seed": "墨西哥百货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥百货生意好做吗",
+      "intent": "info",
+      "score": 3,
+      "seed": "墨西哥百元店",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "意大利华人超市叫什么",
+      "intent": "info",
+      "score": 3,
+      "seed": "意大利华人超市",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利华人超市在哪里",
+      "intent": "info",
+      "score": 3,
+      "seed": "意大利华人超市",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利华人超市有哪些",
+      "intent": "info",
+      "score": 3,
+      "seed": "意大利华人超市",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利百元店有哪些",
+      "intent": "info",
+      "score": 3,
+      "seed": "意大利百元店",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利的超市叫什么",
+      "intent": "info",
+      "score": 3,
+      "seed": "意大利超市进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "智利开超市能赚钱吗",
+      "intent": "info",
+      "score": 3,
+      "seed": "智利超市进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利百货商行在哪个城市",
+      "intent": "info",
+      "score": 3,
+      "seed": "智利百货",
+      "region": "智利"
+    },
+    {
+      "keyword": "葡萄牙华人超市叫什么",
+      "intent": "info",
+      "score": 3,
+      "seed": "葡萄牙华人超市",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙华人超市在哪里",
+      "intent": "info",
+      "score": 3,
+      "seed": "葡萄牙华人超市",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙华人超市有哪些",
+      "intent": "info",
+      "score": 3,
+      "seed": "葡萄牙华人超市",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙电商平台有哪些",
+      "intent": "info",
+      "score": 3,
+      "seed": "葡萄牙开店进货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙百元店有哪些",
+      "intent": "info",
+      "score": 3,
+      "seed": "葡萄牙百元店",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "在西班牙开什么店最赚钱",
+      "intent": "info",
+      "score": 3,
+      "seed": "西班牙开店进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "在西班牙开超市赚钱吗",
+      "intent": "info",
+      "score": 3,
+      "seed": "西班牙开店进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙华人开超市赚钱吗",
+      "intent": "info",
+      "score": 3,
+      "seed": "西班牙华人超市进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙华人超市叫什么",
+      "intent": "info",
+      "score": 3,
+      "seed": "西班牙华人超市",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙华人超市在哪里",
+      "intent": "info",
+      "score": 3,
+      "seed": "西班牙华人超市",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙华人超市有哪些",
+      "intent": "info",
+      "score": 3,
+      "seed": "西班牙华人超市",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙华人超市现状",
+      "intent": "info",
+      "score": 3,
+      "seed": "西班牙华人超市",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百元店是什么意思",
+      "intent": "info",
+      "score": 3,
+      "seed": "西班牙百元店",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百元店生意好做吗",
+      "intent": "info",
+      "score": 3,
+      "seed": "西班牙百元店",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百元店管道工是什么",
+      "intent": "info",
+      "score": 3,
+      "seed": "西班牙百元店",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百货是什么牌子",
+      "intent": "info",
+      "score": 3,
+      "seed": "西班牙百货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙超市品牌有哪些",
+      "intent": "info",
+      "score": 3,
+      "seed": "西班牙超市进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "在阿根廷开超市至少一个月挣多少钱",
+      "intent": "info",
+      "score": 3,
+      "seed": "阿根廷开店进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "在阿根廷开超市赚钱吗",
+      "intent": "info",
+      "score": 3,
+      "seed": "阿根廷开店进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷华人超市现在怎么样",
+      "intent": "info",
+      "score": 3,
+      "seed": "阿根廷华人超市",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷华人超市现状",
+      "intent": "info",
+      "score": 3,
+      "seed": "阿根廷华人超市",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷华人超市能赚多少钱",
+      "intent": "info",
+      "score": 3,
+      "seed": "阿根廷华人超市进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷生意好做吗",
+      "intent": "info",
+      "score": 3,
+      "seed": "阿根廷开店进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷百元店有哪些",
+      "intent": "info",
+      "score": 3,
+      "seed": "阿根廷百元店",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "墨西哥 购物",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥百元店",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥liverpool百货",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥百元店",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥做生意",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥开店进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥品牌",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥百元店",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥商场",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥百货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥商店",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥百元店",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥商超",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥华人超市",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥城的中国超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥华人超市",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥大型超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥华人超市",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥店铺",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥开店进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥本土购物网站",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥百元店",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥爆款产品",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥百元店",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥百货公司排行榜",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥百元店",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥百货商店取名大全",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥百货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥百货商店食品高清照片",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥百货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥百货店可以卖吃的东西吗",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥百货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥百货店名字",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥百货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥百货店铺名字大全",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥百货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥百货收到取名",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥百货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥的超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥华人超市",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥超市排名",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥华人超市",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥连锁店",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥百元店",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥连锁超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥华人超市",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "墨西哥零售商",
+      "intent": "other",
+      "score": 2,
+      "seed": "墨西哥开店进货",
+      "region": "墨西哥"
+    },
+    {
+      "keyword": "意大利 超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利超市进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利便宜的本土品牌",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百元店",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利出名的店铺",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百元店",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利华人百货店买卖",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利华人超市",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利华人购物app",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利华人超市",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利华人购物网站",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利华人超市",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利华人超市的养乐多是正品吗",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利华人超市",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利品牌价值100",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百元店",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利大型超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利华人超市进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利开什么店好",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利开店进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利有没有名牌打折店",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百元店",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利本土超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利华人超市进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利百元店烟花年龄限制说明",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百元店",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利百元店烟花爆竹售卖说明书",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百元店",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利百货",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百元店",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利百货公司",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百元店",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利百货商场",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百元店",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利百货商店食品高清照片",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利百货店",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利百货店单词",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利百货店取名",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利百货店名字大全",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利百货店电影",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利百货店空礼盒图片",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利百货店铺起名",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利百货连锁公司",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利百货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利超市几点开门",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利超市进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利超市必买品十种",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利超市进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利超市必买清单",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利超市进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利超市有什么值得买的",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利超市进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "意大利连锁超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "意大利超市进货",
+      "region": "意大利"
+    },
+    {
+      "keyword": "去智利开超市一年赚多少",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利开店进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利 超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利华人超市",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利100",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利百元店",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利1000元图片",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利百元店",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利华人主要经营什么",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利华人超市",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利华人做什么生意",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利华人超市进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利华人天下",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利华人超市",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利华人群",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利华人超市",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利华人超市地址",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利华人超市",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利华人超市官网",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利华人超市",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利华人超市打工工资",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利华人超市",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利华人都做什么生意",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利华人超市",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利华裔",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利华人超市",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利品牌",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利百元店",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利商品",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利超市进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利商场",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利百货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利商店",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利百元店",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利大型超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利超市进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利有啥值得买",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利百元店",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利生意",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利开店进货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利百元内性价比高的红酒",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利百元店",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利百货公司",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利百元店",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利百货商店",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利百元店",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利百货店休闲怎么打反盗了",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利百货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利百货店名字",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利百货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利百货店顾客对雇主拍视频有拉扯会被告吗",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利百货",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利的华人",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利华人超市",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利知名品牌",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利百元店",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利购物",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利百元店",
+      "region": "智利"
+    },
+    {
+      "keyword": "智利购物网站",
+      "intent": "other",
+      "score": 2,
+      "seed": "智利百货",
+      "region": "智利"
+    },
+    {
+      "keyword": "葡萄牙 商站",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙百货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙三百店",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙百元店",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙中国超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙华人超市",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙买化妆品便宜吗",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙华人超市进货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙做生意",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙开店进货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙华人商会",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙华人超市",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙华人街",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙华人超市",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙华人门户网站",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙华人超市",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙商人",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙华人超市进货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙商品",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙超市进货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙商场",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙百元店",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙商机",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙开店进货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙商铺",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙开店进货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙小众品牌",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙百元店",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙必买奢侈品",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙百元店",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙最值得买的大牌",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙百元店",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙电商",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙开店进货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙百元店是正品吗",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙百元店",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙百货商店食品高清照片",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙百货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙的大商站",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙百货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙购物",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙百元店",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙购物网站",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙百货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙超市品牌",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙百元店",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙超市必买清单",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙华人超市",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙超市物价",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙超市进货",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "葡萄牙连锁超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "葡萄牙华人超市",
+      "region": "葡萄牙"
+    },
+    {
+      "keyword": "西班牙华人商店",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙华人超市",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙华人超市app",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙华人超市",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙哪里有中国超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙华人超市进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙大型超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙超市进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙开网店",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙开店进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙最便宜超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙超市进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙本土超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙华人超市进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百元店一天几个小时",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙百元店",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百元店五金词汇",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙百元店",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百元店单词",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙百元店",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百元店名字大全",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙百元店",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百元店日常用语",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙百元店",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百元店转让",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙百元店",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百货ECI",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙百货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百货上海办事处",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙百货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百货公司",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙百货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百货公司高德英格利斯",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙百货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百货官网",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙百货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百货店",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙百货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百货服装品牌",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙百货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百货的logo",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙百货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙百货英文全称",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙百货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙的超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙超市进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙网上超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙超市进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙超市必买清单",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙超市进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "西班牙连锁超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "西班牙超市进货",
+      "region": "西班牙"
+    },
+    {
+      "keyword": "2020年阿根廷华人超市前景",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷华人超市进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "2020年阿根廷超市能赚多少",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷超市进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "2021阿根廷华人超市老板",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷华人超市进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷 便宜",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷百元店",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷 超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷超市进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷100元图片",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷百元店",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷低价",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷百元店",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷做生意",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷开店进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷区折扣",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷百元店",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷华人超市公会陈大明",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷华人超市",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷华人超市出现第二波关店潮",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷华人超市",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷华人超市完了",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷华人超市进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷华人超市打工工资",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷华人超市",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷华人超市最新情况",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷华人超市",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷华人超市深夜突发火灾",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷华人超市",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷商场",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷百货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷商城",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷百货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷商店",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷百元店",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷大型超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷百货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷官方旗舰店",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷百货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷开超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷开店进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷必买清单",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷百元店",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷百货商店食品高清照片",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷百货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷的价格",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷百元店",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷购物",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷百元店",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷购物必买清单",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷百货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷购物网站",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷百元店",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷超市今后趋势",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷超市进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷超市物价",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷超市进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷超市转让",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷超市进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷进口商品",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷开店进货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷连锁超市",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷百货",
+      "region": "阿根廷"
+    },
+    {
+      "keyword": "阿根廷首都地区华人超市出现关店潮,向内陆迁移",
+      "intent": "other",
+      "score": 2,
+      "seed": "阿根廷华人超市进货",
+      "region": "阿根廷"
+    }
+  ]
+}

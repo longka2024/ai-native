@@ -1,0 +1,35 @@
+{
+  "skill": "compliance-rewrite",
+  "purpose": "合规门回归:会触发小红书交易导流违规的草稿,改写后必须无联系方式/无承诺/无招揽身份,且保留真实价值。",
+  "cases": [
+    {
+      "name": "真·被封·6周搞定所有申请(留学)",
+      "input": {
+        "title": "熬夜赶文书？不如暑假花6周搞定所有申请",
+        "body": "12年级开学才发现文书没动、学校名单一团乱。其实暑假用6周就能搞定。我帮过不少家庭做申请规划。需要详细时间表的家长可以找我。",
+        "workspace": "私校留学"
+      },
+      "scan_before": "high",
+      "assertions": {
+        "title_body_forbidden": ["搞定", "逆袭", "必过", "保过", "包", "100%", "稳过", "我帮", "找我", "申请规划", "咨询我", "报名", "名额", "微信", "vx", "加我"],
+        "require_persona_shift": "中介/顾问招揽口吻 → 过来人/家长亲历口吻(如'我家娃')",
+        "require_value_kept": "真实信息(6周分阶段、定校、文书)保留,不能删成空话",
+        "scan_after_max": "medium"
+      }
+    },
+    {
+      "name": "真·被封·Crofton面试必问(纯招生味无硬违规词)",
+      "input": {
+        "title": "Crofton House面试必问3题",
+        "body": "最近好几个妈妈来问Crofton House面试到底考什么。我整理了最常出现的三个方向,提前准备孩子心里有底。",
+        "workspace": "私校留学"
+      },
+      "scan_before": "low",
+      "note": "脚本层漏(无硬违规词),靠LLM层识别'我整理给你/招生干货招揽味'并转过来人口吻",
+      "assertions": {
+        "require_persona_shift": "'我整理了'(顾问)→ 过来人视角(如'陪娃面试那天我才发现')",
+        "require_value_kept": "三个面试方向的真实信息保留"
+      }
+    }
+  ]
+}

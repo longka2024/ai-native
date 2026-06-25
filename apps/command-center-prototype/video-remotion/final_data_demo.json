@@ -1,0 +1,68 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "longka 制作",
+  "title": "海外进货\n货多久能到?",
+  "titleHl": [
+    "多久能到"
+  ],
+  "voice": "voice.mp3",
+  "bgm": "bgm.mp3",
+  "beats": [
+    {
+      "text": "在海外开店进货，货多久能到，差别很大。",
+      "kind": "contrast",
+      "feature": "wall",
+      "clip": "m_00.mp4",
+      "hl": [
+        "差别很大"
+      ],
+      "startSec": 0.0,
+      "endSec": 3.495
+    },
+    {
+      "text": "拼海运得等船，一个多月才到。",
+      "kind": "contrast",
+      "feature": "loading",
+      "clip": "broll_4.mp4",
+      "hl": [
+        "一个多月"
+      ],
+      "startSec": 3.615,
+      "endSec": 6.587
+    },
+    {
+      "text": "米站有自营海外仓，就近补货，十二天就到，快了一倍还多。",
+      "kind": "number",
+      "feature": "drone",
+      "clip": "broll_8.mp4",
+      "hl": [
+        "十二天",
+        "一倍还多"
+      ],
+      "bars": {
+        "title": "到货天数对比",
+        "source": "按 mizan 海运 vs 自营海外仓",
+        "items": [
+          {
+            "label": "拼海运",
+            "value": 35,
+            "unit": "天",
+            "color": "#8a8a8a"
+          },
+          {
+            "label": "米站海外仓",
+            "value": 12,
+            "unit": "天",
+            "color": "#F2B33D"
+          }
+        ]
+      },
+      "startSec": 6.707,
+      "endSec": 11.815
+    }
+  ],
+  "durationSec": 11.815
+}

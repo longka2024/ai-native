@@ -1,0 +1,135 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "longka 制作",
+  "title": "西班牙进货多少钱?\n同行可能多掏一半",
+  "titleHl": [
+    "西班牙",
+    "多掏一半"
+  ],
+  "voice": "voice.mp3",
+  "bgm": "bgm.mp3",
+  "beats": [
+    {
+      "text": "在西班牙开超市，进货到底要多少钱？",
+      "kind": "contrast",
+      "feature": "wall",
+      "hl": [
+        "西班牙",
+        "多少钱"
+      ],
+      "clip": "m_00.mp4"
+    },
+    {
+      "text": "这么说吧——同样一批货，你可能比同行多掏一半。",
+      "kind": "contrast",
+      "feature": "aisle",
+      "hl": [
+        "多掏一半"
+      ],
+      "clip": "m_01.mp4"
+    },
+    {
+      "text": "差就差在，你走的是第几手货。",
+      "kind": "selling",
+      "feature": "people",
+      "hl": [
+        "第几手"
+      ],
+      "clip": "m_02.mp4"
+    },
+    {
+      "text": "飞回国自己跑批发，机票住宿压货全摊进成本。",
+      "kind": "contrast",
+      "feature": "loading",
+      "hl": [
+        "全摊进成本"
+      ],
+      "clip": "m_03.mp4"
+    },
+    {
+      "text": "拼海运是便宜，可起订量大、还得压一个多月。",
+      "kind": "contrast",
+      "feature": "loading",
+      "hl": [
+        "压一个多月"
+      ],
+      "clip": "m_04.mp4"
+    },
+    {
+      "text": "找货代省心，但中间一层层加价。",
+      "kind": "contrast",
+      "feature": "wall",
+      "hl": [
+        "层层加价"
+      ],
+      "clip": "m_05.mp4"
+    },
+    {
+      "text": "每多过一道手，你的进货价就贵一截。",
+      "kind": "contrast",
+      "feature": "aisle",
+      "hl": [
+        "贵一截"
+      ],
+      "clip": "m_06.mp4"
+    },
+    {
+      "text": "真正便宜的，是直接拿到工厂价。",
+      "kind": "selling",
+      "feature": "wall",
+      "hl": [
+        "工厂价"
+      ],
+      "clip": "m_07.mp4"
+    },
+    {
+      "text": "现在用米站，中国站工厂价直接下单。",
+      "kind": "selling",
+      "feature": "drone",
+      "hl": [
+        "米站",
+        "工厂价"
+      ],
+      "clip": "m_08.mp4"
+    },
+    {
+      "text": "十万多种货、工厂价，一件起订，中间那几层全省了。",
+      "kind": "number",
+      "feature": "wall",
+      "hl": [
+        "十万多种",
+        "一件起订"
+      ],
+      "num": {
+        "to": 10,
+        "unit": "万",
+        "label": "SKU 工厂价",
+        "decimals": 0
+      },
+      "clip": "m_09.mp4"
+    },
+    {
+      "text": "西班牙有自营海外仓，就近补货，十到十五天到。",
+      "kind": "selling",
+      "feature": "loading",
+      "hl": [
+        "西班牙",
+        "海外仓"
+      ],
+      "clip": "m_10.mp4"
+    },
+    {
+      "text": "在西班牙进货别再当冤大头，工厂价直供才是底价。",
+      "kind": "closing",
+      "feature": "drone",
+      "hl": [
+        "西班牙",
+        "工厂价直供"
+      ],
+      "clip": "m_11.mp4"
+    }
+  ]
+}

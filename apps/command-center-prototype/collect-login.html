@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>采集账号登录</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,"Microsoft YaHei",sans-serif; background:#f5f5f7; color:#1d1d1f; }
+  .wrap { max-width: 760px; margin:0 auto; padding:22px 16px 60px; }
+  h1 { font-size:21px; margin:0 0 4px; }
+  .sub { color:#86868b; font-size:13px; margin:0 0 18px; line-height:1.6; }
+  .tag { display:inline-block; background:#fff0f1; color:#ff2442; border-radius:6px; padding:2px 8px; font-size:12px; margin-bottom:12px; }
+  .card { background:#fff; border-radius:16px; padding:20px; box-shadow:0 2px 14px rgba(0,0,0,.06); }
+  .screen { position:relative; width:100%; max-width:680px; margin:0 auto; border:1px solid #eee; border-radius:10px; overflow:hidden; background:#fafafa; min-height:300px; display:flex; align-items:center; justify-content:center; }
+  .screen img { width:100%; display:block; cursor:crosshair; }
+  .screen .ph { color:#bbb; font-size:14px; padding:60px 0; }
+  .status { font-size:16px; font-weight:600; margin:14px 0 4px; text-align:center; min-height:24px; }
+  .status.ok { color:#1a9c4a; } .status.warn { color:#d97706; } .status.err { color:#d11; }
+  .hint { color:#86868b; font-size:13px; line-height:1.7; text-align:center; }
+  .row { display:flex; gap:8px; margin-top:14px; justify-content:center; flex-wrap:wrap; }
+  input[type=text] { flex:1; min-width:160px; max-width:280px; padding:11px 14px; border:1px solid #ddd; border-radius:10px; font-size:15px; }
+  button { background:#ff2442; color:#fff; border:none; border-radius:22px; padding:11px 22px; font-size:15px; font-weight:600; cursor:pointer; }
+  button.ghost { background:#f0f0f2; color:#333; }
+  button:disabled { background:#ccc; cursor:not-allowed; }
+  ol { color:#444; font-size:13px; line-height:1.9; padding-left:20px; margin:16px 0 0; }
+  .ctrls { display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="tag">内部 · 采集账号</span>
+  <h1>采集账号登录</h1>
+  <p class="sub">下面是 122 服务器上的小红书登录画面(实时)。用手机扫码;若小红书要验证码/滑块,<b>直接在画面上点、用下面的输入框打字</b>即可 —— 你的操作会转发到服务器。客户/小妹不用碰这里。</p>
+
+  <div class="card">
+    <div class="screen" id="screen"><span class="ph" id="ph">点「开始登录」打开画面</span></div>
+    <div class="status" id="status">未开始</div>
+    <div class="hint" id="hint">先确认网络合适(保号),再开始。</div>
+
+    <div class="row">
+      <button id="startBtn" onclick="start()">开始登录</button>
+    </div>
+
+    <div class="ctrls" id="ctrls">
+      <div class="row">
+        <input type="text" id="codeInput" placeholder="要输入的内容(如验证码),先点画面里的框再打字" />
+        <button onclick="sendText()">输入</button>
+        <button class="ghost" onclick="sendKey('Enter')">回车</button>
+      </div>
+      <div class="row">
+        <button class="ghost" onclick="reloadPage()">刷新二维码</button>
+      </div>
+    </div>
+
+    <ol>
+      <li>点「开始登录」,画面里出现小红书二维码</li>
+      <li>手机<b>小红书 App → 我 → 右上角扫一扫</b>,扫画面里的码</li>
+      <li>若提示输入验证码:<b>先在画面上点一下那个输入框</b>,再到下面输入框打字,点「输入」</li>
+      <li>需要点「确认/登录/获取验证码」等按钮时,<b>直接点画面上对应位置</b></li>
+      <li>显示<b>「已登录 ✅」</b>即成功</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+const VW = 900, VH = 680;            // 122 浏览器视口尺寸(与脚本一致)
+let frameTimer = null, statusTimer = null;
+const $ = (id) => document.getElementById(id);
+function setStatus(t, cls){ const s=$('status'); s.textContent=t; s.className='status'+(cls?(' '+cls):''); }
+
+async function cmd(obj){
+  try { await fetch('/api/collect/login/cmd', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(obj) }); }
+  catch(e){}
+}
+
+async function start(){
+  $('startBtn').disabled = true;
+  setStatus('正在打开登录画面…','warn');
+  try {
+    const d = await (await fetch('/api/collect/login/start?platform=xhs',{method:'POST'})).json();
+    if (!d.ok){ setStatus(d.message||'启动失败','err'); $('startBtn').disabled=false; return; }
+  } catch(e){ setStatus('网络错误,稍后重试','err'); $('startBtn').disabled=false; return; }
+  startFrameLoop();
+  if (statusTimer) clearInterval(statusTimer);
+  statusTimer = setInterval(poll, 1500); poll();
+}
+
+function startFrameLoop(){
+  $('ph').style.display='none';
+  $('screen').innerHTML = '<img id="frame" alt="登录画面">';
+  const img = $('frame');
+  img.addEventListener('click', (e) => {
+    const r = img.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * VW;
+    const y = (e.clientY - r.top) / r.height * VH;
+    cmd({ action:'click', x: Math.round(x), y: Math.round(y) });
+  });
+  $('ctrls').style.display='block';
+  if (frameTimer) clearInterval(frameTimer);
+  frameTimer = setInterval(() => { const f=$('frame'); if (f) f.src = '/api/collect/login/frame?t=' + Date.now(); }, 1000);
+}
+
+function sendText(){ const v=$('codeInput').value; if(v){ cmd({ action:'type', value:v }); $('codeInput').value=''; } }
+function sendKey(k){ cmd({ action:'key', value:k }); }
+function reloadPage(){ cmd({ action:'reload' }); setStatus('正在刷新画面…','warn'); }
+
+async function poll(){
+  let d; try { d = await (await fetch('/api/collect/login/status')).json(); } catch(e){ return; }
+  const st = d.status;
+  if (st === 'interactive'){ setStatus('请扫码 / 按提示操作','warn'); $('hint').textContent='手机扫码;要验证码就先点画面里的框,再用下面输入框打字。'; }
+  else if (st === 'starting'){ setStatus('正在打开登录画面…','warn'); }
+  else if (st === 'success'){
+    clearInterval(frameTimer); clearInterval(statusTimer);
+    setStatus('已登录 ✅','ok');
+    $('hint').textContent = '登录成功,采集账号已就绪(共 '+(d.cookieCount||'')+' 项凭证)。可关闭本页。';
+    $('ctrls').style.display='none';
+    $('startBtn').textContent='已登录'; $('startBtn').disabled=true;
+  }
+  else if (st === 'timeout'){ clearInterval(frameTimer); clearInterval(statusTimer); setStatus('超时未完成登录','err'); $('hint').textContent='点「开始登录」重来。'; $('startBtn').disabled=false; $('startBtn').textContent='重新开始'; }
+  else if (st === 'error'){ clearInterval(frameTimer); clearInterval(statusTimer); setStatus('出错了','err'); $('hint').textContent=d.msg||'请重试。'; $('startBtn').disabled=false; $('startBtn').textContent='重试'; }
+}
+</script>
+</body>
+</html>

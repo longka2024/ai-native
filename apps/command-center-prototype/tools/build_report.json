@@ -1,0 +1,113 @@
+{
+  "rows": [
+    {
+      "persona": "P1",
+      "bucket": "price",
+      "region": "西班牙",
+      "keyword": "西班牙华人超市进货多少钱",
+      "keyword_source": "baidu_sug",
+      "file": "topic_xibanya_price.json",
+      "needs_realdata": false
+    },
+    {
+      "persona": "P1",
+      "bucket": "price",
+      "region": "意大利",
+      "keyword": "意大利华人超市进货价多少",
+      "keyword_source": "baidu_sug",
+      "file": "topic_yidali_price.json",
+      "needs_realdata": false
+    },
+    {
+      "persona": "P1",
+      "bucket": "price",
+      "region": "阿根廷",
+      "keyword": "阿根廷华人超市进货多少钱",
+      "keyword_source": "baidu_sug",
+      "file": "topic_agenting_price.json",
+      "needs_realdata": false
+    },
+    {
+      "persona": "P1",
+      "bucket": "price",
+      "region": "智利",
+      "keyword": "在智利开店需要多少钱",
+      "keyword_source": "baidu_sug",
+      "file": "topic_zhili_price.json",
+      "needs_realdata": false
+    },
+    {
+      "persona": "P1",
+      "bucket": "price",
+      "region": "葡萄牙",
+      "keyword": "葡萄牙华人超市进货多少钱",
+      "keyword_source": "baidu_sug",
+      "file": "topic_putaoya_price.json",
+      "needs_realdata": false
+    },
+    {
+      "persona": "P1",
+      "bucket": "price",
+      "region": "墨西哥",
+      "keyword": "墨西哥华人超市进货价格",
+      "keyword_source": "baidu_sug",
+      "file": "topic_moxige_price.json",
+      "needs_realdata": false
+    },
+    {
+      "persona": "P1",
+      "bucket": "channel",
+      "region": "西班牙",
+      "keyword": "去西班牙开店要什么条件",
+      "keyword_source": "baidu_sug",
+      "file": "topic_xibanya_channel.json",
+      "needs_realdata": false
+    },
+    {
+      "persona": "P1",
+      "bucket": "channel",
+      "region": "意大利",
+      "keyword": "意大利华人代购",
+      "keyword_source": "baidu_sug",
+      "file": "topic_yidali_channel.json",
+      "needs_realdata": false
+    },
+    {
+      "persona": "P1",
+      "bucket": "channel",
+      "region": "阿根廷",
+      "keyword": "阿根廷华人超市进货流程",
+      "keyword_source": "baidu_sug",
+      "file": "topic_agenting_channel.json",
+      "needs_realdata": false
+    },
+    {
+      "persona": "P1",
+      "bucket": "channel",
+      "region": "智利",
+      "keyword": "智利华人超市进货渠道",
+      "keyword_source": "baidu_sug",
+      "file": "topic_zhili_channel.json",
+      "needs_realdata": false
+    },
+    {
+      "persona": "P1",
+      "bucket": "channel",
+      "region": "葡萄牙",
+      "keyword": "葡萄牙开店进货流程",
+      "keyword_source": "baidu_sug",
+      "file": "topic_putaoya_channel.json",
+      "needs_realdata": false
+    },
+    {
+      "persona": "P1",
+      "bucket": "channel",
+      "region": "墨西哥",
+      "keyword": "墨西哥中国超市批发商",
+      "keyword_source": "baidu_sug",
+      "file": "topic_moxige_channel.json",
+      "needs_realdata": false
+    }
+  ],
+  "need_realdata": []
+}

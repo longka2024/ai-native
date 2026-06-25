@@ -1,0 +1,52 @@
+{
+  "client": "mizan",
+  "product_oneliner": "海外华商采购 app · 中国站工厂价 · 一件起订 · 海外仓 · 十万 SKU",
+  "_calibration_pending": "priority / 主力人群 待 mizan 真实付费数据校准(主力国家·店型·进货品类·客单价·复购人群)——用户向客户索取中。拿到后:把真付费人群 priority 改 core,其余降 secondary/brand;并把真实料填进 selection 框架。",
+  "buckets_note": "buckets = 该人群在搜的关键词桶,对应 script_frames.py 的脚本框架。",
+  "personas": [
+    {
+      "id": "P1",
+      "name": "已开店·正在进货的店主",
+      "funnel_distance": 1,
+      "priority": "core(假设·待证)",
+      "who": "西/葡/意/阿/智/墨已开华人超市·百元店·百货·专业店的老板",
+      "pain": ["进货贵(层层加价)", "要飞回国跑批发", "压货 / 等船慢"],
+      "why_pay": "直接解决每天的真实进货痛,换供应商门槛低,转化最快",
+      "buckets": ["price", "channel"],
+      "evidence": "线索:百度 sug 高频进货词(进货多少钱/进货渠道/批发市场)"
+    },
+    {
+      "id": "P2",
+      "name": "新开店·首次铺货",
+      "funnel_distance": 2,
+      "priority": "secondary(假设·待证)",
+      "who": "刚租店面 / 正在筹备开店的华人",
+      "pain": ["不知从哪进货", "怕进错压货", "第一批怎么铺"],
+      "why_pay": "一件起订 + 十万 SKU,降低首铺风险",
+      "buckets": ["selection", "channel"],
+      "evidence": "线索:sug 词(开店进货流程/卖什么好卖)"
+    },
+    {
+      "id": "P3",
+      "name": "做批发 / 代购的中间商",
+      "funnel_distance": 1,
+      "priority": "high-value(假设·待证)",
+      "who": "本地进货群群主、代购代采、二批商",
+      "pain": ["要更低源头价", "要更稳货源"],
+      "why_pay": "工厂价,他们赚差价;客单高、可能量大",
+      "buckets": ["channel", "price"],
+      "evidence": "已知:mizan 工厂价定位"
+    },
+    {
+      "id": "P4",
+      "name": "想做·还在调研",
+      "funnel_distance": 3,
+      "priority": "brand(假设·待证)",
+      "who": "海外打工观望、想开店没行动",
+      "pain": ["不知道赚不赚钱", "能不能做"],
+      "why_pay": "离付费最远,做品牌认知 / 蓄水",
+      "buckets": ["profit"],
+      "evidence": "线索:sug 大流量词(开超市赚钱吗/一年赚多少)"
+    }
+  ]
+}

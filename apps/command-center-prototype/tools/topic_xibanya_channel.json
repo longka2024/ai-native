@@ -1,0 +1,132 @@
+{
+  "industry": "商超采购 供应链",
+  "brand": "源头供应链 · mizan",
+  "watermark": "longka 制作",
+  "persona": "P1",
+  "bucket": "channel",
+  "keyword": "去西班牙开店要什么条件",
+  "keyword_source": "baidu_sug",
+  "title": "西班牙开店进货\n货源在哪进?",
+  "titleHl": [
+    "西班牙",
+    "货源在哪进"
+  ],
+  "seo_title": "西班牙开店进货,货源到底在哪进?华人超市进货避坑",
+  "seo_tags": [
+    "西班牙百元店",
+    "华人超市进货",
+    "海外开店货源",
+    "西班牙华人",
+    "mizan"
+  ],
+  "beats": [
+    {
+      "text": "在西班牙开百元店、超市，货到底从哪进？",
+      "kind": "contrast",
+      "feature": "wall",
+      "hl": [
+        "西班牙",
+        "从哪进"
+      ]
+    },
+    {
+      "text": "说白了就三条路，我挨个给你捋清楚。",
+      "kind": "selling",
+      "feature": "people",
+      "hl": [
+        "三条路"
+      ]
+    },
+    {
+      "text": "第一条，飞回中国，跑义乌、广州批发市场。",
+      "kind": "selling",
+      "feature": "loading",
+      "hl": [
+        "飞回中国"
+      ]
+    },
+    {
+      "text": "货是全，可来回机票住宿、压一堆货，一趟下来累死还砸钱。",
+      "kind": "contrast",
+      "feature": "aisle",
+      "hl": [
+        "压一堆货",
+        "砸钱"
+      ]
+    },
+    {
+      "text": "第二条，本地华人进货群，拼海运。",
+      "kind": "selling",
+      "feature": "people",
+      "hl": [
+        "拼海运"
+      ]
+    },
+    {
+      "text": "便宜是便宜，但起订量大、等船一个多月，品类还少。",
+      "kind": "contrast",
+      "feature": "loading",
+      "hl": [
+        "等船一个多月"
+      ]
+    },
+    {
+      "text": "第三条，找货代代采，省心。",
+      "kind": "selling",
+      "feature": "people",
+      "hl": [
+        "货代代采"
+      ]
+    },
+    {
+      "text": "可中间一层层加价，利润就薄了。",
+      "kind": "contrast",
+      "feature": "wall",
+      "hl": [
+        "层层加价"
+      ]
+    },
+    {
+      "text": "现在多了第四条，也是最省事的——手机下个米站，中国站直接下单。",
+      "kind": "selling",
+      "feature": "drone",
+      "hl": [
+        "米站",
+        "直接下单"
+      ]
+    },
+    {
+      "text": "十万多种货、工厂价，一件起订，不用囤货。",
+      "kind": "number",
+      "feature": "wall",
+      "hl": [
+        "十万多种",
+        "一件起订"
+      ],
+      "num": {
+        "to": 10,
+        "unit": "万",
+        "label": "SKU 工厂价",
+        "decimals": 0
+      }
+    },
+    {
+      "text": "西班牙有自营海外仓，就近补货，十到十五天到。",
+      "kind": "selling",
+      "feature": "loading",
+      "hl": [
+        "西班牙",
+        "海外仓"
+      ]
+    },
+    {
+      "text": "在西班牙进货，别再飞回国折腾了，认准米站。",
+      "kind": "closing",
+      "feature": "drone",
+      "hl": [
+        "西班牙",
+        "米站"
+      ]
+    }
+  ]
+}

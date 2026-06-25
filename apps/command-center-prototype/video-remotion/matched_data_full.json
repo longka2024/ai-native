@@ -1,0 +1,28 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "longka 制作",
+  "title": "海外进货\n哪种最划算?",
+  "titleHl": ["最划算"],
+  "voice": "voice.mp3",
+  "bgm": "bgm.mp3",
+  "beats": [
+    { "text": "在海外开店进货，有人轻松赚钱，有人累死压货，差在哪？", "kind": "contrast", "feature": "wall", "clip": "m_00.mp4", "hl": ["差在哪"] },
+    { "text": "差就差在进货方式。三组数据，我给你摆清楚。", "kind": "selling", "feature": "people", "clip": "broll_2.mp4", "hl": ["三组数据"] },
+    { "text": "第一，到货时间。", "kind": "selling", "feature": "loading", "clip": "broll_4.mp4", "hl": ["到货时间"] },
+    { "text": "拼海运等船一个多月，米站海外仓十二天就到。", "kind": "number", "feature": "drone", "clip": "broll_8.mp4", "hl": ["十二天"],
+      "bars": { "title": "到货天数对比", "source": "按 mizan 海运 vs 自营海外仓", "items": [
+        { "label": "拼海运", "value": 35, "unit": "天", "color": "#8a8a8a" },
+        { "label": "米站海外仓", "value": 12, "unit": "天", "color": "#F2B33D" }
+      ] } },
+    { "text": "第二，货的种类。", "kind": "selling", "feature": "wall", "clip": "m_01.mp4", "hl": ["种类"] },
+    { "text": "十万多种货，工厂价，想进什么都有。", "kind": "number", "feature": "wall", "clip": "m_03.mp4", "hl": ["十万多种", "工厂价"],
+      "num": { "to": 10, "unit": "万", "label": "SKU 工厂价", "decimals": 0 } },
+    { "text": "第三，起订门槛。", "kind": "selling", "feature": "product", "clip": "m_02.mp4", "hl": ["起订门槛"] },
+    { "text": "传统拼海运起订量大，压一堆货；米站一件就能起订。", "kind": "contrast", "feature": "loading", "clip": "broll_6.mp4", "hl": ["一件就能起订"] },
+    { "text": "省掉中间商，工厂价直发，进货成本直接打下来。", "kind": "selling", "feature": "wall", "clip": "broll_7.mp4", "hl": ["省掉中间商"] },
+    { "text": "在海外进货别凭感觉，看数据，米站更省时省钱。", "kind": "closing", "feature": "drone", "clip": "broll_9.mp4", "hl": ["看数据", "省时省钱"] }
+  ]
+}

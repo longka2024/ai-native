@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<!-- 口播字幕模板:白字+橙粗边(CSS text-stroke,清爽不糊)+ 逐字高亮(done已说=白 / pending未说=橙) -->
+<style>
+  @font-face { font-family: 'ZCOOL'; src: url('file:///home/ubuntu/.fonts/ZCOOLKuaiLe.ttf'); }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1920px; background: transparent; overflow: hidden; }
+  .wrap {
+    position: absolute; left: 0; right: 0; bottom: 540px;   /* 胸口位置,不压脸 */
+    padding: 0 70px; text-align: center;
+  }
+  .line {
+    font-family: 'ZCOOL', 'Noto Sans CJK SC', sans-serif;
+    font-size: 78px; line-height: 1.35; letter-spacing: 1px;
+    text-shadow: 0 5px 12px rgba(0,0,0,0.45);
+  }
+  /* 关键:stroke 画在 fill 下面 → 边缘清爽,绝不糊成一团(碾压 ffmpeg/ASS) */
+  .line span { -webkit-text-stroke: 7px #ff7814; paint-order: stroke fill; }
+  .done    { color: #ffffff; }   /* 已说到 = 白字橙边 */
+  .pending { color: #ff7814; }   /* 还没说 = 实心橙 */
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="line"><span class="done">{{done}}</span><span class="pending">{{pending}}</span></div>
+  </div>
+</body>
+</html>

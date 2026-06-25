@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<!-- 小红书知识卡(3:4 1080x1440):文字全 HTML 渲染,中文完美清晰,零 AI 出图。{{accent}} 控强调色 -->
+<style>
+  @font-face { font-family: 'ZCOOL'; src: url('file:///home/ubuntu/.fonts/ZCOOLKuaiLe.ttf'); }
+  :root { --accent: {{accent=#ff7a1a}}; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1440px; overflow: hidden; }
+  body {
+    font-family: 'Noto Sans CJK SC', 'PingFang SC', sans-serif;
+    background: linear-gradient(160deg, #fbf7f0 0%, #f3ece0 100%);
+    color: #2b2620; padding: 96px 80px; position: relative;
+    display: flex; flex-direction: column;
+  }
+  .kicker { font-size: 30px; color: var(--accent); font-weight: 700; letter-spacing: 4px; margin-bottom: 22px; }
+  .title {
+    font-family: 'ZCOOL', sans-serif; font-size: 92px; line-height: 1.22; font-weight: 400;
+    color: #1f1b16; margin-bottom: 14px;
+  }
+  .title em { font-style: normal; color: var(--accent); }
+  .rule { width: 120px; height: 10px; background: var(--accent); border-radius: 6px; margin: 30px 0 56px; }
+  .points { display: flex; flex-direction: column; gap: 30px; }
+  .point {
+    background: #fff; border-radius: 26px; padding: 36px 40px;
+    box-shadow: 0 10px 30px rgba(120,90,40,0.08); display: flex; gap: 28px; align-items: flex-start;
+  }
+  .num {
+    flex: none; width: 64px; height: 64px; border-radius: 16px; background: var(--accent);
+    color: #fff; font-family: 'ZCOOL', sans-serif; font-size: 40px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ptext { font-size: 42px; line-height: 1.45; color: #3a342c; padding-top: 4px; }
+  .ptext b { color: var(--accent); }
+  .foot {
+    position: absolute; left: 80px; right: 80px; bottom: 60px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 28px; color: #9a8f7e;
+  }
+  .tag { color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="kicker">{{kicker=成长笔记}}</div>
+  <div class="title">{{title}}</div>
+  <div class="rule"></div>
+  <div class="points">
+    <div class="point"><div class="num">1</div><div class="ptext">{{p1}}</div></div>
+    <div class="point"><div class="num">2</div><div class="ptext">{{p2}}</div></div>
+    <div class="point"><div class="num">3</div><div class="ptext">{{p3}}</div></div>
+  </div>
+  <div class="foot"><span class="tag">{{tag=@小妹成长说}}</span><span>{{page=01}}</span></div>
+</body>
+</html>

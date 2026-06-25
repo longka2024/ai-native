@@ -1,0 +1,131 @@
+{
+  "industry": "商超采购 供应链",
+  "brand": "源头供应链 · mizan",
+  "watermark": "longka 制作",
+  "persona": "P1",
+  "bucket": "price",
+  "keyword": "葡萄牙华人超市进货多少钱",
+  "keyword_source": "baidu_sug",
+  "title": "葡萄牙进货多少钱?\n同行可能多掏一半",
+  "titleHl": [
+    "葡萄牙",
+    "多掏一半"
+  ],
+  "seo_title": "葡萄牙华人超市进货多少钱?工厂价直供才是底价",
+  "seo_tags": [
+    "葡萄牙华人超市",
+    "进货多少钱",
+    "工厂价进货",
+    "葡萄牙华人",
+    "mizan"
+  ],
+  "beats": [
+    {
+      "text": "在葡萄牙开超市，进货到底要多少钱？",
+      "kind": "contrast",
+      "feature": "wall",
+      "hl": [
+        "葡萄牙",
+        "多少钱"
+      ]
+    },
+    {
+      "text": "这么说吧——同样一批货，你可能比同行多掏一半。",
+      "kind": "contrast",
+      "feature": "aisle",
+      "hl": [
+        "多掏一半"
+      ]
+    },
+    {
+      "text": "差就差在，你走的是第几手货。",
+      "kind": "selling",
+      "feature": "people",
+      "hl": [
+        "第几手"
+      ]
+    },
+    {
+      "text": "飞回国自己跑批发，机票住宿压货全摊进成本。",
+      "kind": "contrast",
+      "feature": "loading",
+      "hl": [
+        "全摊进成本"
+      ]
+    },
+    {
+      "text": "拼海运是便宜，可起订量大、还得压一个多月。",
+      "kind": "contrast",
+      "feature": "loading",
+      "hl": [
+        "压一个多月"
+      ]
+    },
+    {
+      "text": "找货代省心，但中间一层层加价。",
+      "kind": "contrast",
+      "feature": "wall",
+      "hl": [
+        "层层加价"
+      ]
+    },
+    {
+      "text": "每多过一道手，你的进货价就贵一截。",
+      "kind": "contrast",
+      "feature": "aisle",
+      "hl": [
+        "贵一截"
+      ]
+    },
+    {
+      "text": "真正便宜的，是直接拿到工厂价。",
+      "kind": "selling",
+      "feature": "wall",
+      "hl": [
+        "工厂价"
+      ]
+    },
+    {
+      "text": "现在用米站，中国站工厂价直接下单。",
+      "kind": "selling",
+      "feature": "drone",
+      "hl": [
+        "米站",
+        "工厂价"
+      ]
+    },
+    {
+      "text": "十万多种货、工厂价，一件起订，中间那几层全省了。",
+      "kind": "number",
+      "feature": "wall",
+      "hl": [
+        "十万多种",
+        "一件起订"
+      ],
+      "num": {
+        "to": 10,
+        "unit": "万",
+        "label": "SKU 工厂价",
+        "decimals": 0
+      }
+    },
+    {
+      "text": "葡萄牙有自营海外仓，就近补货，十到十五天到。",
+      "kind": "selling",
+      "feature": "loading",
+      "hl": [
+        "葡萄牙",
+        "海外仓"
+      ]
+    },
+    {
+      "text": "在葡萄牙进货别再当冤大头，工厂价直供才是底价。",
+      "kind": "closing",
+      "feature": "drone",
+      "hl": [
+        "葡萄牙",
+        "工厂价直供"
+      ]
+    }
+  ]
+}

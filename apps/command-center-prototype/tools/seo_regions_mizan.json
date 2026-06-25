@@ -1,0 +1,21 @@
+{
+  "_comment": "选词器输入·mizan 地区事实表。铁律3:海外仓/ETA/批发市场是真实商业事实,不准编——用户须核对。warehouse=true 才走'自营海外仓就近补货'话术;false 走'中国站直发'话术。slug 仅用于输出文件命名。",
+  "industry": "商超采购 供应链",
+  "brand": "源头供应链 · mizan",
+  "watermark": "longka 制作",
+  "product_facts": {
+    "sku": "十万多种",
+    "price": "工厂价",
+    "moq": "一件起订",
+    "channel": "手机下个米站，中国站直接下单",
+    "brand_short": "米站"
+  },
+  "regions": [
+    { "name": "西班牙", "slug": "xibanya",  "market": "义乌、广州批发市场", "warehouse": true,  "warehouse_eta": "十到十五天", "store_types": "百元店、超市" },
+    { "name": "意大利", "slug": "yidali",   "market": "义乌、广州批发市场", "warehouse": false, "warehouse_eta": "",            "store_types": "百货、超市" },
+    { "name": "阿根廷", "slug": "agenting", "market": "义乌、广州批发市场", "warehouse": false, "warehouse_eta": "",            "store_types": "华人超市、百货" },
+    { "name": "智利",   "slug": "zhili",    "market": "义乌、广州批发市场", "warehouse": true,  "warehouse_eta": "十到十五天", "store_types": "百货批发、超市" },
+    { "name": "葡萄牙", "slug": "putaoya",  "market": "义乌、广州批发市场", "warehouse": true,  "warehouse_eta": "十到十五天", "store_types": "百元店、超市" },
+    { "name": "墨西哥", "slug": "moxige",   "market": "义乌、广州批发市场", "warehouse": true,  "warehouse_eta": "十到十五天", "store_types": "百货、超市" }
+  ]
+}
