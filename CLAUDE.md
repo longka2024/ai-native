@@ -3,6 +3,20 @@
 > 任何 Claude 会话开工前先读这份。它是热启动入口:项目是什么、铁律、架构、路径、当前目标、纪律。
 > 细节去 `docs/specs/SPEC_INDEX.md` 和 `memory/` 找;别凭记忆猜路径或结论。
 
+## ⛔ 开工前必做(换窗口防退化·最高优先,先做完再动手)
+
+1. **先看两张图定位**:`docs/strategy/2026-06-25-content-factory-master-map.md`(全局)+ Claude 记忆 `todo-backlog`(接到哪了)。别把排好的当新活、别在测试期瞎冲。
+2. **产品化北极星**:能力沉后端工作流 + 前端按钮,客户(小妹)零技术拿成品;**绝不在对话框手搓成品交付**。
+3. **SPEC-first**:新功能动手前用大白话说清"做啥 / 不做啥 / 怎么验",用户点头再写代码。
+
+### ⛔ 视频生产铁规(违反=重做)
+
+- **只用 Remotion EffectEngine**(`apps/command-center-prototype/video-remotion`,composition `Mizan`);**绝不 ffmpeg 手搓贴字当成品**(已反复犯,作废)。
+- 出 mizan 片 = `G:\index-tts_v2.5\build_mizan.py`(出 `public/voice.mp3` + `mizan_script.json`)→ `cd video-remotion && npx remotion render Mizan <out> --props=mizan_script.json`。本机 CPU 渲、免费。
+- **字幕=定版,别另起**:得意黑(Deyi/zh.ttc)· 逐字跟读(未念 `rgba(194,194,194,0.88)` 浅灰 / 已念白 / 重点词金)· 下三分之一 bottom:560 · 顶部章节标 + 「longka 制作」水印。权威实现见 `video-remotion/src/EffectEngine.tsx` 的 `Caption`。
+- 风格档见 `engine/styles-library.ts`(mizan=datahard-gold 暖金);转场=多样化(`rules.ts pickTransition`,非只对角擦除)+ 景深(`Cam`);声画同步铁律。
+- 详尽方法论散在:总图 / `video-style-template-library.md` / `video-effect-template-engine-roadmap`(记忆)/ EffectEngine 代码。
+
 ## 一句话
 
 面向**中小商户(不懂技术)**的**商用多租户「内容生产工厂」**:商户只消费成品,平台替他们把

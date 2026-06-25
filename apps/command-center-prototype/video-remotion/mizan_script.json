@@ -5,35 +5,36 @@
   "watermark": "longka 制作",
   "voice": "voice.mp3",
   "bgm": "bgm.mp3",
-  "durationSec": 36.765,
+  "durationSec": 40.932,
   "beats": [
     {
       "text": "海外开商超进货，还得飞回中国跑批发市场？",
-      "startSec": 0.0,
-      "endSec": 4.087,
+      "startSec": 0,
+      "endSec": 3.646,
       "kind": "contrast",
       "clip": "s8.mp4",
       "feature": "people",
       "hl": [
         "飞回中国",
-        "跑批发市场"
+        "批发市场"
       ]
     },
     {
       "text": "一家家比价，还压一仓库的货，太折腾。",
-      "startSec": 4.207,
-      "endSec": 7.237,
+      "startSec": 3.766,
+      "endSec": 7.098,
       "kind": "contrast",
       "clip": "s1.mp4",
       "feature": "aisle",
       "hl": [
+        "压一仓库",
         "太折腾"
       ]
     },
     {
       "text": "现在，手机上一个米站就够了。",
-      "startSec": 7.357,
-      "endSec": 9.853,
+      "startSec": 7.218,
+      "endSec": 9.505,
       "kind": "selling",
       "clip": "s3.mp4",
       "feature": "drone",
@@ -43,34 +44,37 @@
     },
     {
       "text": "十万多种商品，源头工厂直发。",
-      "startSec": 9.973,
-      "endSec": 12.864,
+      "startSec": 9.625,
+      "endSec": 12.051,
       "kind": "number",
       "clip": "s4.mp4",
       "feature": "wall",
-      "num": {
-        "to": 10,
-        "unit": "万",
-        "label": "SKU 工厂价",
-        "decimals": 0
+      "chart": {
+        "type": "kpi",
+        "title": "米站 在售商品",
+        "takeaway": "工厂价  一件起订  不用囤货",
+        "value": 100000,
+        "label": "种商品（十万多种）"
       },
       "hl": [
         "十万多种",
-        "源头工厂直发"
+        "工厂直发"
       ]
     },
     {
       "text": "二十六个大类，一站选齐。",
-      "startSec": 12.984,
-      "endSec": 14.992,
+      "startSec": 13.651,
+      "endSec": 15.648,
       "kind": "number",
       "clip": "s6.mp4",
       "feature": "wall",
-      "num": {
-        "to": 26,
-        "unit": "",
-        "label": "大类全覆盖",
-        "decimals": 0
+      "chart": {
+        "type": "kpi",
+        "title": "品类覆盖",
+        "takeaway": "一站选齐，不用东拼西凑",
+        "value": 26,
+        "unit": "个",
+        "label": "大类全覆盖"
       },
       "hl": [
         "二十六个大类",
@@ -79,41 +83,40 @@
     },
     {
       "text": "五金、厨房、家居、家电、玩具，应有尽有。",
-      "startSec": 15.112,
-      "endSec": 19.257,
+      "startSec": 17.248,
+      "endSec": 20.859,
       "kind": "selling",
       "clip": "s5.mp4",
       "feature": "product",
       "hl": [
-        "五金",
-        "厨房",
-        "家居",
-        "家电",
-        "玩具"
+        "应有尽有"
       ]
     },
     {
       "text": "八成商品，一件就能起订。",
-      "startSec": 19.377,
-      "endSec": 21.351,
+      "startSec": 20.979,
+      "endSec": 23.045,
       "kind": "number",
       "clip": "s7.mp4",
       "feature": "product",
-      "num": {
-        "to": 80,
-        "unit": "%",
-        "label": "一件起订",
-        "decimals": 0
+      "chart": {
+        "type": "drop",
+        "title": "起订量门槛",
+        "takeaway": "传统批发动辄上百件，米站一件就能起订",
+        "startText": "上百件",
+        "startLabel": "传统批发",
+        "endText": "1件",
+        "endLabel": "米站"
       },
       "hl": [
         "八成",
-        "一件就能起订"
+        "一件"
       ]
     },
     {
       "text": "包装支持多国语言，到当地直接上架。",
-      "startSec": 21.471,
-      "endSec": 24.466,
+      "startSec": 24.645,
+      "endSec": 27.281,
       "kind": "selling",
       "clip": "s11.mp4",
       "feature": "product",
@@ -124,8 +127,8 @@
     },
     {
       "text": "西班牙、葡萄牙、智利、墨西哥，都有自营海外仓。",
-      "startSec": 24.586,
-      "endSec": 28.638,
+      "startSec": 27.401,
+      "endSec": 31.743,
       "kind": "selling",
       "clip": "s2.mp4",
       "feature": "loading",
@@ -135,31 +138,48 @@
     },
     {
       "text": "就近补货，十到十五天发到，不用干等。",
-      "startSec": 28.758,
-      "endSec": 32.009,
+      "startSec": 31.863,
+      "endSec": 34.998,
       "kind": "selling",
       "clip": "s12.mp4",
       "feature": "product",
+      "chart": {
+        "type": "bars",
+        "title": "到货时长",
+        "takeaway": "自营海外仓就近补货，比拼海运快一倍多",
+        "unit": "天",
+        "items": [
+          {
+            "label": "华人群拼海运",
+            "value": 35
+          },
+          {
+            "label": "米站海外仓",
+            "value": 12,
+            "role": "good"
+          }
+        ]
+      },
       "hl": [
-        "就近补货",
-        "十到十五天"
+        "十到十五天",
+        "不用干等"
       ]
     },
     {
       "text": "在海外开店做批发，进货不用愁。",
-      "startSec": 32.129,
-      "endSec": 35.078,
+      "startSec": 36.598,
+      "endSec": 39.465,
       "kind": "closing",
       "clip": "s8.mp4",
       "feature": "people",
       "hl": [
-        "海外开店做批发"
+        "不用愁"
       ]
     },
     {
       "text": "找货源，认准米站。",
-      "startSec": 35.198,
-      "endSec": 36.765,
+      "startSec": 39.585,
+      "endSec": 40.932,
       "kind": "closing",
       "clip": "s3.mp4",
       "feature": "drone",
@@ -167,10 +187,6 @@
         "认准米站"
       ]
     }
-  ],
-  "title": "海外开店进货\n别再飞中国",
-  "titleHl": [
-    "别再飞中国"
   ],
   "cap": "glow"
 }

@@ -6,6 +6,7 @@ import {
 import { TransitionSeries } from "@remotion/transitions";
 import { z } from "zod";
 import { Beat, STYLES, StyleId, pickTransition, pickCameraMove, showsBigNum } from "./engine/rules";
+import { Chart } from "./engine/charts";
 
 const FONT = "Deyi";
 
@@ -25,6 +26,13 @@ export const beatZ = z.object({
   num: z.object({ to: z.number(), unit: z.string(), label: z.string(), decimals: z.number().default(0) }).optional(),
   hl: z.array(z.string()).optional(), // 重点词(金色高亮)
   bars: z.object({ title: z.string(), source: z.string().optional(), items: z.array(z.object({ label: z.string(), value: z.number(), unit: z.string().optional(), color: z.string() })) }).optional(), // 数据硬核:条形图对比
+  chart: z.object({  // 原生动态图表(charts.tsx):按 type 渲 KPI/对比柱/落差/占比,绑该 beat 配音时段
+    type: z.enum(["kpi", "bars", "drop", "ratio"]),
+    title: z.string().optional(), takeaway: z.string().optional(),
+    value: z.number().optional(), unit: z.string().optional(), label: z.string().optional(),
+    items: z.array(z.object({ label: z.string(), value: z.number(), unit: z.string().optional(), role: z.string().optional() })).optional(),
+    startText: z.string().optional(), startLabel: z.string().optional(), endText: z.string().optional(), endLabel: z.string().optional(),
+  }).optional(),
 });
 export const scriptZ = z.object({
   styleId: z.enum(["punchy", "premium", "datahard"]),
@@ -216,6 +224,13 @@ export const EffectEngine: React.FC<Script> = ({ styleId, theme, brand, watermar
       {beats.map((b, i) => (b.bars ? (
         <Sequence key={`bar${i}`} from={fr(b.startSec, fps)} durationInFrames={fr(b.endSec - b.startSec, fps)}>
           <BarChart bars={b.bars} theme={theme} />
+        </Sequence>
+      ) : null))}
+
+      {/* 原生动态图表(charts.tsx):从该 beat 起,持续到下一 beat 开始(含尾部停顿),让人看清 */}
+      {beats.map((b, i) => (b.chart ? (
+        <Sequence key={`ch${i}`} from={fr(b.startSec, fps)} durationInFrames={fr((i < beats.length - 1 ? beats[i + 1].startSec : b.endSec) - b.startSec, fps)}>
+          <Chart c={b.chart as any} theme={theme} />
         </Sequence>
       ) : null))}
 

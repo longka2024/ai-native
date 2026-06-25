@@ -13,9 +13,12 @@ export type StylePreset = {
 };
 
 export const STYLE_PRESETS: StylePreset[] = [
-  // mizan 定稿:数据硬核 × 暖金 × 灰透字幕
+  // mizan 定稿:数据硬核 × 暖金 × glow 跟读字幕(重点词金/已读白/未读浅灰)
   { id: "datahard-gold", label: "数据硬核·暖金", styleId: "datahard", theme: "#F2B33D", cap: "glow",
     fitIndustries: ["商超采购", "供应链", "批发", "外贸", "电商"] },
+  // mizan 备选:数据硬核 × 青色(用户保留,批量时与暖金随机轮换)
+  { id: "datahard-teal", label: "数据硬核·青", styleId: "datahard", theme: "#19e3c8", cap: "glow",
+    fitIndustries: ["商超采购", "供应链", "批发", "外贸", "电商", "科技", "数码"] },
   // 备选档(占位,待从剪映成片偷师细化)
   { id: "punchy-emerald", label: "快剪带感·翠绿", styleId: "punchy", theme: "#19c37d", cap: "highlight",
     fitIndustries: ["美妆", "种草", "快消", "美食"] },
