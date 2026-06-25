@@ -5372,6 +5372,23 @@ async function generateSopRewriteDraft(payload = {}) {
     workspace: asText(payload.workspace || payload.industry || payload.businessLine || payload.keyword || ''),
   }).catch(() => null);
   const hasRealVoices = Boolean(realVoices && ((realVoices.painPoints || []).length || (realVoices.goldenQuotes || []).length));
+  // 去重:同一句真人原话常被评论深挖同时归进 痛点 和 金句 两个桶,两边都灌给模型 →
+  // 正文里同一句话换个壳出现两次(雷同,如开头"之前看到一句话"、后面又"评论区有人说")。
+  // 先把金句里跟痛点(及金句内部)重复的剔掉,只给模型一份不重复的真人原话。
+  const normVoice = (s) => String((s && s.quote) ? s.quote : s || '').replace(/\s+/g, '').replace(/[，。！？、；：""''「」,.!?;:"']/g, '');
+  const painListDedup = [];
+  const seenVoice = new Set();
+  for (const p of (realVoices?.painPoints || [])) {
+    const q = (p && p.quote) ? p.quote : p; const n = normVoice(q);
+    if (!n || [...seenVoice].some((x) => x.includes(n) || n.includes(x))) continue;
+    seenVoice.add(n); painListDedup.push(q);
+  }
+  const goldenListDedup = [];
+  for (const g of (realVoices?.goldenQuotes || [])) {
+    const n = normVoice(g);
+    if (!n || [...seenVoice].some((x) => x.includes(n) || n.includes(x))) continue;
+    seenVoice.add(n); goldenListDedup.push(g);
+  }
   const system = [
     '你是 Longka AI Native 内容生产系统的资深小红书/短视频内容策划。',
     '你必须严格按”爆款采集分析 SOP：从爬虫样本到自己的内容框架”工作。',
@@ -5399,6 +5416,7 @@ async function generateSopRewriteDraft(payload = {}) {
     hasRealVoices
       ? '硬约束【真实声音地基】：sourceEvidence.realVoices 是这个领域真人评论里挖出来的真实痛点/原话/异议/选题缺口。写正文时必须用这些真人真实表达来支撑——痛点要贴近 realVoices.painPoints（用她们真在愁的事，不要泛泛而谈）；至少把 realVoices.goldenQuotes 里 1-2 句真人原话一字不改自然嵌进正文（不加引号）；如果正文涉及 realVoices.objections 里的顾虑，要正面回应而不是回避。这是让内容有真实感、不像 AI 废话的关键，不可跳过。'
       : '',
+    '硬约束【绝不雷同·重要】：同一句真人原话、同一个金句、同一个例子在整篇正文里只能出现一次。绝不准把同一句话换个壳重复表达（例如开头写“之前看到一句话特别戳我：…”，后面又写“评论区有人说：…”引同一句）。正文里不允许出现两处措辞或意思高度雷同的句子；每段都要推进新信息，不能原地复读上一段。',
     '输出必须是 JSON，不要 Markdown，不要解释。',
   ].filter(Boolean).join('\n');
   const user = {
@@ -5433,11 +5451,11 @@ async function generateSopRewriteDraft(payload = {}) {
     } : null,
     qualityFeedback: payload.qualityFeedback || null,
     realVoices: hasRealVoices ? {
-      painPoints: (realVoices.painPoints || []).slice(0, 12).map((p) => (p && p.quote) ? p.quote : p),
+      painPoints: painListDedup.slice(0, 12),
       objections: (realVoices.objections || []).slice(0, 8),
-      goldenQuotes: (realVoices.goldenQuotes || []).slice(0, 12),
+      goldenQuotes: goldenListDedup.slice(0, 12),
       topicGaps: (realVoices.topicGaps || []).slice(0, 8),
-      note: '这些是该领域真人评论里的真实表达,优先用来支撑正文(痛点贴真人/金句可原话嵌入/正面回应异议)。',
+      note: '这些是该领域真人评论里的真实表达,优先用来支撑正文(痛点贴真人/金句可原话嵌入/正面回应异议)。每句最多用一次,绝不重复。',
     } : null,
     requiredOutput: {
       titleChoices: '6 个标题。每个标题必须从源头帖不同角度改写，不能只有一个源头标题变体。',
