@@ -6,7 +6,7 @@ import { extname, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { collectorHealth, confirmContentAsset, deleteCollectionRun, importLocalPlatformBatch, initCollectorHub, loadHot30Samples, loadLatestXBatch, loadRecentCollectionBatches, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch, saveBenchmarkAnchor, listBenchmarks, listSamplesNeedingCommentMining, saveCommentInsight, listCommentInsights, getCommentRealMaterial, getBenchmarkRubric } from './collector-hub.mjs';
+import { collectorHealth, confirmContentAsset, deleteCollectionRun, importLocalPlatformBatch, initCollectorHub, loadHot30Samples, loadLatestXBatch, loadRecentCollectionBatches, loadRecentContentAssets, loadUnifiedContentAssets, loadXBatchAssets, runXcrawlStandard, runXcrawlXUserTweets, runXcrawlXUserTweetsBatch, saveBenchmarkAnchor, listBenchmarks, listSamplesNeedingCommentMining, saveCommentInsight, listCommentInsights, getCommentRealMaterial, getBenchmarkRubric, getKnowledgeMaterial } from './collector-hub.mjs';
 import { runSkill, listSkills } from './skills-runner.mjs';
 import { prefilterComments, buildCommentBlock } from './comment-prefilter.mjs';
 import { kieEnabled, kieStartXiaoheiJob, kieXiaoheiJobStatus, kieGenerateOne } from './kie-image.mjs';
@@ -1860,6 +1860,19 @@ createServer(async (req, res) => {
       const payload = await readJson(req);
       const result = await generateSopRewriteDraft(payload);
       return sendJson(res, result.ok ? result : { ...result, fallback: true });
+    }
+
+    // 第6步「可用知识点」面板:按选题相关性+不跑题捞知识卡,默认全勾,小妹可取消
+    if (req.method === 'POST' && url.pathname === '/api/knowledge/match') {
+      const payload = await readJson(req);
+      const ws = asText(payload.workspace || payload.industry || payload.businessLine || payload.keyword || '');
+      const topicText = [payload.topic?.title, payload.topic?.theme, payload.topic?.content, payload.selectedTitle, payload.keywords].filter(Boolean).join(' ');
+      let cards = [];
+      try {
+        const all = await getKnowledgeMaterial({ workspace: ws });
+        cards = filterKnowledgeRelevantToTopic(all, topicText, asText(payload.keywords || ''), 10);
+      } catch { cards = []; }
+      return sendJson(res, { ok: true, cards });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/content/title-choices') {
@@ -5232,6 +5245,45 @@ function filterPainsRelevantToTopic(pains = [], topicText = '', keywords = '') {
   });
 }
 
+// 从选题文本识别年级(用于知识卡不跑题:选题指定 Grade 8 就不灌 Grade 4 的卡)
+function detectGradeFromText(t = '') {
+  const s = String(t).toLowerCase();
+  if (/grade\s*1[01]|gr\s*1[01]|十年级|十一年级|\bg1[01]\b/.test(s)) return 'G11';
+  if (/grade\s*9|gr\s*9|九年级|\bg9\b/.test(s)) return 'G9';
+  if (/grade\s*8|gr\s*8|八年级|\bg8\b/.test(s)) return 'G8';
+  if (/grade\s*7|gr\s*7|七年级|\bg7\b/.test(s)) return 'G7';
+  if (/grade\s*6|gr\s*6|六年级|\bg6\b/.test(s)) return 'G6';
+  if (/grade\s*4|gr\s*4|四年级|\bg4\b/.test(s)) return 'G4';
+  if (/kindergarten|幼儿园|\bjk\b|学前|\bkg\b/.test(s)) return 'KG';
+  return '';
+}
+
+// 知识卡按选题相关性筛选(铁律2 不跑题 + 铁律3 只用真实):选题指定年级→排除别的具体年级;按关键词/二元组打分取前 N
+function filterKnowledgeRelevantToTopic(cards = [], topicText = '', keywords = '', limit = 8) {
+  const topicGrams = topicBigramSet(topicText);
+  const kws = String(keywords || '').split(/[\s,，、]+/).map((k) => k.trim()).filter((k) => k.length >= 2);
+  const grade = detectGradeFromText(`${topicText} ${keywords}`);
+  if (topicGrams.size === 0 && kws.length === 0) return [];
+  const scored = [];
+  for (const c of cards) {
+    let score = 0;
+    if (grade) {
+      if (c.grade === grade) score += 3;
+      else if (c.grade === '通用') score += 0.5;
+      else continue; // 选题是某年级,就不灌别的具体年级的卡(不跑题)
+    }
+    const hay = `${c.point} ${(c.tags || []).join(' ')} ${c.category}`;
+    for (const k of kws) if (hay.includes(k)) score += 2;
+    const cardGrams = topicBigramSet(`${c.point} ${(c.tags || []).join('')}`);
+    let overlap = 0;
+    for (const g of cardGrams) if (topicGrams.has(g)) overlap++;
+    score += Math.min(overlap, 5) * 0.6;
+    if (score >= 1) scored.push({ c, score });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, limit).map((x) => x.c);
+}
+
 async function generateTitleChoices(payload = {}) {
   const cfg = await readOperatorAiConfig();
   if (!cfg.apiKey) return { ok: false, error: 'missing_ai_key', choices: [] };
@@ -5389,6 +5441,19 @@ async function generateSopRewriteDraft(payload = {}) {
     if (!n || [...seenVoice].some((x) => x.includes(n) || n.includes(x))) continue;
     seenVoice.add(n); goldenListDedup.push(g);
   }
+  // L4: 知识库注入(私校等领域权威知识卡)——小妹勾选优先;未勾选则按选题相关性+不跑题自动捞前 8
+  const knowWs = asText(payload.workspace || payload.industry || payload.businessLine || payload.keyword || '');
+  const knowTopicText = [payload.topic?.title, payload.topic?.theme, payload.topic?.content, payload.selectedTitle, payload.keywords].filter(Boolean).join(' ');
+  const selectedKnowIds = Array.isArray(payload.selectedKnowledgeIds) ? payload.selectedKnowledgeIds.filter(Boolean) : null;
+  let knowCards = [];
+  try {
+    const allKnow = await getKnowledgeMaterial({ workspace: knowWs, ids: selectedKnowIds });
+    // 小妹显式给了 ids(含取消勾全部=空数组)→ 严格用她选的;没给(null)→ 按选题自动匹配前 8
+    knowCards = selectedKnowIds
+      ? allKnow
+      : filterKnowledgeRelevantToTopic(allKnow, knowTopicText, asText(payload.keywords || ''), 8);
+  } catch { /* 无知识库就跳过注入 */ }
+  const hasKnowledge = knowCards.length > 0;
   const system = [
     '你是 Longka AI Native 内容生产系统的资深小红书/短视频内容策划。',
     '你必须严格按”爆款采集分析 SOP：从爬虫样本到自己的内容框架”工作。',
@@ -5415,6 +5480,9 @@ async function generateSopRewriteDraft(payload = {}) {
       : '',
     hasRealVoices
       ? '硬约束【真实声音地基】：sourceEvidence.realVoices 是这个领域真人评论里挖出来的真实痛点/原话/异议/选题缺口。写正文时必须用这些真人真实表达来支撑——痛点要贴近 realVoices.painPoints（用她们真在愁的事，不要泛泛而谈）；至少把 realVoices.goldenQuotes 里 1-2 句真人原话一字不改自然嵌进正文（不加引号）；如果正文涉及 realVoices.objections 里的顾虑，要正面回应而不是回避。这是让内容有真实感、不像 AI 废话的关键，不可跳过。'
+      : '',
+    hasKnowledge
+      ? '硬约束【知识库真干货·铁律3】：sourceEvidence.knowledge 是跟本选题相关的权威知识点（招生白皮书等真实资料，带 source 可追溯）。写正文时必须自然用上其中最贴题的 2-4 条真实知识（具体名额/时间/流程/招生官真正看什么等），让内容有“官网查不到”的干货；只能用 knowledge 数组里给出的事实，绝不自己编造任何学校数据/名额/时间/录取率；不要堆砌罗列，把知识点融进口语叙述里讲给家长听。'
       : '',
     '硬约束【绝不雷同·重要】：同一句真人原话、同一个金句、同一个例子在整篇正文里只能出现一次。绝不准把同一句话换个壳重复表达（例如开头写“之前看到一句话特别戳我：…”，后面又写“评论区有人说：…”引同一句）。正文里不允许出现两处措辞或意思高度雷同的句子；每段都要推进新信息，不能原地复读上一段。',
     '输出必须是 JSON，不要 Markdown，不要解释。',
@@ -5456,6 +5524,10 @@ async function generateSopRewriteDraft(payload = {}) {
       goldenQuotes: goldenListDedup.slice(0, 12),
       topicGaps: (realVoices.topicGaps || []).slice(0, 8),
       note: '这些是该领域真人评论里的真实表达,优先用来支撑正文(痛点贴真人/金句可原话嵌入/正面回应异议)。每句最多用一次,绝不重复。',
+    } : null,
+    knowledge: hasKnowledge ? {
+      cards: knowCards.slice(0, 8).map((c) => ({ point: c.point, source: c.source, grade: c.grade, category: c.category })),
+      note: '本选题相关的权威知识点(真实资料)。挑最贴题的 2-4 条融进正文,讲给家长听;只能用这里的事实,绝不自己编学校数据;不跑题。',
     } : null,
     requiredOutput: {
       titleChoices: '6 个标题。每个标题必须从源头帖不同角度改写，不能只有一个源头标题变体。',

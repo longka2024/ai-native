@@ -34,6 +34,11 @@ const state = {
   draftStatus: "idle",
   draftError: "",
   draftMeta: null,
+  // 知识库注入(私校等):匹配到的知识卡 + 小妹勾选的 id(默认全勾)
+  knowledgeCards: [],
+  selectedKnowledgeIds: [],
+  knowledgeLoaded: false,
+  knowledgeLoading: false,
   draftReview: null,
   copyVersions: [],
   currentCopyVersionId: "",

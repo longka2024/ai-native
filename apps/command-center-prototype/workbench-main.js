@@ -61,6 +61,11 @@ function clearAfter(step) {
     state.currentCopyVersionId = "";
     state.confirmedCopyVersionId = "";
     state.pendingRevision = null;
+    // 选题/标题变了 → 重置知识匹配,步7再重新按新选题拉
+    state.knowledgeCards = [];
+    state.selectedKnowledgeIds = [];
+    state.knowledgeLoaded = false;
+    state.knowledgeLoading = false;
   }
   if (step <= 9) {
     clearProductionState();
@@ -754,8 +759,38 @@ function renderTitleStep() {
   </section>`;
 }
 
+// 第7步「可用知识点」面板:匹配到的知识卡(默认全勾),小妹可取消不对题的 + 按勾选重生成
+function renderKnowledgePanel() {
+  if (!state.knowledgeLoaded || !Array.isArray(state.knowledgeCards) || !state.knowledgeCards.length) return "";
+  const sel = new Set(state.selectedKnowledgeIds || []);
+  const GC = { KG: "#e8743b", G4: "#c0392b", G6: "#8e44ad", G7: "#7f8c8d", G8: "#2980b9", G9: "#16a085", G11: "#2c3e50", "通用": "#95a5a6" };
+  const cards = state.knowledgeCards.map((c) => {
+    const on = sel.has(c.id);
+    return `<label style="display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border-radius:8px;cursor:pointer;background:${on ? "#fff" : "#f3f1ec"};border:1px solid ${on ? "#e0c98a" : "#e5e2dc"};margin:4px 0;">
+      <input type="checkbox" data-kb-pick="${escapeHtml(c.id)}" ${on ? "checked" : ""} style="margin-top:3px;flex:none;">
+      <span style="display:inline-block;background:${GC[c.grade] || "#999"};color:#fff;font-size:11px;padding:1px 7px;border-radius:10px;flex:none;">${escapeHtml(c.grade || "")}</span>
+      <span style="font-size:13px;line-height:1.5;color:#3a3a3a;">${escapeHtml(c.point || "")}</span>
+    </label>`;
+  }).join("");
+  return `<div style="background:#faf8f3;border:1px solid #e8e2d6;border-radius:12px;padding:12px 14px;margin:10px 0;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
+      <span style="font-size:14px;color:#6a5a45;">📚 可用知识点 <b>${sel.size}/${state.knowledgeCards.length}</b> 条已勾选 <span style="color:#a89a82;font-size:12px;">(默认全用,不对题的取消即可)</span></span>
+      <span style="display:flex;gap:6px;">
+        <button class="ghost" data-kb-all style="padding:3px 10px;font-size:12px;">全选</button>
+        <button class="ghost" data-kb-none style="padding:3px 10px;font-size:12px;">清空</button>
+        <button class="secondary" data-kb-regen style="padding:3px 10px;font-size:12px;">按勾选重新生成</button>
+      </span>
+    </div>
+    <div style="max-height:240px;overflow:auto;">${cards}</div>
+  </div>`;
+}
+
 function renderDraftStep() {
-  if (!state.draft && state.selectedTitle && state.draftStatus === "idle") {
+  // 先按选题拉「可用知识点」(私校等),再生成正文 → 首版即带匹配到的知识,小妹可取消后重生成
+  if (state.selectedTitle && !state.knowledgeLoaded && !state.knowledgeLoading) {
+    requestAnimationFrame(() => loadKnowledgeForTopic());
+  }
+  if (!state.draft && state.selectedTitle && state.draftStatus === "idle" && state.knowledgeLoaded) {
     requestAnimationFrame(() => generateSopDraft());
   }
   const isLoading = state.draftStatus === "loading";
@@ -766,6 +801,7 @@ function renderDraftStep() {
     ${cardHead("生成平台成品", "正文必须绑定选题、源头素材、目标平台、业务目标和当前标题。这里不再使用本地固定模板。")}
     ${state.draftMeta ? `<div class="status-strip">Longka SOP：${escapeHtml(state.draftMeta.model || "AI")} · ${escapeHtml(state.draftMeta.framework || "内容框架")} · ${escapeHtml(state.draftMeta.route || "平台改写")}</div>` : ""}
     ${state.draftError ? `<div class="status-strip warn">${escapeHtml(state.draftError)}</div>` : ""}
+    ${renderKnowledgePanel()}
     <div class="draft-box">
       <div class="draft-text"><pre>${escapeHtml(draftText)}</pre></div>
       <div class="check-panel">
@@ -2236,6 +2272,23 @@ function bindWorkAreaActions() {
   });
   byId("workArea")?.querySelectorAll("[data-pick-ref]").forEach((b) => {
     b.addEventListener("click", () => { state.selectedReferenceImage = b.dataset.pickRef || ""; renderToday(); });
+  });
+  // 知识点面板:勾选/全选/清空/按勾选重生成
+  $$("#workArea [data-kb-pick]").forEach((cb) => cb.addEventListener("change", () => {
+    const id = cb.getAttribute("data-kb-pick");
+    const set = new Set(state.selectedKnowledgeIds || []);
+    if (cb.checked) set.add(id); else set.delete(id);
+    state.selectedKnowledgeIds = [...set];
+    renderToday();
+  }));
+  byId("workArea")?.querySelector("[data-kb-all]")?.addEventListener("click", () => {
+    state.selectedKnowledgeIds = (state.knowledgeCards || []).map((c) => c.id); renderToday();
+  });
+  byId("workArea")?.querySelector("[data-kb-none]")?.addEventListener("click", () => {
+    state.selectedKnowledgeIds = []; renderToday();
+  });
+  byId("workArea")?.querySelector("[data-kb-regen]")?.addEventListener("click", () => {
+    state.draft = ""; state.draftStatus = "idle"; state.draftError = ""; generateSopDraft();
   });
   byId("workArea")?.querySelectorAll("[data-pick-cover]").forEach((b) => {
     b.addEventListener("click", () => {

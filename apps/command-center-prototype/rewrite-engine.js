@@ -133,6 +133,32 @@ async function optimizeByPrecheck() {
   }
 }
 
+// 第6/7步「可用知识点」:按选题拉匹配的知识卡(私校等领域),默认全勾,小妹可取消
+async function loadKnowledgeForTopic() {
+  if (state.knowledgeLoading) return;
+  state.knowledgeLoading = true;
+  const topic = selectedTopic() || {};
+  const workspace = state.hot30Workspace || state.industry || state.businessLine || "";
+  try {
+    if (!workspace) { state.knowledgeCards = []; state.selectedKnowledgeIds = []; }
+    else {
+      const res = await fetch(apiPath("/api/knowledge/match"), {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspace, keywords: state.keywords || "", selectedTitle: state.selectedTitle || "",
+          topic: { title: topic.title || topic.theme || "", theme: topic.theme || "", content: topic.content || topic.text || "" },
+        }),
+      });
+      const d = await res.json().catch(() => ({}));
+      state.knowledgeCards = Array.isArray(d.cards) ? d.cards : [];
+      state.selectedKnowledgeIds = state.knowledgeCards.map((c) => c.id); // 默认全勾
+    }
+  } catch { state.knowledgeCards = []; state.selectedKnowledgeIds = []; }
+  state.knowledgeLoaded = true;
+  state.knowledgeLoading = false;
+  renderToday();
+}
+
 async function generateSopDraft() {
   if (!state.selectedTitle || !selectedTopic()) return;
   if (state.draftStatus === "loading") return;
@@ -222,6 +248,8 @@ function buildSopDraftPayload() {
     workspace: state.hot30Workspace || state.industry || state.businessLine || "",
     goal: state.goal,
     keywords: state.keywords,
+    // 知识库:小妹勾选的知识卡 id(已加载面板才传;不传=后端按选题自动匹配)
+    selectedKnowledgeIds: state.knowledgeLoaded ? (state.selectedKnowledgeIds || []) : undefined,
     revision: state.draftRevision,
     titleReason: titleChoice.reason || "",
     topic: normalizedTopic,

@@ -88,3 +88,4 @@ apps/command-center-prototype/media/clips/
 # 小妹工作台草稿快照(真实客户私有数据,绝不进 public 仓库)
 apps/command-center-prototype/data/workbench-snapshots/
 apps/command-center-prototype/data/customer-assets/
+apps/command-center-prototype/tools/knowledge_*.json

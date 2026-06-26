@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 let pgPool = null;
 
@@ -927,6 +930,24 @@ async function ensureCollectorSchema() {
     )
   `);
   await pgPool.query('create index if not exists idx_longka_review_workspace on longka_review(workspace, published_at desc)');
+
+  // 知识库:权威资料(招生白皮书等)洗成的"知识卡",第6步改写按选题检索注入(真干货)
+  // spec: docs/specs/2026-06-26-private-school-knowledge-base-spec.md
+  await pgPool.query(`
+    create table if not exists longka_knowledge (
+      id text primary key,
+      workspace text not null default '',
+      school text not null default '',
+      grade text not null default '通用',
+      category text not null default '',
+      point text not null,
+      tags jsonb not null default '[]'::jsonb,
+      source text not null default '',
+      created_at timestamptz not null default now()
+    )
+  `);
+  await pgPool.query('create index if not exists idx_longka_knowledge_ws on longka_knowledge(workspace, school, grade)');
+  await pgPool.query("create index if not exists idx_longka_knowledge_tags on longka_knowledge using gin(tags)");
 }
 
 // 找「有评论、但还没深挖」的样本(L1 已回填 comments → L2 待挖)
@@ -1062,6 +1083,48 @@ export async function getCommentRealMaterial(input = {}) {
     goldenQuotes: [...quotes].slice(0, 40),
     topicGaps: [...topicGaps].slice(0, 30),
   };
+}
+
+// 知识库取料:PG longka_knowledge 优先;无 DB 或未灌库 → 本机 tools/knowledge_*.json 兜底(便于本地测)
+// spec: docs/specs/2026-06-26-private-school-knowledge-base-spec.md
+function loadKnowledgeJsonFiles() {
+  try {
+    const dir = join(dirname(fileURLToPath(import.meta.url)), 'tools');
+    const out = [];
+    for (const f of readdirSync(dir)) {
+      if (/^knowledge_.*\.json$/i.test(f)) {
+        try { const arr = JSON.parse(readFileSync(join(dir, f), 'utf-8')); if (Array.isArray(arr)) out.push(...arr); } catch {}
+      }
+    }
+    return out;
+  } catch { return []; }
+}
+
+export async function getKnowledgeMaterial(input = {}) {
+  const workspace = normalizeText(input.workspace || '');
+  const ids = Array.isArray(input.ids) ? input.ids.filter(Boolean) : null;
+  const norm = (c) => ({
+    id: String(c.id || ''), workspace: c.workspace || '', school: c.school || '',
+    grade: c.grade || '通用', category: c.category || '', point: String(c.point || ''),
+    tags: Array.isArray(c.tags) ? c.tags : [], source: c.source || '',
+  });
+  const db = await requireCollectorDb().catch(() => ({ mode: 'disabled' }));
+  if (db && db.mode === 'postgres') {
+    try {
+      const r = await pgPool.query(
+        `select id,workspace,school,grade,category,point,tags,source from longka_knowledge
+         where ($1='' or workspace=$1) order by created_at desc limit 1000`, [workspace]);
+      if (r.rows.length) {
+        let rows = r.rows.map(norm);
+        if (ids) rows = rows.filter((c) => ids.includes(c.id));
+        return rows;
+      }
+    } catch { /* 落到 JSON 兜底 */ }
+  }
+  let cards = loadKnowledgeJsonFiles().map(norm);
+  if (workspace) cards = cards.filter((c) => !c.workspace || c.workspace === workspace);
+  if (ids) cards = cards.filter((c) => ids.includes(c.id));
+  return cards;
 }
 
 // 保存一次对标起锚结果
