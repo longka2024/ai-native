@@ -767,7 +767,7 @@ function renderKnowledgePanel() {
   const cards = state.knowledgeCards.map((c) => {
     const on = sel.has(c.id);
     return `<label style="display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border-radius:8px;cursor:pointer;background:${on ? "#fff" : "#f3f1ec"};border:1px solid ${on ? "#e0c98a" : "#e5e2dc"};margin:4px 0;">
-      <input type="checkbox" data-kb-pick="${escapeHtml(c.id)}" ${on ? "checked" : ""} style="margin-top:3px;flex:none;">
+      <input type="checkbox" data-kb-pick="${escapeHtml(c.id)}" ${on ? "checked" : ""} style="width:18px;height:18px;min-height:0;padding:0;margin:2px 0 0;flex:none;border-radius:4px;">
       <span style="display:inline-block;background:${GC[c.grade] || "#999"};color:#fff;font-size:11px;padding:1px 7px;border-radius:10px;flex:none;">${escapeHtml(c.grade || "")}</span>
       <span style="font-size:13px;line-height:1.5;color:#3a3a3a;">${escapeHtml(c.point || "")}</span>
     </label>`;
