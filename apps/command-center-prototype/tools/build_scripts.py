@@ -31,8 +31,16 @@ def main():
     ap.add_argument("--keywords", default="keywords_baidu.json")
     ap.add_argument("--persona", help="只跑某人群(如 P1);省略=全部")
     ap.add_argument("--region-limit", type=int, default=0, help="只跑前 N 个地区(0=全部)")
+    ap.add_argument("--purposes", default="", help="传播目的: 空=框架原版; all=全5种; 或逗号列 expose,collect,comment,convert,persona")
     ap.add_argument("--out-dir", default=".")
     args = ap.parse_args()
+
+    if args.purposes.strip() == "all":
+        purposes = list(sf.PURPOSES.keys())
+    elif args.purposes.strip():
+        purposes = [p.strip() for p in args.purposes.split(",") if p.strip() in sf.PURPOSES]
+    else:
+        purposes = [None]  # 框架原版(不套传播目的)
 
     personas_cfg = json.load(open(args.personas, encoding="utf-8"))
     regions_cfg = json.load(open(args.regions, encoding="utf-8"))
@@ -64,25 +72,35 @@ def main():
                 kw, src = pick_real_keyword(all_words, rn, bucket)
                 if not kw:
                     kw, src = DEFAULT_KW[bucket].format(r=rn), "default"
-                title, title_hl, beats, seo_title, seo_tags = frame(region, facts, kw)
-                holes = [b for b in beats if b.get("_placeholder")]
-                topic = {
-                    "industry": regions_cfg["industry"], "brand": regions_cfg["brand"],
-                    "watermark": regions_cfg.get("watermark", "longka 制作"),
-                    "persona": p["id"], "bucket": bucket, "keyword": kw, "keyword_source": src,
-                    "title": title, "titleHl": title_hl,
-                    "seo_title": seo_title, "seo_tags": seo_tags, "beats": beats,
-                }
-                fn = f"topic_{region['slug']}_{bucket}.json"
-                json.dump(topic, open(os.path.join(args.out_dir, fn), "w", encoding="utf-8"),
-                          ensure_ascii=False, indent=2)
-                flag = "⚠️待料" if holes else "✅"
-                src_tag = "真" if src == "baidu_sug" else "兜底"
-                print(f"{p['id']:<5}{bucket:<10}{rn:<7}{kw + '(' + src_tag + ')':<30}{flag}", flush=True)
-                rows.append({"persona": p["id"], "bucket": bucket, "region": rn, "keyword": kw,
-                             "keyword_source": src, "file": fn, "needs_realdata": bool(holes)})
-                if holes:
-                    need_realdata.append(fn)
+                title, title_hl, beats0, seo_title, seo_tags = frame(region, facts, kw)
+                for purpose in purposes:
+                    beats = sf.apply_purpose(beats0, purpose, region, facts) if purpose else beats0
+                    holes = [b for b in beats if b.get("_placeholder")]
+                    topic = {
+                        "industry": regions_cfg["industry"], "brand": regions_cfg["brand"],
+                        "watermark": regions_cfg.get("watermark", "longka 制作"),
+                        "persona": p["id"], "bucket": bucket, "keyword": kw, "keyword_source": src,
+                        "title": title, "titleHl": title_hl,
+                        "seo_title": seo_title, "seo_tags": seo_tags, "beats": beats,
+                    }
+                    if purpose:
+                        pp = sf.PURPOSES[purpose]
+                        topic["purpose"] = purpose            # 传播目的(曝光/收藏/评论/转化/人设)
+                        topic["purpose_label"] = pp["label"]
+                        topic["purpose_kpi"] = pp["kpi"]      # 该目的的主指标(复盘看这个)
+                        topic["fit_formats"] = [pp["label"]]  # 适配形态(对标库 fit_formats 字段)
+                    suffix = f"_{purpose}" if purpose else ""
+                    fn = f"topic_{region['slug']}_{bucket}{suffix}.json"
+                    json.dump(topic, open(os.path.join(args.out_dir, fn), "w", encoding="utf-8"),
+                              ensure_ascii=False, indent=2)
+                    flag = "⚠️待料" if holes else "✅"
+                    src_tag = "真" if src == "baidu_sug" else "兜底"
+                    plabel = sf.PURPOSES[purpose]["label"] if purpose else "原版"
+                    print(f"{p['id']:<5}{bucket:<10}{rn:<7}{plabel:<7}{kw + '(' + src_tag + ')':<26}{flag}", flush=True)
+                    rows.append({"persona": p["id"], "bucket": bucket, "region": rn, "keyword": kw,
+                                 "purpose": purpose, "keyword_source": src, "file": fn, "needs_realdata": bool(holes)})
+                    if holes:
+                        need_realdata.append(fn)
 
     json.dump({"rows": rows, "need_realdata": need_realdata},
               open(os.path.join(args.out_dir, "build_report.json"), "w", encoding="utf-8"),

@@ -123,3 +123,37 @@ def frame_profit(region, facts, keyword):
 
 FRAMES = {"channel": frame_channel, "price": frame_price,
           "selection": frame_selection, "profit": frame_profit}
+
+
+# ── 5 传播目的(正交维:同一框架 × 不同目的 → 话题相同、目的不同)──
+# 借自对标案例《用 Codex 做视频二创》。换"钩子开头 + 结尾CTA + 主指标",中段框架论证不变。
+# 让批量 N 条不只话题不同,还目的不同、各有 KPI 意图。spec: 2026-06-26-content-system-completion-spec.md
+def _hook(text, feature, hl): return {"text": text, "kind": "contrast", "feature": feature, "hl": hl}
+def _cta(text, feature, hl):  return {"text": text, "kind": "closing",  "feature": feature, "hl": hl}
+
+PURPOSES = {
+    "expose":  {"label": "曝光型", "kpi": "完播率",
+                "hook": lambda rn, bs: _hook(f"在{rn}开店进货，第一条路十个人九个走错。", "wall", ["走错"]),
+                "cta":  lambda rn, bs: _cta(f"想少踩坑，看完这条——货源认准{bs}。", "drone", [bs])},
+    "collect": {"label": "收藏型", "kpi": "收藏率",
+                "hook": lambda rn, bs: _hook(f"在{rn}开店进货的几条路，我给你列清楚，建议先收藏。", "wall", [rn, "建议收藏"]),
+                "cta":  lambda rn, bs: _cta(f"存下来，进货时照着挑，认准{bs}。", "drone", ["照着挑", bs])},
+    "comment": {"label": "评论型", "kpi": "评论率",
+                "hook": lambda rn, bs: _hook(f"在{rn}开店，你是飞回国进货，还是拼海运？", "people", [rn, "还是"]),
+                "cta":  lambda rn, bs: _cta(f"你走的是哪条路？评论区聊聊，看看{bs}帮不帮得上。", "people", ["评论区", bs])},
+    "convert": {"label": "转化型", "kpi": "线索转化",
+                "hook": lambda rn, bs: _hook(f"在{rn}开店进货成本压不下来？问题出在你走第几手货。", "wall", [rn, "第几手货"]),
+                "cta":  lambda rn, bs: _cta(f"工厂价、一件起订、就近海外仓——认准{bs}。", "drone", [bs, "工厂价"])},
+    "persona": {"label": "人设型", "kpi": "关注转化",
+                "hook": lambda rn, bs: _hook(f"在海外开店这些年，{rn}进货踩过的坑，今天一次说清。", "people", ["踩过的坑"]),
+                "cta":  lambda rn, bs: _cta(f"做海外生意少走弯路，关注我；货源认准{bs}。", "drone", ["关注我", bs])},
+}
+
+
+def apply_purpose(beats, purpose, region, facts):
+    """换钩子开头 + 结尾CTA,中段框架论证不变;返回新 beats(不改原列表)。未知 purpose 原样返回。"""
+    p = PURPOSES.get(purpose)
+    if not p or len(beats) < 3:
+        return list(beats)
+    rn, bs = region["name"], facts["brand_short"]
+    return [p["hook"](rn, bs)] + list(beats[1:-1]) + [p["cta"](rn, bs)]

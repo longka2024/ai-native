@@ -900,6 +900,33 @@ async function ensureCollectorSchema() {
     )
   `);
   await pgPool.query('create index if not exists idx_longka_comment_insights_workspace on longka_comment_insights(workspace, created_at desc)');
+
+  // 选题判断字段(对标外部案例补全):人群/适配形态/风险/参考素材 —— 绑到选题这一行
+  // spec: docs/specs/2026-06-26-content-system-completion-spec.md
+  await pgPool.query("alter table longka_benchmark add column if not exists target_persona text");      // 适合人群:personas_mizan.json 的 id/标签
+  await pgPool.query("alter table longka_benchmark add column if not exists fit_formats jsonb not null default '[]'::jsonb");   // 适配形态:6形态 × 5传播目的
+  await pgPool.query("alter table longka_benchmark add column if not exists risk_flags jsonb not null default '[]'::jsonb");    // 风险提醒:compliance_scan 等级/类型
+  await pgPool.query("alter table longka_benchmark add column if not exists ref_assets jsonb not null default '[]'::jsonb");    // 参考素材:assets.db 命中的 norm_clip id
+
+  // 复盘表:把"我觉得不错"变成数据判断(数据复利护城河)
+  await pgPool.query(`
+    create table if not exists longka_review (
+      id text primary key,
+      workspace text not null default '',
+      title text,
+      platform text not null default '',
+      published_at timestamptz,
+      topic_type text,            -- 选题类型
+      purpose text,               -- 传播目的(曝光/收藏/评论/转化/人设)
+      hook_style text,            -- 开头方式
+      duration_sec int,
+      views int, complete_rate real, likes int, saves int, comments int, shares int,
+      comment_keywords jsonb not null default '[]'::jsonb,
+      next_tip text,              -- 下次优化建议
+      created_at timestamptz not null default now()
+    )
+  `);
+  await pgPool.query('create index if not exists idx_longka_review_workspace on longka_review(workspace, published_at desc)');
 }
 
 // 找「有评论、但还没深挖」的样本(L1 已回填 comments → L2 待挖)

@@ -62,11 +62,10 @@ def glm_tag(frame_jpg, key):
 def normalize(src, dst, dur):
     if dur < 1.5:
         return None  # 太短,剔除
-    ss = min(1.0, dur * 0.15)
-    t = min(3.6, dur - ss)
-    r = run(["ffmpeg", "-y", "-loglevel", "error", "-ss", str(ss), "-i", src, "-t", str(t),
+    # 保留整片长度(不再砍 3.6s 中段)·满屏中心裁切转竖屏·crf 18 高画质(不压糊)
+    r = run(["ffmpeg", "-y", "-loglevel", "error", "-i", src,
              "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30",
-             "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "20", dst])
+             "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", dst])
     return dst if r.returncode == 0 and os.path.exists(dst) else None
 
 def main():
