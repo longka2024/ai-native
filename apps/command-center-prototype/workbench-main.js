@@ -1364,18 +1364,24 @@ async function archiveFinalWork() {
     renderToday();
     return;
   }
-  // 🛡️ 发布前合规硬卡口:保存(=发/交付)前自动扫,high 风险直接拦下,必须先改合规再存。
+  // 🛡️ 发布前合规软门:保存(=发/交付)前自动扫,high 风险强警告 + 让小妹确认是否仍要保存。
+  // 不再强制跳回第9步(那会在"改了还判 high"时造成无限循环、存不进作品记录)。小妹是把关人,可 override。
   try {
     const scan = await fetch(apiPath("/api/compliance/scan"), {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ title: asset.title, body: asset.body }),
     }).then((r) => r.json());
     if (scan && scan.risk === "high") {
-      state.complianceResult = scan; // 把结果亮到合规门卡上,小妹看得见为什么被拦
-      state.archiveMessage = `⛔ 合规未过,已拦下:这篇命中导流违规(${(scan.categories || []).map(complianceCatLabel).join("/")}),直接发大概率封号。请回第 9 步点【🛡️合规检查 → 一键改成合规版】改完再保存。`;
-      setStep(9);
-      renderToday();
-      return;
+      state.complianceResult = scan; // 把结果亮到合规门卡上,小妹看得见为什么被警告
+      const cats = (scan.categories || []).map(complianceCatLabel).join("/");
+      const proceed = window.confirm(`⛔ 合规检查:高风险(命中 ${cats}),直接发大概率封号。\n\n强烈建议先在本页点【🛡️合规检查 → ✨一键改成合规版】把导流/招揽口吻改掉(尤其"评论区扣1/私信发你"这种引流),再保存。\n\n仍要现在保存吗？\n确定 = 照常保存(风险自负)；取消 = 留在本页去改。`);
+      if (!proceed) {
+        state.archiveMessage = `已暂停保存(未跳步,留在本页)。请点【合规检查 → ✨一键改成合规版】改掉导流/招揽,再保存。改完直接在这页重存即可。`;
+        renderToday();
+        return;
+      }
+      // 小妹已知风险、确认保存 → 放行(不困死她)
+      state.archiveMessage = `⚠️ 你确认知道合规风险后保存的(命中 ${cats})。建议发布前再人工核一遍。`;
     }
   } catch { /* 扫描失败不阻断,放行,避免误杀 */ }
   const withoutCurrent = state.finalWorks.filter((item) => item.id !== asset.id);
