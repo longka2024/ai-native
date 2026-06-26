@@ -10,7 +10,7 @@ function setRoute(route) {
     button.classList.toggle("active", button.dataset.route === route);
   });
   if (route === "today") renderToday();
-  if (route !== "today") renderAssetPage(route);
+  if (route !== "today") { renderAssetPage(route); window.scrollTo({ top: 0 }); } // 切到作品记录等页滚到顶,刚存的作品就在最上面,不用往上拖
 }
 
 window.addEventListener("message", (event) => {
