@@ -344,11 +344,14 @@ function renderXhsGeneratedGallery() {
           const raw = String(file);
           const src = /^https?:\/\//.test(raw) ? raw : `./${raw.replace(/^\/+/, "")}`;
           const jd = (state.xhsCardJudge || {})[raw];
-          const badge = jd && jd.ok !== false ? ` <span style="color:${jd.pass ? "#1a7f37" : "#c0392b"};">${jd.pass ? "✅" : "⚠️"}${escapeHtml(jd.summary || "")}</span>` : "";
-          const tip = jd && jd.fix && jd.fix !== "无" ? ` title="改:${escapeHtml(String(jd.fix))}"` : "";
+          const verdict = jd && jd.ok !== false
+            ? `<span class="xhs-judge ${jd.pass ? "ok" : "warn"}">${jd.pass ? "✅ AI判图通过" : "⚠️ AI判图·建议重出"} · 对题${jd.ontopic ?? "?"}/10 清晰${jd.clarity ?? "?"}/10</span>`
+            : "";
+          const tip = jd && jd.fix && jd.fix !== "无" ? ` title="AI建议:${escapeHtml(String(jd.fix))}"` : "";
           return `<a href="${escapeHtml(src)}" target="_blank" rel="noreferrer"${tip}>
             <img src="${escapeHtml(src)}" alt="${escapeHtml(styleName)} P${index + 1}" loading="lazy" />
-            <span>P${index + 1}${badge}</span>
+            <span class="xhs-page">P${index + 1}</span>
+            ${verdict}
           </a>`;
         }).join("")}
       </div>
