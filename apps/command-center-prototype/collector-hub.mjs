@@ -1100,6 +1100,22 @@ function loadKnowledgeJsonFiles() {
   } catch { return []; }
 }
 
+// 工作区模糊匹配:行业字段填"私校/留学/温哥华私校"都能命中卡片 workspace"私校留学"
+// (精确相等 / 任一方包含 / 共享中文二元组,如都含"私校")
+function wsBigrams(s) {
+  const c = String(s || '').replace(/[^一-龥A-Za-z0-9]/g, '');
+  const set = new Set();
+  for (let i = 0; i + 2 <= c.length; i++) set.add(c.slice(i, i + 2));
+  return set;
+}
+function workspaceMatches(cardWs, reqWs) {
+  if (!reqWs || !cardWs) return true;
+  if (cardWs === reqWs || cardWs.includes(reqWs) || reqWs.includes(cardWs)) return true;
+  const a = wsBigrams(cardWs), b = wsBigrams(reqWs);
+  for (const g of a) if (b.has(g)) return true;
+  return false;
+}
+
 export async function getKnowledgeMaterial(input = {}) {
   const workspace = normalizeText(input.workspace || '');
   const ids = Array.isArray(input.ids) ? input.ids.filter(Boolean) : null;
@@ -1108,21 +1124,17 @@ export async function getKnowledgeMaterial(input = {}) {
     grade: c.grade || '通用', category: c.category || '', point: String(c.point || ''),
     tags: Array.isArray(c.tags) ? c.tags : [], source: c.source || '',
   });
+  let cards = null;
   const db = await requireCollectorDb().catch(() => ({ mode: 'disabled' }));
   if (db && db.mode === 'postgres') {
     try {
       const r = await pgPool.query(
-        `select id,workspace,school,grade,category,point,tags,source from longka_knowledge
-         where ($1='' or workspace=$1) order by created_at desc limit 1000`, [workspace]);
-      if (r.rows.length) {
-        let rows = r.rows.map(norm);
-        if (ids) rows = rows.filter((c) => ids.includes(c.id));
-        return rows;
-      }
+        `select id,workspace,school,grade,category,point,tags,source from longka_knowledge order by created_at desc limit 2000`);
+      if (r.rows.length) cards = r.rows.map(norm);
     } catch { /* 落到 JSON 兜底 */ }
   }
-  let cards = loadKnowledgeJsonFiles().map(norm);
-  if (workspace) cards = cards.filter((c) => !c.workspace || c.workspace === workspace);
+  if (!cards) cards = loadKnowledgeJsonFiles().map(norm);
+  cards = cards.filter((c) => workspaceMatches(c.workspace, workspace));
   if (ids) cards = cards.filter((c) => ids.includes(c.id));
   return cards;
 }
