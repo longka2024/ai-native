@@ -210,8 +210,6 @@ function renderWorkArea() {
     8: renderCheckStep,
     9: renderConfirmStep,
     10: renderProductionStep,
-    11: renderExportStep,
-    12: renderArchiveStep,
   };
   $("#workArea").innerHTML = renderers[state.step]();
   try { bindWorkAreaActions(); }
@@ -966,10 +964,12 @@ function renderProductionStepLegacyVisualRoutes() {
         <button class="primary" ${locked ? "disabled" : ""} data-production="reuse">保存为可复用选题</button>
       </article>
     </div>
+    ${state.archiveMessage ? `<div class="status-strip ${String(state.archiveMessage).startsWith("⛔") || String(state.archiveMessage).startsWith("⚠️") ? "warn" : "success"}" style="margin-top:8px;">${escapeHtml(state.archiveMessage)}</div>` : ""}
     <div class="actions">
       <button class="ghost" data-step-target="9">返回确认文案</button>
-      <button class="primary" data-step-target="11" ${state.copyConfirmed ? "" : "disabled"}>下一步：导出交付</button>
+      <button class="primary" data-finish-work ${state.copyConfirmed ? "" : "disabled"}>✅ 完成（存入作品记录）</button>
     </div>
+    <p style="margin-top:8px;color:#9a8a70;font-size:12px;">存入后去左侧「作品记录」即可下载/复制/一鱼多吃。</p>
   </section>`;
 }
 
@@ -992,10 +992,12 @@ function renderNonXhsProductionStep(locked) {
     </div>
     ${isWechat ? renderWechatArticleImageLayout(copy) : ""}
     ${isVideo ? renderVideoProductionPreview(copy) : ""}
+    ${state.archiveMessage ? `<div class="status-strip ${String(state.archiveMessage).startsWith("⛔") || String(state.archiveMessage).startsWith("⚠️") ? "warn" : "success"}" style="margin-top:8px;">${escapeHtml(state.archiveMessage)}</div>` : ""}
     <div class="actions">
       <button class="ghost" data-step-target="9">返回确认文案</button>
-      <button class="primary" data-step-target="11" ${state.copyConfirmed ? "" : "disabled"}>下一步：导出交付</button>
+      <button class="primary" data-finish-work ${state.copyConfirmed ? "" : "disabled"}>✅ 完成（存入作品记录）</button>
     </div>
+    <p style="margin-top:8px;color:#9a8a70;font-size:12px;">存入后去左侧「作品记录」即可下载/复制/一鱼多吃。</p>
   </section>`;
 }
 
@@ -1488,10 +1490,12 @@ function renderProductionStepLegacyCleanRoutes() {
       </article>
     </div>
     ${files.length ? `<div class="status-strip success">已绑定当前母题生成 ${files.length} 张图片。可以进入导出交付，或保存为母题资产。</div>` : ""}
+    ${state.archiveMessage ? `<div class="status-strip ${String(state.archiveMessage).startsWith("⛔") || String(state.archiveMessage).startsWith("⚠️") ? "warn" : "success"}" style="margin-top:8px;">${escapeHtml(state.archiveMessage)}</div>` : ""}
     <div class="actions">
       <button class="ghost" data-step-target="9">返回确认文案</button>
-      <button class="primary" data-step-target="11" ${state.copyConfirmed ? "" : "disabled"}>下一步：导出交付</button>
+      <button class="primary" data-finish-work ${state.copyConfirmed ? "" : "disabled"}>✅ 完成（存入作品记录）</button>
     </div>
+    <p style="margin-top:8px;color:#9a8a70;font-size:12px;">存入后去左侧「作品记录」即可下载/复制/一鱼多吃。</p>
   </section>`;
 }
 
@@ -1952,7 +1956,9 @@ function renderProductionStep() {
     ${isVideo ? `<h3 class="prod-section">🎯 智能选片（按文案荐形态）</h3>${renderVideoFormatPicker(copy)}${renderSelectedVideoPanel(copy)}` : ""}
     ${files.length ? `<div class="status-strip success">${zh("&#24050;&#29983;&#25104;")} ${files.length} ${zh("&#24352;&#22270;&#29255;&#65292;&#21487;&#20197;&#23548;&#20986;&#25110;&#20445;&#23384;&#20026;&#27597;&#39064;&#36164;&#20135;&#12290;")}</div>` : ""}
     ${(!isMoments && !isVideo) ? `<h3 class="prod-section">🎬 做短视频（即梦分镜，可选）</h3>${renderSeedanceVideoPanel()}` : ""}
-    <div class="actions"><button class="ghost" data-step-target="9">返回改文案</button><button class="primary" data-step-target="11" ${state.copyConfirmed ? "" : "disabled"}>下一步：下载成品</button></div>
+    ${state.archiveMessage ? `<div class="status-strip ${String(state.archiveMessage).startsWith("⛔") || String(state.archiveMessage).startsWith("⚠️") ? "warn" : "success"}" style="margin-top:8px;">${escapeHtml(state.archiveMessage)}</div>` : ""}
+    <div class="actions"><button class="ghost" data-step-target="9">返回改文案</button><button class="primary" data-finish-work ${state.copyConfirmed ? "" : "disabled"}>✅ 完成（存入作品记录）</button></div>
+    <p style="margin-top:8px;color:#9a8a70;font-size:12px;">存入后去左侧「作品记录」即可下载文案/图、复制、或一鱼多吃改成别的平台。</p>
   </section>`;
 }
 
