@@ -364,16 +364,17 @@ export const EffectEngine: React.FC<Script> = ({ styleId, theme, brand, watermar
         </Sequence>
       ) : null))}
 
-      {/* 片尾背景:整个收尾段铺末镜画面(绝不露黑),后段渐渐模糊。代替黑屏(客户反馈) */}
+      {/* 片尾背景:整个收尾段铺末镜画面(绝不露黑),后段渐渐模糊。代替黑屏(客户反馈)。
+          铺到合成绝对末帧(durationInFrames),消除取整缝导致最后1帧黑(04/11/14 踩过)。 */}
       {beats.length > 0 ? (
-        <Sequence from={fr(beats[beats.length - 1].startSec, fps)} durationInFrames={fr(beats[beats.length - 1].endSec - beats[beats.length - 1].startSec + END_TAIL, fps)}>
+        <Sequence from={fr(beats[beats.length - 1].startSec, fps)} durationInFrames={Math.max(1, durationInFrames - fr(beats[beats.length - 1].startSec, fps))}>
           <TailBg clip={beats[beats.length - 1].clip} />
         </Sequence>
       ) : null}
 
-      {/* 片尾品牌 logo:最后一拍露出(优先蓝底app图标 endLogo);末镜画面已延长盖住,不再黑底 */}
+      {/* 片尾品牌 logo:最后一拍露出(优先蓝底app图标 endLogo);铺到合成末帧,不再黑底 */}
       {(endLogo || logo) && beats.length > 0 ? (
-        <Sequence from={fr(beats[beats.length - 1].startSec, fps)} durationInFrames={fr(beats[beats.length - 1].endSec - beats[beats.length - 1].startSec + END_TAIL, fps)}>
+        <Sequence from={fr(beats[beats.length - 1].startSec, fps)} durationInFrames={Math.max(1, durationInFrames - fr(beats[beats.length - 1].startSec, fps))}>
           <EndLogo logo={endLogo || logo!} theme={theme} />
         </Sequence>
       ) : null}

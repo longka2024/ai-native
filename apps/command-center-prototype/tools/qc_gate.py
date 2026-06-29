@@ -112,10 +112,17 @@ def analyze(path: str, n: int = 10) -> dict:
     except OSError:
         pass
 
-    # 片尾黑屏专检(客户反馈核心):抽最后一帧,亮度极低=片尾黑(判废)
+    # 片尾黑屏专检(客户反馈核心):抽**真末帧**(count_frames 定位,别抽 dur-0.08——会漏绝对末1帧黑)
     tail_mean = 999.0
     tp = os.path.join(tempfile.mkdtemp(), "tail.png")
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", str(max(0, dur - 0.08)), "-i", path, "-vframes", "1", tp], check=False)
+    nbf = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_frames",
+        "-show_entries", "stream=nb_read_frames", "-of", "default=nk=1:nw=1", path],
+        capture_output=True, text=True, encoding="utf-8", errors="replace").stdout.strip()
+    try:
+        last = int(nbf) - 1
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", path, "-vf", f"select=eq(n\\,{last})", "-vframes", "1", tp], check=False)
+    except ValueError:
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-sseof", "-0.04", "-i", path, "-vframes", "1", tp], check=False)
     if os.path.exists(tp):
         ti = cv2.imread(tp)
         if ti is not None:
