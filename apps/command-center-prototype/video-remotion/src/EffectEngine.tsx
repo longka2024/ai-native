@@ -303,6 +303,22 @@ const EndLogo: React.FC<{ logo: string; theme: string }> = ({ logo, theme }) => 
   );
 };
 
+// 片尾代替黑屏:收尾段单独铺末镜画面(不依赖会漂移的 TransitionSeries),后段渐渐模糊,logo 在前。
+// 客户反馈:别黑屏,保留视频模糊掉,logo 留前面。
+const TailBg: React.FC<{ clip: string }> = ({ clip }) => {
+  const frame = useCurrentFrame();
+  const { durationInFrames, fps } = useVideoConfig();
+  const blurStart = Math.max(0, durationInFrames - Math.round(1.5 * fps)); // 最后约1.5s才渐渐模糊
+  const b = interpolate(frame, [blurStart, durationInFrames], [0, 22], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  return (
+    <AbsoluteFill style={{ backgroundColor: NEARBLACK, overflow: "hidden" }}>
+      <OffthreadVideo src={staticFile(clip)} muted style={{ width: "100%", height: "100%", objectFit: "cover", filter: `contrast(1.1) saturate(1.05) blur(${b}px)`, transform: "scale(1.06)" }} />
+    </AbsoluteFill>
+  );
+};
+
+const END_TAIL = 1.2; // 片尾 logo 多停的秒数(末镜画面延长盖住它,不留黑)
+
 export const EffectEngine: React.FC<Script> = ({ styleId, theme, brand, watermark, logo, endLogo, voice, bgm, beats, title, titleHl, cover, cap, coverStyle, host }) => {
   const { fps, durationInFrames, width } = useVideoConfig();
   const frame = useCurrentFrame();
@@ -317,7 +333,7 @@ export const EffectEngine: React.FC<Script> = ({ styleId, theme, brand, watermar
         {beats.flatMap((b, i) => {
           // 每镜真实跨度 = 到下一 beat 的音频间距(含停顿),保证画面跟配音对齐;
           // 末镜用自身时长;+trDur 补偿转场重叠吃掉的帧。
-          const span = i < beats.length - 1 ? beats[i + 1].startSec - b.startSec : b.endSec - b.startSec;
+          const span = i < beats.length - 1 ? beats[i + 1].startSec - b.startSec : b.endSec - b.startSec + END_TAIL;
           const f = Math.max(fr(span, fps) + style.trDur, 20);
           const mv = pickCameraMove(b.feature, style, i);
           const isScreen = b.clip.startsWith("shared/");  // 录屏/UI:静止完整显示,不套暗角
@@ -348,9 +364,16 @@ export const EffectEngine: React.FC<Script> = ({ styleId, theme, brand, watermar
         </Sequence>
       ) : null))}
 
-      {/* 片尾品牌 logo:最后一拍露出(优先蓝底app图标 endLogo)*/}
+      {/* 片尾背景:整个收尾段铺末镜画面(绝不露黑),后段渐渐模糊。代替黑屏(客户反馈) */}
+      {beats.length > 0 ? (
+        <Sequence from={fr(beats[beats.length - 1].startSec, fps)} durationInFrames={fr(beats[beats.length - 1].endSec - beats[beats.length - 1].startSec + END_TAIL, fps)}>
+          <TailBg clip={beats[beats.length - 1].clip} />
+        </Sequence>
+      ) : null}
+
+      {/* 片尾品牌 logo:最后一拍露出(优先蓝底app图标 endLogo);末镜画面已延长盖住,不再黑底 */}
       {(endLogo || logo) && beats.length > 0 ? (
-        <Sequence from={fr(beats[beats.length - 1].startSec, fps)} durationInFrames={fr(beats[beats.length - 1].endSec - beats[beats.length - 1].startSec + 1.2, fps)}>
+        <Sequence from={fr(beats[beats.length - 1].startSec, fps)} durationInFrames={fr(beats[beats.length - 1].endSec - beats[beats.length - 1].startSec + END_TAIL, fps)}>
           <EndLogo logo={endLogo || logo!} theme={theme} />
         </Sequence>
       ) : null}

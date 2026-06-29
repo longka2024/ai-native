@@ -54,7 +54,8 @@ export const RemotionRoot: React.FC = () => {
         calculateMetadata={({ props }) => {
           const FPS = 60;  // 必须和上面 fps={60} 一致;改帧率两处要同步,否则时长砍半
           const end = Math.max(...(props.beats?.map((b: any) => b.endSec) ?? [33]));
-          return { durationInFrames: Math.round((end + 0.3) * FPS), fps: FPS };
+          // 片尾窗口 1.2s:让末镜画面+渐渐模糊+logo 收尾(EffectEngine END_TAIL 同值),不再黑屏。
+          return { durationInFrames: Math.round((end + 1.2) * FPS), fps: FPS };
         }}
       />
       <Composition
