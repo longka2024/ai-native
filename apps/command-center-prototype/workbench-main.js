@@ -233,17 +233,35 @@ function renderTargetStep() {
 }
 
 function renderBusinessStep() {
+  const presets = state.trackPresets || {};
+  const trackNames = Object.keys(presets);
+  const trackOptions = [`<option value="">— 选择已存赛道，自动带出设置 —</option>`]
+    .concat(trackNames.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`))
+    .join("");
+  const roleOptions = (typeof CONTENT_ROLES !== "undefined" ? CONTENT_ROLES : [])
+    .map((r) => `<option value="${r.id}"${state.contentRole === r.id ? " selected" : ""}>${escapeHtml(r.label)}</option>`).join("");
+  const angleOptions = [`<option value="">（不指定，按选题定）</option>`]
+    .concat((typeof WRITING_ANGLES !== "undefined" ? WRITING_ANGLES : [])
+      .map((a) => `<option value="${escapeHtml(a)}"${state.writingAngle === a ? " selected" : ""}>${escapeHtml(a)}</option>`)).join("");
   return `<section class="work-card">
-    ${cardHead("你的行业、业务线和目标是什么？", "系统会用这些信息筛选素材、推荐选题，并决定写作角度。")}
+    ${cardHead("你的行业、业务线和目标是什么？", "系统会用这些信息筛选素材、推荐选题，并决定写作角度。选过的赛道会记住，下次直接选、自动带出。")}
+    <div class="track-preset" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:#f3efe6;border:1px solid #e2d8c6;border-radius:10px;">
+      <b style="color:#3a2c1c;font-size:14px;">赛道预设</b>
+      <select id="trackPresetSelect" style="padding:8px 10px;border:1px solid #d8cdba;border-radius:8px;min-width:240px;">${trackOptions}</select>
+      <span class="muted-text" style="font-size:12px;">选已存赛道→自动带出；改完点「保存赛道」越用越准</span>
+    </div>
     <div class="form-grid">
       <label>行业<input id="industryInput" value="${escapeHtml(state.industry)}" /></label>
       <label>业务线 / 主题<input id="businessLineInput" value="${escapeHtml(state.businessLine)}" /></label>
       <label>内容目标<input id="goalInput" value="${escapeHtml(state.goal)}" /></label>
       <label>关键词，多个用逗号隔开<input id="keywordsInput" value="${escapeHtml(state.keywords)}" /></label>
+      <label>内容视角 / 我以什么身份说话<select id="roleSelect">${roleOptions}</select></label>
+      <label>写作角度 / 这批内容从哪切入<select id="angleSelect">${angleOptions}</select></label>
       <label class="wide">补充说明<textarea id="noteInput" rows="4" placeholder="例如：我想把一个 AI 自媒体选题，同时改成小红书、公众号和短视频。"></textarea></label>
     </div>
     <div class="actions">
       <button class="ghost" data-step-target="1">返回发布目标</button>
+      <button class="ghost" data-save-track>保存赛道</button>
       <button class="primary" data-save-business>保存并选择素材来源</button>
     </div>
   </section>`;
@@ -2185,11 +2203,12 @@ function autoApplyRecommendedVisualStyle() {
 function visualPlayName(id) { return ((typeof VISUAL_PLAYS !== "undefined" ? VISUAL_PLAYS : []).find((p) => p.id === id) || {}).name || id; }
 function defaultPlayForStyle(id) {
   if (["infographic-engine", "xhs-knowledge-card", "juju-organizing", "xiaohei-metaphor"].includes(id)) return "carousel";
-  if (["svarbova-poster", "typography-poster", "poster-cinematic"].includes(id)) return "magazine";
+  if (["svarbova-poster", "typography-poster", "poster-cinematic", "punk-biz-magazine", "punk-consulting", "punk-bw-concept", "punk-research-journal", "punk-avant-geometry"].includes(id)) return "magazine";
   return "cover";
 }
 function styleEmoji(id) {
-  return ({ "xiaohei-metaphor": "🧸", "juju-organizing": "🗂️", "guizang-editorial": "📖", "xhs-knowledge-card": "🃏", "poster-cinematic": "🎬", "typography-poster": "🔤", "infographic-engine": "📊", "realistic-photo": "📷", "art-illustration": "🎨", "ink-poster": "🖌️", "product-commerce": "🛍️", "cute-3d-toy": "🧩", "svarbova-poster": "📰" })[id] || "🖼️";
+  return ({ "xiaohei-metaphor": "🧸", "juju-organizing": "🗂️", "guizang-editorial": "📖", "xhs-knowledge-card": "🃏", "poster-cinematic": "🎬", "typography-poster": "🔤", "infographic-engine": "📊", "realistic-photo": "📷", "art-illustration": "🎨", "ink-poster": "🖌️", "product-commerce": "🛍️", "cute-3d-toy": "🧩", "svarbova-poster": "📰",
+    "punk-biz-magazine": "📰", "punk-consulting": "📐", "punk-giant-title": "🅰️", "punk-bw-concept": "⬛", "punk-semantic": "💬", "punk-collage": "✂️", "punk-block-world": "🟦", "punk-brick-world": "🧱", "punk-research-journal": "🔬", "punk-retro-gradient": "🌈", "punk-avant-geometry": "◼️" })[id] || "🖼️";
 }
 function styleGradient(id) {
   let h = 0; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) % 360;
@@ -2265,6 +2284,13 @@ function bindWorkAreaActions() {
     clearAfter(2);
     setStep(3);
   });
+  // 赛道预设:进 Step2 时拉一次;选赛道自动带出;保存赛道
+  const trackSel = byId("trackPresetSelect");
+  if (trackSel) {
+    if (!state.trackPresets || !Object.keys(state.trackPresets).length) loadTrackPresets();
+    trackSel.addEventListener("change", (e) => { if (e.target.value) applyTrackPreset(e.target.value); });
+  }
+  byId("workArea")?.querySelector("[data-save-track]")?.addEventListener("click", () => saveTrackPreset());
   byId("workArea")?.querySelector("[data-collect-x]")?.addEventListener("click", () => collectXAccounts());
   byId("workArea")?.querySelector("[data-generate-cover]")?.addEventListener("click", () => generateCoverFromContent());
   byId("workArea")?.querySelector("[data-cover-watermark]")?.addEventListener("change", (e) => { state.coverWatermark = e.target.checked ? "longka" : ""; renderToday(); });
@@ -2517,6 +2543,48 @@ function saveBusinessInputs() {
   state.businessLine = byId("businessLineInput")?.value.trim() || state.businessLine;
   state.goal = byId("goalInput")?.value.trim() || state.goal;
   state.keywords = byId("keywordsInput")?.value.trim() || state.keywords;
+  const role = byId("roleSelect")?.value;
+  if (role) state.contentRole = role;
+  const angle = byId("angleSelect")?.value;
+  if (angle !== undefined) state.writingAngle = angle;
+}
+
+// 赛道预设:拉取已存预设(进 Step2 时调用)
+async function loadTrackPresets() {
+  try {
+    const res = await fetch(apiPath("/api/track-presets"));
+    const d = await res.json().catch(() => ({}));
+    if (d.ok && d.presets) { state.trackPresets = d.presets; renderToday(); }
+  } catch { /* 静默,不阻塞 */ }
+}
+
+// 选中某赛道 → 自动带出该赛道存过的设置
+function applyTrackPreset(track) {
+  const p = (state.trackPresets || {})[track];
+  if (!p) return;
+  state.industry = p.industry || state.industry;
+  state.businessLine = p.businessLine || track;
+  state.goal = p.goal || state.goal;
+  state.keywords = p.keywords || state.keywords;
+  state.contentRole = p.role || (typeof defaultRoleForTrack === "function" ? defaultRoleForTrack(track) : state.contentRole);
+  state.writingAngle = p.angle != null ? p.angle : state.writingAngle;
+  renderToday();
+}
+
+// 保存当前 Step2 设置为赛道预设(key=业务线/行业,越用越准)
+async function saveTrackPreset() {
+  saveBusinessInputs();
+  const track = (state.businessLine || state.industry || "").trim();
+  if (!track) { setStatus("请先填业务线/行业，作为赛道名再保存。", "warn"); return; }
+  try {
+    const res = await fetch(apiPath("/api/track-presets"), {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ track, industry: state.industry, businessLine: state.businessLine, goal: state.goal, keywords: state.keywords, role: state.contentRole, angle: state.writingAngle }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (d.ok) { state.trackPresets = d.presets || state.trackPresets; setStatus(`赛道「${track}」已保存，下次直接选就自动带出。`, "success"); renderToday(); }
+    else setStatus(d.message || "保存赛道失败。", "warn");
+  } catch (e) { setStatus(`保存赛道失败：${e.message}`, "warn"); }
 }
 
 function saveMaterialFilterInputs() {

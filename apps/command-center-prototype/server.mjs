@@ -14,7 +14,9 @@ import { kieVideoEnabled, kieStartVideoJob, kieVideoJobStatus } from './kie-vide
 import { visionJudgeEnabled, judgeCover } from './vision-judge.mjs';
 import { minimaxEnabled, synthesizeSpeech } from './tts-minimax.mjs';
 import { composeOralVideo, finalizeFilm } from './video-compose.mjs';
-import { pexelsEnabled, translateToBrollQueries, fetchPexelsClip } from './broll-pexels.mjs';
+import { pexelsEnabled, translateToBrollQueries, fetchPexelsClip, fetchPexelsPhotoUrl } from './broll-pexels.mjs';
+import { composeCardData } from './image-studio/hanzi-poster.mjs';
+import { buildRoleDirective } from './content-roles.mjs';
 
 // 自动加载同目录下的 .env 文件（不依赖 dotenv 包）
 try {
@@ -711,12 +713,74 @@ createServer(async (req, res) => {
       }
     }
 
+    // 知识海报(hanzi-poster)打法:DeepSeek 拆好的卡 JSON → HTML 精排渲染成系列卡。中文永准、免费、确定性。
+    // 可选叠 Pexels 实景背景(线条化 sketch / 虚化 blur / 关 none)。渲染走 render.mjs(playwright)。
+    if (req.method === 'POST' && url.pathname === '/api/visual/hanzi-poster') {
+      const payload = await readJson(req);
+      const cards = Array.isArray(payload.cards) ? payload.cards : [];
+      if (!cards.length) return sendJson(res, { ok: false, error: 'missing', message: '需要 cards 数组' }, 400);
+      const theme = String(payload.theme || 'yingrui');
+      const treatment = ['sketch', 'blur', 'none'].includes(payload.bgTreatment) ? payload.bgTreatment : 'sketch';
+      const BG_QUERY = { desk: 'library books reading', research: 'science laboratory research', community: 'students volunteer community', job: 'modern office workplace' };
+      try {
+        const dir = join(root, 'media', 'hanzi-poster');
+        await mkdir(dir, { recursive: true });
+        const ts = Date.now();
+        const images = [];
+        for (let i = 0; i < cards.length; i++) {
+          const card = cards[i];
+          const num = String(card.num || String(i + 1).padStart(2, '0'));
+          let bg = null;
+          if (treatment !== 'none' && pexelsEnabled()) {
+            const q = String(card.bgQuery || BG_QUERY[card.illoKey] || 'university campus architecture');
+            const bgUrl = await fetchPexelsPhotoUrl(q, { orientation: 'landscape', pick: i % 4 });
+            if (bgUrl) bg = { url: bgUrl, treatment };
+          }
+          const data = composeCardData(card, { theme, bg });
+          const dataPath = join(dir, `.data-${ts}-${num}.json`);
+          await writeFile(dataPath, JSON.stringify(data), 'utf8');
+          const outRel = `media/hanzi-poster/hp-${ts}-${num}.png`;
+          await execFileAsync(process.execPath, [join(root, 'frame-render', 'render.mjs'), join(root, 'frame-render', 'templates', 'hanzi-poster-card.html'), dataPath, join(root, outRel), '1080', '1350'], { cwd: root, windowsHide: true, maxBuffer: 1024 * 1024 * 12 });
+          await rm(dataPath, { force: true }).catch(() => {});
+          images.push({ num, url: outRel });
+        }
+        return sendJson(res, { ok: true, images, bgTreatment: treatment });
+      } catch (e) {
+        return sendJson(res, { ok: false, error: 'render_failed', message: e.message, stderr: String(e.stderr || '').slice(-1500) }, 500);
+      }
+    }
+
     // 封面视觉质检:GLM-5V 看图打分(锚点/缩略图/对题…),前端出图后逐张判,不过给改进建议。判图免费,不重出(重出花钱由用户点)。
     if (req.method === 'POST' && url.pathname === '/api/visual/judge-cover') {
       const payload = await readJson(req);
       if (!visionJudgeEnabled()) return sendJson(res, { ok: false, error: 'zhipu_off', message: '未配置视觉质检' }, 200);
       const result = await judgeCover({ imageUrl: String(payload.imageUrl || ''), hook: String(payload.hook || ''), topic: String(payload.topic || ''), mode: String(payload.mode || 'cover') });
       return sendJson(res, result, 200);
+    }
+
+    // 赛道预设:Step2 业务信息(行业/业务线/目标/关键词/角色/角度)按赛道存。选赛道自动带出、可改可存、越用越准。
+    if (req.method === 'GET' && url.pathname === '/api/track-presets') {
+      return sendJson(res, { ok: true, presets: await readTrackPresets() });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/track-presets') {
+      const p = await readJson(req);
+      const track = String(p.track || p.businessLine || p.industry || '').trim();
+      if (!track) return sendJson(res, { ok: false, error: 'missing', message: '需要赛道名(track)' }, 400);
+      const presets = await readTrackPresets();
+      presets[track] = {
+        industry: String(p.industry || ''), businessLine: String(p.businessLine || ''),
+        goal: String(p.goal || ''), keywords: String(p.keywords || ''),
+        role: String(p.role || ''), angle: String(p.angle || ''),
+        updatedAt: new Date().toISOString(),
+      };
+      await writeTrackPresets(presets);
+      return sendJson(res, { ok: true, track, presets });
+    }
+    if (req.method === 'DELETE' && url.pathname === '/api/track-presets') {
+      const track = String(url.searchParams.get('track') || '').trim();
+      const presets = await readTrackPresets();
+      if (track && presets[track]) { delete presets[track]; await writeTrackPresets(presets); }
+      return sendJson(res, { ok: true, presets });
     }
 
     if (req.method === 'GET' && url.pathname === '/api/customer-profile') {
@@ -4491,6 +4555,16 @@ function customerLibraryName({ displayName, industry }) {
   return `${name}-${field}-数字资产库`;
 }
 
+// 赛道预设持久化:data/track-presets.json,{ "<赛道名>": {industry,businessLine,goal,keywords,role,angle,updatedAt} }
+const trackPresetsPath = join(root, 'data', 'track-presets.json');
+async function readTrackPresets() {
+  try { return JSON.parse(await readFile(trackPresetsPath, 'utf8')); } catch { return {}; }
+}
+async function writeTrackPresets(obj) {
+  await mkdir(join(root, 'data'), { recursive: true });
+  await writeFile(trackPresetsPath, JSON.stringify(obj, null, 2), 'utf8');
+}
+
 function getCustomerProfile() {
   if (!assetDb) return null;
   const row = assetDb.prepare('SELECT * FROM customer_profiles ORDER BY updated_at DESC LIMIT 1').get();
@@ -5456,6 +5530,10 @@ async function generateSopRewriteDraft(payload = {}) {
   const hasKnowledge = knowCards.length > 0;
   const system = [
     '你是 Longka AI Native 内容生产系统的资深小红书/短视频内容策划。',
+    // 内容视角/角色 + 角度(账号身份层·最高优先):决定这篇用谁的口吻/人称/语气来写。第一次成稿就锁定,下游全继承。见 content-roles.mjs。
+    payload.contentRole
+      ? buildRoleDirective(asText(payload.contentRole), asText(payload.writingAngle)) + '\n（以上「写作身份/视角」决定本篇用谁的口吻、人称、语气来写，最高优先；下面的 SOP 只决定方法与结构，不改变这个身份。）'
+      : '',
     '你必须严格按”爆款采集分析 SOP：从爬虫样本到自己的内容框架”工作。',
     '不要套固定模板，不要只替换标题，不要复述原帖。',
     '必须基于用户在第四步选中的单条源头帖、评论问题、互动数据和第五步选中的标题做二次创作。',

@@ -10,6 +10,9 @@ const state = {
   businessLine: "AI 内容创作",
   goal: "获客和建立专业感",
   keywords: "AI自媒体 内容资产库 Agent工作流",
+  contentRole: "observer",      // 内容视角/角色(账号身份层),Step2 选,默认按赛道
+  writingAngle: "",             // 写作角度/切入点,Step2 选
+  trackPresets: {},             // 赛道预设缓存(/api/track-presets 拉)
   materialScope: "all",
   materialAuthor: "",
   materialLatestRuns: 3,
@@ -134,6 +137,8 @@ function compactSnapshot() {
     businessLine: state.businessLine,
     goal: state.goal,
     keywords: state.keywords,
+    contentRole: state.contentRole,
+    writingAngle: state.writingAngle,
     materialScope: state.materialScope,
     materialAuthor: state.materialAuthor,
     materialLatestRuns: state.materialLatestRuns,
@@ -160,7 +165,7 @@ function compactSnapshot() {
     coverHook: state.coverHook || "",
     coverWatermark: state.coverWatermark || "",
     visualPlay: state.visualPlay || "cover",
-    coverOptions: Array.isArray(state.coverOptions) ? state.coverOptions.slice(0, 3) : [],
+    coverOptions: Array.isArray(state.coverOptions) ? state.coverOptions.slice(0, 2) : [],
     xhsCardPlan: capList(state.xhsCardPlan, 8),
     xhsCardExportStatus: state.xhsCardExportStatus === "loading" ? "idle" : state.xhsCardExportStatus,
     xhsCardExportMessage: state.xhsCardExportStatus === "loading" ? "Previous image task restored. Continue or check results." : state.xhsCardExportMessage,
@@ -215,6 +220,8 @@ function persistWorkbenchSnapshot() {
       businessLine: state.businessLine,
       goal: state.goal,
       keywords: state.keywords,
+      contentRole: state.contentRole,
+      writingAngle: state.writingAngle,
       topics: state.topics,
       selectedTopicId: state.selectedTopicId,
       titleChoices: state.titleChoices,

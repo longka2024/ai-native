@@ -248,6 +248,9 @@ function buildSopDraftPayload() {
     workspace: state.hot30Workspace || state.industry || state.businessLine || "",
     goal: state.goal,
     keywords: state.keywords,
+    // 内容视角/角色(账号身份层) + 写作角度:在"第一次成稿"就锁定口吻,下游全继承。见 content-roles.mjs。
+    contentRole: state.contentRole || "",
+    writingAngle: state.writingAngle || "",
     // 知识库:小妹勾选的知识卡 id(已加载面板才传;不传=后端按选题自动匹配)
     selectedKnowledgeIds: state.knowledgeLoaded ? (state.selectedKnowledgeIds || []) : undefined,
     revision: state.draftRevision,

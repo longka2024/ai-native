@@ -540,6 +540,8 @@ async function generateXiaoheiCards() {
     renderToday();
     return;
   }
+  // 知识海报(HTML 精排)走专属流程:DeepSeek 拆卡 → 渲染,不走 Kie AI 出图。
+  if (currentVisualStyle().id === "hanzi-poster") { await generateHanziPosterCards(); return; }
   await loadCoverHook();
   state.xhsCardPlan = []; // 用新的痛点钩子重建 plan
   const cards = ensureXhsCardPlan();
@@ -620,6 +622,58 @@ async function generateXiaoheiCards() {
   renderToday();
 }
 
+// 知识海报(hanzi-poster):确认文案 → DeepSeek 拆成系列卡 → HTML 精排渲染。复用 xhsCardManifest.publicFiles 走预览+存档。
+async function generateHanziPosterCards() {
+  const visual = currentVisualStyle();
+  state.xhsCardExportStatus = "loading";
+  state.xhsCardOperation = "visual";
+  state.xhsCardExportMessage = "正在把文案拆成知识海报卡片…";
+  state.xhsCardManifest = { renderer: "pending-hanzi-poster", count: 0, files: [], publicFiles: [], style: visual.id, visualStyleId: visual.id };
+  renderToday();
+  try {
+    const title = state.selectedTitle || selectedTopic()?.theme || selectedTopic()?.title || "";
+    const body = confirmedCopyText();
+    // 1) DeepSeek 拆卡
+    const skRes = await fetch(apiPath("/api/skills/run"), {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ skill: "hanzi-poster-cards", content: `标题：${title}\n\n${body}`,
+        vars: { role: state.contentRole || "", angle: state.writingAngle || "" } }),
+    });
+    const skJson = await skRes.json().catch(() => ({}));
+    if (!skRes.ok || !skJson.ok) throw new Error(skJson.message || skJson.error || `拆卡失败 HTTP ${skRes.status}`);
+    const cards = (skJson.result && Array.isArray(skJson.result.cards)) ? skJson.result.cards : [];
+    if (!cards.length) throw new Error("没有拆出卡片,请检查文案或重试。");
+    state.hanziPosterCards = cards; // 留一份,便于以后做"微调"编辑
+    state.xhsCardProgress = { done: 0, total: cards.length };
+    state.xhsCardExportMessage = `已拆成 ${cards.length} 张,正在渲染…`;
+    renderToday();
+    // 2) 渲染(可选 Pexels 实景背景:线条化 / 虚化 / 关)
+    const bgTreatment = state.hanziPosterBg || "sketch";
+    const res = await fetch(apiPath("/api/visual/hanzi-poster"), {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cards, bgTreatment, theme: "yingrui" }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok || !d.ok) throw new Error(d.message || d.error || `渲染失败 HTTP ${res.status}`);
+    const publicFiles = (d.images || []).map((im) => apiPath("/" + im.url));
+    if (!publicFiles.length) throw new Error("渲染没有产出图片。");
+    state.xhsCardManifest = {
+      renderer: "hanzi-poster", count: publicFiles.length, files: publicFiles, publicFiles,
+      style: visual.id, visualStyleId: visual.id, jobId: `hanzi-${Date.now()}`,
+    };
+    state.xhsCardProgress = { done: publicFiles.length, total: publicFiles.length };
+    state.xhsCardExportStatus = "done";
+    state.xhsCardExportMessage = `知识海报出好了:${publicFiles.length} 张。下方预览,确认后存入作品记录。`;
+  } catch (error) {
+    state.xhsCardExportStatus = "error";
+    state.xhsCardOperation = "visual";
+    state.xhsCardProgress = null;
+    state.xhsCardManifest = null;
+    state.xhsCardExportMessage = `知识海报生成失败:${error.message}`;
+  }
+  renderToday();
+}
+
 // 封面模板矩阵(方法内化自 CTR-first 封面打法:信息密度 × 视觉锚点;只取方法,绝不含任何作者水印/署名)。脚本判型,不烧 LLM。
 function pickCoverTemplate(hook = "", body = "") {
   const t = `${hook} ${body}`;
@@ -666,7 +720,7 @@ async function generateCoverFromContent() {
   state.coverStatus = "loading";
   state.coverImage = "";
   state.coverOptions = [];
-  state.coverMessage = "正在从正文提炼 3 个封面钩子…";
+  state.coverMessage = "正在从正文提炼 2 个封面钩子…";
   renderToday();
   try {
     // 1) cover-from-content skill：提炼 3 个诚实钩子（不同切入角度）
@@ -681,7 +735,7 @@ async function generateCoverFromContent() {
       .map((h) => String(h || "").trim()).filter(Boolean);
     if (!hooks.length) hooks = [String(result.coverHook || title || "").trim().slice(0, 40)].filter(Boolean);
     if (!hooks.length) throw new Error(sk.message || sk.error || "未能提炼封面钩子");
-    hooks = hooks.slice(0, 3); // 一篇出最多 3 张,3 个钩子角度
+    hooks = hooks.slice(0, 2); // 一篇出最多 2 张(2 个钩子角度);3 张浪费 Kie 点数,2 张够选
     state.coverHooks = hooks;
     // 封面 = 选中配图风格（风格锁）+ 该风格的丰富封面构图 + 大钩子标题。画风永远跟随所选配图风格,绝不改成暗黑/极简。
     const contract = visualStyleContract(visual.id);

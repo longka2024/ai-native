@@ -34,6 +34,25 @@ export async function translateToBrollQueries(texts = []) {
   } catch { return texts.map(() => ''); }
 }
 
+// Pexels 横屏静图搜索 → 返回一张 large 图 URL(给「知识海报」做线条化/虚化背景,直接喂渲染,不下载)。
+// 必带 User-Agent(否则 Pexels 403)。query 给英文实景词(campus / library / laboratory…)。
+export async function fetchPexelsPhotoUrl(query, { orientation = 'landscape', pick = 0 } = {}) {
+  if (!pexelsKey() || !query) return '';
+  try {
+    const u = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&orientation=${orientation}&per_page=8`;
+    const r = await fetch(u, {
+      headers: { authorization: pexelsKey(), 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!r.ok) return '';
+    const j = await r.json();
+    const photos = j.photos || [];
+    if (!photos.length) return '';
+    const p = photos[Math.min(pick, photos.length - 1)] || photos[0];
+    return p.src?.large || p.src?.landscape || p.src?.original || '';
+  } catch { return ''; }
+}
+
 // Pexels 竖屏搜索 → 随机选一条(避开 usedIds,防固化)→ 下载到 workdir → 返回相对文件名
 export async function fetchPexelsClip(query, workdir, idx, usedIds) {
   if (!pexelsKey() || !query) return null;

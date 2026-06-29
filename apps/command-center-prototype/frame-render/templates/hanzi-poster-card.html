@@ -1,0 +1,100 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
+<!-- 知识海报(hanzi-poster) 卡片模板。槽位由 image-studio/hanzi-poster.mjs 组装填充。
+     渲染: frame-render/render.mjs <此模板> <data.json> <out.png> 1080 1350 (生产用 playwright,视口精确)。
+     data 槽位: num / titleHtml / leadBlock / bodyHtml / illoSvg / bgLayer (均为已组装好的 HTML 串) -->
+<style>
+  :root{--cream:{{cream=#faf6ec}};--cream2:{{cream2=#fdfcf7}};--cream3:{{cream3=#f4efe2}};
+        --navy:{{navy=#15244f}};--navy2:#1b2a55;--gold:{{gold=#d8bd6e}};--bronze:{{bronze=#cba85a}};--gold2:{{gold2=#e8d49a}};--ink:#1b2a52;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:1080px;height:1350px;overflow:hidden;}
+  body{position:relative;font-family:"Microsoft YaHei","微软雅黑",sans-serif;display:flex;flex-direction:column;
+       background:radial-gradient(120% 90% at 18% 8%,var(--cream2) 0%,var(--cream) 42%,var(--cream3) 100%);color:var(--ink);}
+  /* ---- optional Pexels background layer (line-art / blur) ---- */
+  .bgwrap{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;}
+  .bgwrap .bgph{position:absolute;right:-40px;top:60px;width:640px;height:560px;object-fit:cover;}
+  .bgwrap.sketch .bgph{filter:url(#hp-sketch) brightness(1.05);opacity:.16;mix-blend-mode:multiply;}
+  .bgwrap.blur .bgph{filter:blur(8px) saturate(.4) brightness(1.12);opacity:.32;}
+  .bgwrap::after{content:"";position:absolute;inset:0;background:radial-gradient(130% 90% at 80% 20%,rgba(250,246,236,0) 0%,rgba(250,246,236,.55) 55%,var(--cream) 100%);}
+  .edge{position:absolute;inset:26px;border:1.5px solid rgba(203,168,90,0.32);border-radius:6px;pointer-events:none;z-index:3;}
+  .crest-wm{position:absolute;left:34px;top:300px;width:360px;height:410px;opacity:0.05;z-index:0;}
+  .pad{flex:1 1 auto;min-height:0;padding:50px 60px 0;display:flex;flex-direction:column;position:relative;z-index:1;}
+  .head{display:flex;align-items:flex-start;gap:22px;}
+  .logobox{flex:0 0 auto;background:var(--navy);color:#fff;padding:12px 16px;text-align:center;border-radius:3px;}
+  .logobox .ed{font-family:Georgia,serif;font-weight:700;font-size:36px;letter-spacing:2px;color:var(--gold2);line-height:1;}
+  .logobox .in{font-family:Georgia,serif;font-size:17px;letter-spacing:7px;margin-top:4px;color:#fff;}
+  .brandcn{display:flex;flex-direction:column;justify-content:center;}
+  .brandcn .name{font-size:44px;font-weight:700;color:var(--navy);letter-spacing:3px;line-height:1;}
+  .brandcn .tag{margin-top:9px;font-size:20px;color:var(--navy);opacity:.78;letter-spacing:1px;}
+  .head .right{margin-left:auto;padding-top:4px;}
+  .head .right .slogan{font-family:Georgia,serif;font-size:18px;letter-spacing:3px;color:var(--navy);text-align:right;line-height:1.35;font-weight:600;}
+  .titlerow{display:flex;align-items:flex-start;gap:28px;margin-top:38px;}
+  .num{flex:0 0 auto;width:96px;height:96px;background:var(--bronze);color:#fff;font-family:Georgia,serif;font-weight:700;font-size:56px;
+       border-radius:6px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(203,168,90,.30);}
+  .title .cn{font-size:56px;font-weight:700;color:var(--navy);line-height:1.14;letter-spacing:1px;}
+  .title .cn .gd{color:var(--bronze);}
+  .title .en{font-family:"Segoe UI",Arial,sans-serif;font-size:56px;font-weight:800;color:var(--bronze);line-height:1.08;letter-spacing:-1px;}
+  .title .en.navy{color:var(--navy);}
+  .uline{margin-top:14px;display:flex;align-items:center;gap:8px;width:280px;}
+  .uline .l{height:3px;background:var(--gold);flex:1;border-radius:2px;} .uline .d{width:9px;height:9px;background:var(--gold);transform:rotate(45deg);}
+  .lead{margin:24px 4px 0;font-size:29px;line-height:1.6;color:var(--navy);opacity:.82;font-weight:400;}
+  .lead em{font-style:normal;color:var(--bronze);font-weight:700;}
+  .body{display:flex;gap:14px;margin-top:26px;flex:1;}
+  .col-l{flex:1.32;padding-top:2px;display:flex;flex-direction:column;justify-content:center;}
+  .pill{display:inline-block;background:var(--navy);color:#fff;font-size:26px;font-weight:700;padding:10px 26px;border-radius:30px;letter-spacing:1px;align-self:flex-start;}
+  .pill+.list{margin-top:24px;} .list+.pill{margin-top:28px;}
+  .list{display:flex;flex-direction:column;gap:26px;}
+  .li{display:flex;align-items:flex-start;gap:18px;}
+  .li svg{flex:0 0 auto;width:40px;height:40px;margin-top:3px;}
+  .li .t{font-size:32px;font-weight:700;color:var(--ink);line-height:1.28;}
+  .li .t b{color:var(--bronze);} .li .t em{font-style:normal;color:var(--bronze);}
+  .li .t .sub{display:block;font-size:22px;font-weight:400;color:#5a627a;margin-top:4px;line-height:1.45;}
+  .quote{margin-top:26px;padding-top:22px;border-top:1px dashed rgba(21,36,79,.28);font-size:30px;font-weight:700;color:var(--navy);line-height:1.55;}
+  .quote em{font-style:normal;color:var(--bronze);}
+  .col-r{flex:0.92;position:relative;}
+  .illo-bg{position:absolute;right:-14px;top:90px;width:460px;height:460px;border-radius:50%;
+           background:radial-gradient(circle at 50% 45%,rgba(255,255,255,.6) 0%,rgba(244,239,226,.5) 62%,rgba(244,239,226,0) 74%);}
+  .illo{position:absolute;right:-10px;top:90px;width:470px;height:500px;}
+  .bldg{position:absolute;left:50%;transform:translateX(-50%);bottom:14px;width:880px;height:150px;opacity:0.12;z-index:0;}
+  .band{flex:0 0 auto;margin:0 26px 26px;background:var(--navy);position:relative;z-index:2;display:flex;align-items:center;
+        justify-content:space-around;padding:28px 68px;border-radius:0 0 4px 4px;overflow:hidden;}
+  .bandcrest{position:absolute;right:44px;top:50%;transform:translateY(-50%);width:120px;height:140px;opacity:.10;}
+  .vitem{display:flex;align-items:center;gap:16px;z-index:1;} .vitem svg{width:44px;height:44px;}
+  .vitem .vt{font-size:26px;font-weight:700;color:#fff;line-height:1.15;}
+  .vitem .vt small{display:block;font-family:Georgia,serif;font-size:16px;letter-spacing:2px;color:var(--gold2);font-weight:400;margin-top:3px;}
+  .vsep{width:1px;height:62px;background:rgba(216,178,90,.4);}
+</style></head><body>
+  <svg width="0" height="0"><filter id="hp-sketch" color-interpolation-filters="sRGB">
+    <feColorMatrix type="saturate" values="0"/>
+    <feConvolveMatrix order="3" preserveAlpha="true" kernelMatrix="-1 -1 -1 -1 8 -1 -1 -1 -1"/>
+    <feComponentTransfer><feFuncR type="table" tableValues="1 0"/><feFuncG type="table" tableValues="1 0"/><feFuncB type="table" tableValues="1 0"/></feComponentTransfer>
+  </filter></svg>
+  {{bgLayer}}
+  <div class="edge"></div>
+  <svg class="crest-wm" viewBox="0 0 100 120"><path d="M50 4 L92 18 V60 C92 92 72 108 50 116 C28 108 8 92 8 60 V18 Z" fill="none" stroke="{{navy=#15244f}}" stroke-width="2"/><text x="50" y="58" font-size="34" fill="{{navy=#15244f}}" text-anchor="middle" font-family="Georgia">{{crestLetter=E}}</text></svg>
+  <div class="pad">
+    <div class="head">
+      <div class="logobox"><div class="ed">{{logoTop=ED}}</div><div class="in">{{logoBottom=INSIGHT}}</div></div>
+      <div class="brandcn"><div class="name">{{brandName=英锐}}</div><div class="tag">{{brandTag=升学规划 · 学术提升 · 背景成长}}</div></div>
+      <div class="right"><div class="slogan">{{slogan=SMART PREPARE,<br>STAND OUT}}</div></div>
+    </div>
+    <div class="titlerow"><div class="num">{{num}}</div><div class="title">{{titleHtml}}<div class="uline"><span class="l"></span><span class="d"></span></div></div></div>
+    {{leadBlock}}
+    <div class="body">
+      <div class="col-l">{{bodyHtml}}</div>
+      <div class="col-r"><div class="illo-bg"></div><svg class="illo" viewBox="0 0 480 500" fill="none">{{illoSvg}}</svg></div>
+    </div>
+    <svg class="bldg" viewBox="0 0 900 160" fill="none" stroke="{{navy=#15244f}}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M450 14 L560 64 H340 Z"/><path d="M360 64 V150 M408 64 V150 M456 64 V150 M504 64 V150 M540 64 V150"/>
+      <path d="M330 64 H570 M322 150 H578 M338 86 H562"/><path d="M250 150 V96 H318 M270 96 V150 M294 96 V150"/>
+      <path d="M650 150 V96 H582 M630 96 V150 M606 96 V150"/><path d="M250 96 L284 74 L318 96"/><path d="M582 96 L616 74 L650 96"/>
+    </svg>
+  </div>
+  <div class="band">
+    <svg class="bandcrest" viewBox="0 0 100 120"><path d="M50 4 L92 18 V60 C92 92 72 108 50 116 C28 108 8 92 8 60 V18 Z" fill="none" stroke="{{gold2=#e8d49a}}" stroke-width="2"/></svg>
+    <div class="vitem"><svg viewBox="0 0 24 24" fill="none" stroke="{{gold2=#e8d49a}}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V10l7-5 7 5v11"/><path d="M9 21v-6h6v6"/><path d="M3 10h18"/></svg><div class="vt">{{v1=真实表达}}<small>{{v1en=BE YOURSELF}}</small></div></div>
+    <div class="vsep"></div>
+    <div class="vitem"><svg viewBox="0 0 24 24" fill="none" stroke="{{gold2=#e8d49a}}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg><div class="vt">{{v2=可信经历}}<small>{{v2en=BE CREDIBLE}}</small></div></div>
+    <div class="vsep"></div>
+    <div class="vitem"><svg viewBox="0 0 24 24" fill="none" stroke="{{gold2=#e8d49a}}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.8 6.3.8-4.6 4.3 1.2 6.3L12 17.8 6.4 20.5l1.2-6.3L3 9.6l6.3-.8z"/></svg><div class="vt">{{v3=脱颖而出}}<small>{{v3en=STAND OUT}}</small></div></div>
+  </div>
+</body></html>

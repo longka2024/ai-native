@@ -10,11 +10,63 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { buildRoleDirective } from './content-roles.mjs';
 
 const SKILLS_DIR = join(homedir(), '.claude', 'skills');
 
 // ─── 技能输出规范（每个技能对应的输出格式指令）───────────────────────────
 const SKILL_OUTPUT_SPECS = {
+  'hanzi-poster-cards': {
+    model: 'main',
+    maxTokens: 2600,
+    temperature: 0.6,
+    outputInstruction: `
+## 本次任务
+
+把上面这篇已确认的文章，按 SKILL 方法拆成一套「知识海报」系列卡片（3–6 张）。严守合规铁律：第三人称专业洞察口吻，禁招揽 / 禁承诺结果 / 禁联系方式 / 禁导流 CTA。
+
+**输出格式要求：纯 JSON，不要 Markdown 代码块，不要多余解释。**
+
+\`\`\`
+{
+  "cards": [
+    {
+      "num": "01",
+      "titleCn": "短中文标题",
+      "titleEn": "Short English",
+      "titleOrder": "cn-en",
+      "enNavy": false,
+      "cnGold": "",
+      "lead": "一句导语，关键词用 <em>词</em>，可用 <br> 断行",
+      "illoKey": "desk",
+      "blocks": [
+        { "pill": "比如：", "items": [
+          { "icon": "book", "title": "要点（可 <b>词</b> 强调）", "sub": "一句灰字小注，把要点讲透" }
+        ] }
+      ]
+    }
+  ]
+}
+\`\`\`
+
+约束：
+- num 从 "01" 递增。
+- titleOrder ∈ {"cn-en","en-cn"}；enNavy ∈ {true,false}；cnGold 必须是 titleCn 的原词子串或留空 ""。
+- illoKey ∈ {"desk","research","community","job"}。
+- icon ∈ {"book","pen","mic","palette","check","arrow","star","shield"}。
+- 每张卡 3–4 个 item，每个 item 都要有 sub（灰字小注）。最后可选一个 {"quote":"金句"} 作为 block。`,
+    parseResponse: (text) => {
+      try {
+        const clean = text.replace(/^\`\`\`json\s*/i, '').replace(/^\`\`\`\s*/i, '').replace(/\`\`\`$/i, '').trim();
+        const obj = JSON.parse(clean);
+        const cards = Array.isArray(obj) ? obj : (Array.isArray(obj.cards) ? obj.cards : []);
+        return { cards };
+      } catch {
+        return { cards: [], error: 'parse_failed', raw: text.slice(0, 300) };
+      }
+    },
+  },
+
   'cover-from-content': {
     model: 'main',
     maxTokens: 1500,
@@ -510,6 +562,12 @@ async function buildUserMessage(skillName, content, vars = {}) {
       if (vars.platform) msg += `\n\n目标平台：${vars.platform}`;
       if (vars.industry) msg += `\n行业：${vars.industry}`;
     }
+  }
+
+  // 内容视角/角色 + 角度注入(账号身份层):有 vars.role 时,把"写作身份+角度+合规"前置到内容之前,
+  // 让 skill(改写 / 知识海报拆卡)从源头锁定口吻。下游全继承。见 content-roles.mjs。
+  if (vars && vars.role) {
+    msg = buildRoleDirective(vars.role, vars.angle || '') + '\n\n' + msg;
   }
 
   msg += '\n\n' + spec.outputInstruction;
