@@ -1,0 +1,116 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "voice_ec_yizhan.mp3",
+  "bgm": "bgm.mp3",
+  "durationSec": 42.238,
+  "coverStyle": "lingzaoTop",
+  "beats": [
+    {
+      "text": "在海外开一家百货店或超市,真正麻烦的不是卖,是进。",
+      "startSec": 0.0,
+      "endSec": 4.34,
+      "kind": "selling",
+      "clip": "ec_yizhan/s1.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "要备的货又杂又多:厨房、家居、收纳、五金、玩具、文具。",
+      "startSec": 4.46,
+      "endSec": 9.771,
+      "kind": "selling",
+      "clip": "ec_yizhan/s2.mp4",
+      "feature": "aisle",
+      "hl": []
+    },
+    {
+      "text": "再加上节日、换季的应季品,一家店动辄要几十上百个品类。",
+      "startSec": 9.891,
+      "endSec": 14.673,
+      "kind": "selling",
+      "clip": "ec_yizhan/s3.mp4",
+      "feature": "wall",
+      "hl": []
+    },
+    {
+      "text": "靠本地供应商,你得一家家对接、一家家比价,跑断腿还经常这缺那少。",
+      "startSec": 14.793,
+      "endSec": 20.545,
+      "kind": "selling",
+      "clip": "ec_yizhan/s4.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "做这行的都梦想有个一站就能配齐的货源。",
+      "startSec": 20.665,
+      "endSec": 24.542,
+      "kind": "selling",
+      "clip": "ec_yizhan/s5.mp4",
+      "feature": "aisle",
+      "hl": []
+    },
+    {
+      "text": "mizan,十万多种货、二十六个大类,从日用到家电、从工具到饰品基本都有。",
+      "startSec": 24.662,
+      "endSec": 30.692,
+      "kind": "number",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "category",
+      "num": {
+        "to": 10,
+        "unit": "万",
+        "label": "SKU 工厂价",
+        "decimals": 0
+      },
+      "hl": []
+    },
+    {
+      "text": "工厂价、一件起订、直发到店。",
+      "startSec": 32.292,
+      "endSec": 34.703,
+      "kind": "selling",
+      "clip": "ec_yizhan/s7.mp4",
+      "feature": "drone",
+      "hl": []
+    },
+    {
+      "text": "不用再满世界找供应商,一个平台把货备齐。",
+      "startSec": 34.823,
+      "endSec": 38.516,
+      "kind": "selling",
+      "clip": "ec_yizhan/s8.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "想一站搞定全店进货,应用商店搜mizan。",
+      "startSec": 38.636,
+      "endSec": 42.238,
+      "kind": "selling",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": []
+    }
+  ],
+  "title": "全店的货\n配得齐吗?",
+  "titleHl": [
+    "配得齐"
+  ],
+  "cover": {
+    "locale": "厄瓜多尔",
+    "sub": "十万SKU一站搞定",
+    "tags": [
+      "26大类",
+      "一件起订",
+      "直发"
+    ],
+    "flag": "ec"
+  }
+}

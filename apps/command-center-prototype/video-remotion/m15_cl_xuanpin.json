@@ -1,0 +1,118 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "voice15_cl_xuanpin.mp3",
+  "bgm": "bgm.mp3",
+  "durationSec": 45.083,
+  "coverStyle": "question",
+  "beats": [
+    {
+      "text": "在智利海外开店,最容易把钱压死的,不是房租,是赌错了货。",
+      "startSec": 0.0,
+      "endSec": 4.57,
+      "kind": "selling",
+      "clip": "cl_xuanpin/s1.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "很多新手一上来就赌大的,看哪个好像好卖就一口气进一大批。",
+      "startSec": 4.69,
+      "endSec": 9.095,
+      "kind": "selling",
+      "clip": "cl_xuanpin/s2.mp4",
+      "feature": "aisle",
+      "hl": []
+    },
+    {
+      "text": "结果款式过季、当地不认,几百件压在仓库,活钱全变死钱。",
+      "startSec": 9.215,
+      "endSec": 14.316,
+      "kind": "selling",
+      "clip": "cl_xuanpin/s3.mp4",
+      "feature": "wall",
+      "hl": []
+    },
+    {
+      "text": "其实做久的都懂:选品不是赌博,是试出来的。",
+      "startSec": 14.436,
+      "endSec": 18.211,
+      "kind": "selling",
+      "clip": "cl_xuanpin/s4.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "先小批量上几款,哪个动得快补哪个,卖不动的及时止损。",
+      "startSec": 18.331,
+      "endSec": 22.968,
+      "kind": "selling",
+      "clip": "cl_xuanpin/s5.mp4",
+      "feature": "aisle",
+      "hl": []
+    },
+    {
+      "text": "可难就难在,本地批发起订量大,你想小批量试都试不了。",
+      "startSec": 23.088,
+      "endSec": 27.609,
+      "kind": "selling",
+      "clip": "cl_xuanpin/s6.mp4",
+      "feature": "loading",
+      "hl": []
+    },
+    {
+      "text": "而mizan,十万多种货、工厂价,八成支持一件起订。",
+      "startSec": 27.729,
+      "endSec": 31.744,
+      "kind": "number",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "category",
+      "num": {
+        "to": 10,
+        "unit": "万",
+        "label": "SKU 工厂价",
+        "decimals": 0
+      },
+      "hl": []
+    },
+    {
+      "text": "想试什么先拿几件铺货架,智利还有自营仓,哪款卖爆随时就近补。",
+      "startSec": 33.344,
+      "endSec": 38.91,
+      "kind": "selling",
+      "clip": "cl_xuanpin/s8.mp4",
+      "feature": "loading",
+      "hl": []
+    },
+    {
+      "text": "选品不靠赌,靠小步快试。",
+      "startSec": 39.03,
+      "endSec": 41.419,
+      "kind": "selling",
+      "clip": "cl_xuanpin/s9.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "想把选品风险降到最低,应用商店搜mizan。",
+      "startSec": 41.539,
+      "endSec": 45.083,
+      "kind": "selling",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": []
+    }
+  ],
+  "title": "选品\n该赌吗?",
+  "titleHl": [
+    "该赌吗"
+  ],
+  "cover": {
+    "sub": "小批量试,别压死钱"
+  }
+}

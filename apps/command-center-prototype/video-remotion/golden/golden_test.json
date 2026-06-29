@@ -1,0 +1,20 @@
+{
+  "_note": "质检基准固定测试片(golden_check.py 用)。用实拍 golden_clip.mp4(非shared,触发Cam暗角路径)。改引擎后渲它跟baseline比SSIM,抓暗角等漂移。别改这个props,改了baseline就失效。",
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "",
+  "bgm": "bgm.mp3",
+  "cap": "glow",
+  "title": "质检\n基准",
+  "titleHl": ["基准"],
+  "cover": { "locale": "🧪 GOLDEN", "sub": "引擎漂移检测", "tags": ["暗角", "字幕", "图表"] },
+  "durationSec": 5.2,
+  "beats": [
+    { "text": "基准第一拍,验暗角和字幕。", "startSec": 0, "endSec": 2.5, "kind": "contrast", "clip": "golden_clip.mp4", "feature": "wall", "hl": ["暗角", "字幕"] },
+    { "text": "第二拍十万数字图表。", "startSec": 2.7, "endSec": 5.0, "kind": "number", "clip": "golden_clip.mp4", "feature": "wall", "num": { "to": 10, "unit": "万", "label": "SKU", "decimals": 0 }, "hl": ["十万", "图表"] }
+  ]
+}

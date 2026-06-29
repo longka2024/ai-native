@@ -1,0 +1,125 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "voice15_pt_feihuiguo.mp3",
+  "bgm": "bgm.mp3",
+  "durationSec": 48.127,
+  "coverStyle": "lingzaoTop",
+  "beats": [
+    {
+      "text": "在海外开店的华人,过去补货几乎都靠一件事:一年飞回国一两趟。",
+      "startSec": 0.0,
+      "endSec": 4.937,
+      "kind": "selling",
+      "clip": "pt_feihuiguo/s1.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "跑义乌、广州的批发市场,听着风光,实际多累自己知道。",
+      "startSec": 5.057,
+      "endSec": 9.707,
+      "kind": "selling",
+      "clip": "pt_feihuiguo/s2.mp4",
+      "feature": "loading",
+      "hl": []
+    },
+    {
+      "text": "来回机票、住一礼拜酒店,白天泡市场一件件挑,晚上还得对账打包。",
+      "startSec": 9.827,
+      "endSec": 14.983,
+      "kind": "selling",
+      "clip": "pt_feihuiguo/s3.mp4",
+      "feature": "aisle",
+      "hl": []
+    },
+    {
+      "text": "更别说一趟得备齐大半年的货,资金一次压一大笔,选错还砸手里。",
+      "startSec": 15.103,
+      "endSec": 20.756,
+      "kind": "selling",
+      "clip": "pt_feihuiguo/s4.mp4",
+      "feature": "wall",
+      "hl": []
+    },
+    {
+      "text": "人折腾一圈,钱没省多少,店里还得找人盯。",
+      "startSec": 20.876,
+      "endSec": 24.69,
+      "kind": "selling",
+      "clip": "pt_feihuiguo/s5.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "其实现在,这趟可以不用飞了。",
+      "startSec": 24.81,
+      "endSec": 27.5,
+      "kind": "selling",
+      "clip": "pt_feihuiguo/s6.mp4",
+      "feature": "drone",
+      "hl": []
+    },
+    {
+      "text": "mizan把整个义乌、广州的源头搬上了手机。",
+      "startSec": 27.62,
+      "endSec": 31.823,
+      "kind": "selling",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "category",
+      "hl": []
+    },
+    {
+      "text": "随时打开按品类挑货,工厂价、一件起订,葡萄牙还有自营仓就近补,十来天到。",
+      "startSec": 31.943,
+      "endSec": 38.542,
+      "kind": "number",
+      "clip": "pt_feihuiguo/s8.mp4",
+      "feature": "loading",
+      "num": {
+        "to": 10,
+        "unit": "万",
+        "label": "SKU 工厂价",
+        "decimals": 0
+      },
+      "hl": []
+    },
+    {
+      "text": "补货从飞一趟变成点几下,省下的精力全花在守店上。",
+      "startSec": 40.142,
+      "endSec": 44.435,
+      "kind": "selling",
+      "clip": "pt_feihuiguo/s9.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "想告别年年飞回国进货,应用商店搜mizan。",
+      "startSec": 44.555,
+      "endSec": 48.127,
+      "kind": "selling",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": []
+    }
+  ],
+  "title": "进货\n还飞回国?",
+  "titleHl": [
+    "还飞回国"
+  ],
+  "cover": {
+    "locale": "葡萄牙",
+    "sub": "手机下单不用飞",
+    "tags": [
+      "工厂价",
+      "一件起订",
+      "海外仓"
+    ],
+    "flag": "pt"
+  }
+}

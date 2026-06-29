@@ -1,0 +1,103 @@
+[
+  {
+    "text": "在智利开店这些年，我进货的方式，完全变了。",
+    "kind": "contrast",
+    "feature": "people",
+    "hl": [
+      "智利",
+      "完全变了"
+    ],
+    "clip": "zhili_story/s1.mp4"
+  },
+  {
+    "text": "头几年，我每年都得飞回中国一趟，跑义乌、广州选货。",
+    "kind": "selling",
+    "feature": "loading",
+    "hl": [
+      "飞回中国"
+    ],
+    "clip": "zhili_story/s2.mp4"
+  },
+  {
+    "text": "机票酒店、住好几天，还得一件件自己挑，人累钱也花。",
+    "kind": "contrast",
+    "feature": "aisle",
+    "hl": [
+      "人累钱也花"
+    ],
+    "clip": "zhili_story/s3.mp4"
+  },
+  {
+    "text": "最怕的是，挑回来的货不一定好卖，压一仓库动不了。",
+    "kind": "contrast",
+    "feature": "wall",
+    "hl": [
+      "压一仓库"
+    ],
+    "clip": "zhili_story/s4.mp4"
+  },
+  {
+    "text": "后来才知道，现在手机上就能直采——一个米站，中国站工厂价下单。",
+    "kind": "selling",
+    "feature": "category",
+    "hl": [
+      "米站",
+      "工厂价"
+    ],
+    "clip": "shared/mizan-category.mp4"
+  },
+  {
+    "text": "货还特别全，十万多种，啥都有，一件就能拿。",
+    "kind": "number",
+    "feature": "wall",
+    "hl": [
+      "十万多种",
+      "一件就能拿"
+    ],
+    "num": {
+      "to": 10,
+      "unit": "万",
+      "label": "SKU 工厂价",
+      "decimals": 0
+    },
+    "clip": "zhili_story/s6.mp4"
+  },
+  {
+    "text": "他们智利还有仓，补货快，十来天就到。",
+    "kind": "selling",
+    "feature": "loading",
+    "hl": [
+      "智利还有仓",
+      "补货快"
+    ],
+    "clip": "zhili_story/s7.mp4"
+  },
+  {
+    "text": "现在我一年能少飞好几趟，省下的时间精力，全用在守店上。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": [
+      "少飞好几趟"
+    ],
+    "clip": "zhili_story/s8.mp4"
+  },
+  {
+    "text": "算下来，比以前在本地拿货，便宜了两成多。",
+    "kind": "number",
+    "feature": "wall",
+    "hl": [
+      "便宜了两成多"
+    ],
+    "clip": "zhili_story/s9.mp4"
+  },
+  {
+    "text": "在智利开店的老乡，别再年年飞回国折腾了，手机搜「米站」，试一单就知道。",
+    "kind": "closing",
+    "feature": "download",
+    "hl": [
+      "智利",
+      "米站"
+    ],
+    "clip": "shared/mizan-download.mp4"
+  }
+]

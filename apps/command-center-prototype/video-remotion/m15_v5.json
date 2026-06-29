@@ -1,0 +1,148 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "voice15_v5.mp3",
+  "bgm": "bgm.mp3",
+  "durationSec": 30.396,
+  "coverStyle": "lingzao",
+  "beats": [
+    {
+      "text": "想用mizan直采，第一步怎么开通？手机三分钟搞定。",
+      "startSec": 0.0,
+      "endSec": 4.075,
+      "kind": "selling",
+      "clip": "shared/mizan-reg1.mp4",
+      "feature": "register",
+      "hl": [
+        "三分钟"
+      ]
+    },
+    {
+      "text": "应用商店搜「mizan」，下载安装。",
+      "startSec": 4.195,
+      "endSec": 6.731,
+      "kind": "selling",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": [
+        "下载安装"
+      ]
+    },
+    {
+      "text": "打开后，点新用户注册。",
+      "startSec": 6.851,
+      "endSec": 8.727,
+      "kind": "selling",
+      "clip": "shared/mizan-reg2.mp4",
+      "feature": "register",
+      "hl": [
+        "新用户注册"
+      ]
+    },
+    {
+      "text": "选你所在的国家地区，西班牙、墨西哥都有。",
+      "startSec": 8.847,
+      "endSec": 12.506,
+      "kind": "selling",
+      "clip": "shared/mizan-reg3.mp4",
+      "feature": "register",
+      "hl": [
+        "国家地区"
+      ]
+    },
+    {
+      "text": "填手机号，获取验证码。",
+      "startSec": 12.626,
+      "endSec": 14.563,
+      "kind": "selling",
+      "clip": "shared/mizan-reg4.mp4",
+      "feature": "register",
+      "hl": [
+        "手机号",
+        "验证码"
+      ]
+    },
+    {
+      "text": "填一下店铺基本信息，提交审核。",
+      "startSec": 14.683,
+      "endSec": 17.163,
+      "kind": "selling",
+      "clip": "shared/mizan-reg1.mp4",
+      "feature": "register",
+      "hl": [
+        "提交审核"
+      ]
+    },
+    {
+      "text": "审核通过，登录就能进中国站主页。",
+      "startSec": 17.283,
+      "endSec": 20.343,
+      "kind": "selling",
+      "clip": "shared/mizan-reg2.mp4",
+      "feature": "register",
+      "hl": [
+        "登录",
+        "中国站"
+      ]
+    },
+    {
+      "text": "进去就是十万多种货、工厂价、一件起订。",
+      "startSec": 20.463,
+      "endSec": 23.733,
+      "kind": "number",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "category",
+      "chart": {
+        "type": "kpi",
+        "title": "开通后",
+        "takeaway": "工厂价  一件起订",
+        "value": 100000,
+        "label": "种商品（十万多种）"
+      },
+      "hl": [
+        "十万多种"
+      ]
+    },
+    {
+      "text": "整个注册，前后也就三分钟。",
+      "startSec": 25.333,
+      "endSec": 27.673,
+      "kind": "closing",
+      "clip": "shared/mizan-reg3.mp4",
+      "feature": "register",
+      "hl": [
+        "三分钟"
+      ]
+    },
+    {
+      "text": "现在就去应用商店搜「mizan」开通。",
+      "startSec": 27.793,
+      "endSec": 30.396,
+      "kind": "closing",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": [
+        "搜mizan",
+        "开通"
+      ]
+    }
+  ],
+  "title": "mizan\n三分钟开通",
+  "titleHl": [
+    "三分钟"
+  ],
+  "cover": {
+    "locale": "手机开通",
+    "sub": "手机注册教程",
+    "tags": [
+      "搜mizan",
+      "免费注册",
+      "工厂直采"
+    ]
+  }
+}

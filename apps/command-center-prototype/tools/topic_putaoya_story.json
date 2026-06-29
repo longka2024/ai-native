@@ -1,0 +1,115 @@
+{
+  "industry": "商超采购 供应链",
+  "brand": "源头供应链 · mizan",
+  "watermark": "longka 制作",
+  "persona": "P1",
+  "bucket": "story",
+  "keyword": "葡萄牙华人超市进货经历",
+  "keyword_source": "default",
+  "title": "葡萄牙开店\n我进货方式变了",
+  "titleHl": [
+    "葡萄牙",
+    "进货方式变了"
+  ],
+  "seo_title": "葡萄牙华人超市老板自述:从年年飞回国进货到手机直采省两成",
+  "seo_tags": [
+    "葡萄牙华人超市",
+    "海外开店",
+    "进货经历",
+    "葡萄牙华人",
+    "mizan"
+  ],
+  "beats": [
+    {
+      "text": "在葡萄牙开店这些年，我进货的方式，完全变了。",
+      "kind": "contrast",
+      "feature": "people",
+      "hl": [
+        "葡萄牙",
+        "完全变了"
+      ]
+    },
+    {
+      "text": "头几年，我每年都得飞回中国一趟，跑义乌、广州选货。",
+      "kind": "selling",
+      "feature": "loading",
+      "hl": [
+        "飞回中国"
+      ]
+    },
+    {
+      "text": "机票酒店、住好几天，还得一件件自己挑，人累钱也花。",
+      "kind": "contrast",
+      "feature": "aisle",
+      "hl": [
+        "人累钱也花"
+      ]
+    },
+    {
+      "text": "最怕的是，挑回来的货不一定好卖，压一仓库动不了。",
+      "kind": "contrast",
+      "feature": "wall",
+      "hl": [
+        "压一仓库"
+      ]
+    },
+    {
+      "text": "后来才知道，现在手机上就能直采——一个米站，中国站工厂价下单。",
+      "kind": "selling",
+      "feature": "drone",
+      "hl": [
+        "米站",
+        "工厂价"
+      ]
+    },
+    {
+      "text": "十万多种货、工厂价，一件起订，想试什么先进几件。",
+      "kind": "number",
+      "feature": "wall",
+      "hl": [
+        "十万多种",
+        "一件起订"
+      ],
+      "num": {
+        "to": 10,
+        "unit": "万",
+        "label": "SKU 工厂价",
+        "decimals": 0
+      }
+    },
+    {
+      "text": "葡萄牙有自营海外仓，就近补货，十到十五天到。",
+      "kind": "selling",
+      "feature": "loading",
+      "hl": [
+        "葡萄牙",
+        "海外仓"
+      ]
+    },
+    {
+      "text": "现在我一年能少飞好几趟，省下的时间精力，全用在守店上。",
+      "kind": "selling",
+      "feature": "people",
+      "hl": [
+        "少飞好几趟"
+      ]
+    },
+    {
+      "text": "落地成本还比以前当地拿货，低了两成多。",
+      "kind": "number",
+      "feature": "wall",
+      "hl": [
+        "低了两成多"
+      ]
+    },
+    {
+      "text": "在葡萄牙开店的老乡，别再年年飞回国折腾了，手机搜「米站」，试一单就知道。",
+      "kind": "closing",
+      "feature": "drone",
+      "hl": [
+        "葡萄牙",
+        "米站"
+      ]
+    }
+  ]
+}

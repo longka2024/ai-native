@@ -1,0 +1,116 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "voice_cl_zhanting.mp3",
+  "bgm": "bgm.mp3",
+  "durationSec": 40.57,
+  "coverStyle": "lingzao",
+  "beats": [
+    {
+      "text": "很多海外开店的老板,第一次听说手机就能直接从中国工厂进货,都不太敢信。",
+      "startSec": 0.0,
+      "endSec": 5.421,
+      "kind": "selling",
+      "clip": "cl_zhanting/s1.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "哪有这么好的事,会不会是套路。",
+      "startSec": 5.541,
+      "endSec": 8.101,
+      "kind": "selling",
+      "clip": "cl_zhanting/s2.mp4",
+      "feature": "wall",
+      "hl": []
+    },
+    {
+      "text": "直到有机会去义乌的展厅走一圈,看到同样一件货摆在那、标着出厂价。",
+      "startSec": 8.221,
+      "endSec": 14.214,
+      "kind": "selling",
+      "clip": "cl_zhanting/s3.mp4",
+      "feature": "aisle",
+      "hl": []
+    },
+    {
+      "text": "他们才愣住:原来自己这些年,多掏了这么多钱。",
+      "startSec": 14.334,
+      "endSec": 18.24,
+      "kind": "selling",
+      "clip": "cl_zhanting/s4.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "中国直采和当地拿货的差距,常常不是一点半点,而是成倍。",
+      "startSec": 18.36,
+      "endSec": 23.228,
+      "kind": "selling",
+      "clip": "cl_zhanting/s5.mp4",
+      "feature": "wall",
+      "hl": []
+    },
+    {
+      "text": "mizan,就是把义乌这个源头搬上手机。",
+      "startSec": 23.348,
+      "endSec": 26.783,
+      "kind": "selling",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "category",
+      "hl": []
+    },
+    {
+      "text": "工厂价、一件起订,智利还有自营仓就近补。",
+      "startSec": 26.903,
+      "endSec": 30.524,
+      "kind": "number",
+      "clip": "cl_zhanting/s7.mp4",
+      "feature": "loading",
+      "num": {
+        "to": 10,
+        "unit": "万",
+        "label": "SKU 工厂价",
+        "decimals": 0
+      },
+      "hl": []
+    },
+    {
+      "text": "不用专门飞一趟,先小批量进几件试,值不值自己一算就知道。",
+      "startSec": 32.124,
+      "endSec": 36.71,
+      "kind": "selling",
+      "clip": "cl_zhanting/s8.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "眼见为实,应用商店搜mizan,自己上去比比价。",
+      "startSec": 36.83,
+      "endSec": 40.57,
+      "kind": "selling",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": []
+    }
+  ],
+  "title": "中国直采\n差多少?",
+  "titleHl": [
+    "差多少"
+  ],
+  "cover": {
+    "locale": "智利",
+    "sub": "义乌展厅一看就懂",
+    "tags": [
+      "工厂价",
+      "一件起订",
+      "海外仓"
+    ],
+    "flag": "cl"
+  }
+}

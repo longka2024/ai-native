@@ -1,0 +1,187 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "voice_xb_huoyuan.mp3",
+  "bgm": "bgm_warm.mp3",
+  "durationSec": 64.347,
+  "beats": [
+    {
+      "text": "很多在海外开超市的华人,都卡在同一个坎上。",
+      "startSec": 0.0,
+      "endSec": 4.038,
+      "kind": "contrast",
+      "clip": "xb_huoyuan/s1.mp4",
+      "feature": "people",
+      "hl": [
+        "同一个坎"
+      ]
+    },
+    {
+      "text": "开店头一个月,货架空着一半,却不知道去哪补货。",
+      "startSec": 4.158,
+      "endSec": 7.964,
+      "kind": "contrast",
+      "clip": "xb_huoyuan/s2.mp4",
+      "feature": "wall",
+      "hl": [
+        "不知道去哪补货"
+      ]
+    },
+    {
+      "text": "本地批发就那么几家,品类少、价还高。",
+      "startSec": 8.084,
+      "endSec": 11.112,
+      "kind": "contrast",
+      "clip": "xb_huoyuan/s3.mp4",
+      "feature": "aisle",
+      "hl": [
+        "品类少",
+        "价还高"
+      ]
+    },
+    {
+      "text": "想从同行嘴里打听到真渠道?几乎不可能。",
+      "startSec": 11.232,
+      "endSec": 15.001,
+      "kind": "selling",
+      "clip": "xb_huoyuan/s4.mp4",
+      "feature": "people",
+      "hl": [
+        "真渠道"
+      ]
+    },
+    {
+      "text": "于是只剩两条老路。第一条,自己飞回国,跑义乌广州一家家挑。",
+      "startSec": 15.121,
+      "endSec": 21.111,
+      "kind": "selling",
+      "clip": "xb_huoyuan/s5.mp4",
+      "feature": "loading",
+      "hl": [
+        "飞回国"
+      ]
+    },
+    {
+      "text": "机票酒店住一礼拜,货还得一件件自己扛,人累钱也压。",
+      "startSec": 21.231,
+      "endSec": 25.756,
+      "kind": "contrast",
+      "clip": "xb_huoyuan/s6.mp4",
+      "feature": "aisle",
+      "hl": [
+        "人累钱也压"
+      ]
+    },
+    {
+      "text": "第二条,本地华人群拼海运,便宜,可起订量大、等船一个多月。",
+      "startSec": 25.876,
+      "endSec": 31.325,
+      "kind": "contrast",
+      "clip": "xb_huoyuan/s7.mp4",
+      "feature": "loading",
+      "hl": [
+        "起订量大",
+        "等船一个多月"
+      ]
+    },
+    {
+      "text": "旺季一来货还没到,生意就这么错过了。",
+      "startSec": 31.445,
+      "endSec": 34.696,
+      "kind": "contrast",
+      "clip": "xb_huoyuan/s8.mp4",
+      "feature": "wall",
+      "hl": [
+        "错过了"
+      ]
+    },
+    {
+      "text": "钱压在店面上,货却跟不上,愁得睡不着。",
+      "startSec": 34.816,
+      "endSec": 38.715,
+      "kind": "selling",
+      "clip": "xb_huoyuan/s9.mp4",
+      "feature": "people",
+      "hl": [
+        "愁得睡不着"
+      ]
+    },
+    {
+      "text": "开店真正的坎,从不是租店面,是稳定、便宜、品类全的货源。",
+      "startSec": 38.835,
+      "endSec": 44.307,
+      "kind": "selling",
+      "clip": "xb_huoyuan/s10.mp4",
+      "feature": "wall",
+      "hl": [
+        "货源"
+      ]
+    },
+    {
+      "text": "而这正是mizan在解决的——手机上从中国源头按品类直接下单。",
+      "startSec": 44.427,
+      "endSec": 49.163,
+      "kind": "selling",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "category",
+      "hl": [
+        "mizan",
+        "直接下单"
+      ]
+    },
+    {
+      "text": "十万多种货、工厂价,一件就能起订。",
+      "startSec": 49.283,
+      "endSec": 52.504,
+      "kind": "number",
+      "clip": "xb_huoyuan/s12.mp4",
+      "feature": "wall",
+      "num": {
+        "to": 10,
+        "unit": "万",
+        "label": "SKU 工厂价",
+        "decimals": 0
+      },
+      "hl": [
+        "十万多种",
+        "一件起订"
+      ]
+    },
+    {
+      "text": "西班牙、葡萄牙还有自营海外仓,常用货就近补,十来天到。",
+      "startSec": 54.104,
+      "endSec": 59.411,
+      "kind": "selling",
+      "clip": "xb_huoyuan/s13.mp4",
+      "feature": "loading",
+      "hl": [
+        "自营海外仓",
+        "就近补"
+      ]
+    },
+    {
+      "text": "开店补货不用再慌,应用商店搜mizan,自己上去看品类和价。",
+      "startSec": 59.531,
+      "endSec": 64.347,
+      "kind": "closing",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": [
+        "搜mizan"
+      ]
+    }
+  ],
+  "title": "海外开店\n货从哪进?",
+  "titleHl": [
+    "货从哪进"
+  ],
+  "cover": {
+    "sub": "补货不用再慌"
+  },
+  "coverStyle": "question"
+}

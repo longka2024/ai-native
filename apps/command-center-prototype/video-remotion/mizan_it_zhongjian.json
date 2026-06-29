@@ -1,0 +1,143 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "voice_it_zhongjian.mp3",
+  "bgm": "bgm.mp3",
+  "durationSec": 54.177,
+  "coverStyle": "lingzao",
+  "beats": [
+    {
+      "text": "在意大利开店的华人,辛苦一年算下来,利润常常薄得吓人。",
+      "startSec": 0.0,
+      "endSec": 4.591,
+      "kind": "selling",
+      "clip": "it_zhongjian/s1.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "可问题往往不在卖货,在进货。",
+      "startSec": 4.711,
+      "endSec": 7.65,
+      "kind": "selling",
+      "clip": "it_zhongjian/s2.mp4",
+      "feature": "wall",
+      "hl": []
+    },
+    {
+      "text": "一件货从工厂到你店里,要过多少手?",
+      "startSec": 7.77,
+      "endSec": 11.008,
+      "kind": "selling",
+      "clip": "it_zhongjian/s3.mp4",
+      "feature": "aisle",
+      "hl": []
+    },
+    {
+      "text": "一级批发、二级分销、再到零售,每层都抽一道。",
+      "startSec": 11.128,
+      "endSec": 14.998,
+      "kind": "selling",
+      "clip": "it_zhongjian/s4.mp4",
+      "feature": "loading",
+      "hl": []
+    },
+    {
+      "text": "等你拿到手,价早翻了不止一倍,你卖的其实是第三、第四手货。",
+      "startSec": 15.118,
+      "endSec": 20.141,
+      "kind": "selling",
+      "clip": "it_zhongjian/s5.mp4",
+      "feature": "wall",
+      "hl": []
+    },
+    {
+      "text": "更亏的是,有人贪一批低价货,到手一半临期、款式过季,压仓库卖不动。",
+      "startSec": 20.261,
+      "endSec": 26.007,
+      "kind": "selling",
+      "clip": "it_zhongjian/s6.mp4",
+      "feature": "aisle",
+      "hl": []
+    },
+    {
+      "text": "做久的老板都看明白了:省下的每一分利润,都藏在你走的是第几手货里。",
+      "startSec": 26.127,
+      "endSec": 31.607,
+      "kind": "selling",
+      "clip": "it_zhongjian/s7.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "而mizan,就是把中间这几层全砍掉。",
+      "startSec": 31.727,
+      "endSec": 34.952,
+      "kind": "selling",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "category",
+      "hl": []
+    },
+    {
+      "text": "直接对接中国源头,工厂出厂价,手机一件起订,工厂直接发货。",
+      "startSec": 35.072,
+      "endSec": 40.522,
+      "kind": "selling",
+      "clip": "it_zhongjian/s9.mp4",
+      "feature": "drone",
+      "hl": []
+    },
+    {
+      "text": "十万多种货、工厂价,不用先囤一大堆压着钱。",
+      "startSec": 40.642,
+      "endSec": 44.724,
+      "kind": "number",
+      "clip": "it_zhongjian/s10.mp4",
+      "feature": "wall",
+      "num": {
+        "to": 10,
+        "unit": "万",
+        "label": "SKU 工厂价",
+        "decimals": 0
+      },
+      "hl": []
+    },
+    {
+      "text": "进货价压到底,利润才是你自己的。",
+      "startSec": 46.324,
+      "endSec": 49.456,
+      "kind": "selling",
+      "clip": "it_zhongjian/s11.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "想让利润不再被中间商一层层吃掉,应用商店搜mizan。",
+      "startSec": 49.576,
+      "endSec": 54.177,
+      "kind": "selling",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": []
+    }
+  ],
+  "title": "进货\n亏在哪?",
+  "titleHl": [
+    "亏在哪"
+  ],
+  "cover": {
+    "locale": "意大利",
+    "sub": "利润别被中间商吃",
+    "tags": [
+      "工厂价",
+      "砍中间层",
+      "一件起订"
+    ],
+    "flag": "it"
+  }
+}

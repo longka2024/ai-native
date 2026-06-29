@@ -121,8 +121,57 @@ def frame_profit(region, facts, keyword):
             [f"{rn}华人超市", "开超市赚钱吗", "海外开店利润", f"{rn}华人", "mizan"])
 
 
+# ── 框架5:答顾虑(快问快答)· bucket=concern · persona P1/P3 · 料来自小红书评论真实7问 ──
+# 评论原话:价格真吗/质量怎样/能不能混装/运费怎么算/多久到/有没有现货/海外仓有库存吗。
+# 铁律3:能用事实卡答的(工厂价/一件起订/海外仓)直接答;答不了的(质量保障/运费/现货机制)留占位,绝不编。
+def frame_concern(region, facts, keyword):
+    rn, bs = region["name"], facts["brand_short"]
+    beats = [
+        {"text": f"想从中国直采，又怕踩坑？{rn}的老板下单前最常问这几个，今天一次说清。", "kind": "contrast", "feature": "wall", "hl": [rn, "怕踩坑"]},
+        {"text": "第一个，价格是真的吗？——平台基本都是工厂出厂价，没有中间商再加一手。", "kind": "selling", "feature": "wall", "hl": ["工厂出厂价", "没有中间商"]},
+        {"text": f"第二个，能不能少量混着拿？——八成的货{facts['moq']}，不同品类凑一单完全可以。", "kind": "selling", "feature": "aisle", "hl": [facts["moq"], "凑一单"]},
+        # 真实料占位:质量保障机制——需 mizan 提供真实答案,绝不编
+        {"text": "__REAL_DATA__质量怎么保障(待 mizan 真实答案)", "kind": "selling", "feature": "product", "hl": [], "_placeholder": "concern_quality"},
+        # 真实料占位:运费算法——需 mizan 提供
+        {"text": "__REAL_DATA__运费怎么算(待 mizan 真实答案)", "kind": "selling", "feature": "loading", "hl": [], "_placeholder": "concern_shipping"},
+        {"text": "再就是，多久能到、补货快不快？", "kind": "contrast", "feature": "people", "hl": ["多久到"]},
+        warehouse_beats(region, facts),
+        # 真实料占位:现货/库存查询机制——需 mizan 提供
+        {"text": "__REAL_DATA__有没有现货、库存怎么看(待 mizan 真实答案)", "kind": "selling", "feature": "wall", "hl": [], "_placeholder": "concern_stock"},
+        {"text": "说到底，大家最担心的还是第一次合作。", "kind": "selling", "feature": "people", "hl": ["第一次合作"]},
+        {"text": "很多老板来义乌展厅，第一句都是：中国直采跟当地拿货，差这么大。", "kind": "contrast", "feature": "wall", "hl": ["差这么大"]},
+        {"text": f"{rn}的老板，别光听我说，应用商店搜「{bs}」，自己上去看价。", "kind": "closing", "feature": "drone", "hl": [rn, bs]},
+    ]
+    return (f"{rn}直采\n你担心的几个问题", [rn, "担心的问题"], beats,
+            f"{rn}华人超市从中国直采靠谱吗?价格质量运费现货一次说清",
+            [f"{rn}华人超市", "中国直采", "进货避坑", f"{rn}华人", "mizan"])
+
+
+# ── 框架6:店主真实故事(第一人称·身份代入)· bucket=story · persona P1/P3 ──
+# 料来自客户真实故事(事实卡 sec5:以前年年飞回国采购→现手机下单→省几次往返+落地成本低两成)。
+# 想更强=用一个真实客户的具体故事(店名/年数/省了多少),向 mizan 索取后替换。
+def frame_story(region, facts, keyword):
+    rn, bs = region["name"], facts["brand_short"]
+    beats = [
+        {"text": f"在{rn}开店这些年，我进货的方式，完全变了。", "kind": "contrast", "feature": "people", "hl": [rn, "完全变了"]},
+        {"text": "头几年，我每年都得飞回中国一趟，跑义乌、广州选货。", "kind": "selling", "feature": "loading", "hl": ["飞回中国"]},
+        {"text": "机票酒店、住好几天，还得一件件自己挑，人累钱也花。", "kind": "contrast", "feature": "aisle", "hl": ["人累钱也花"]},
+        {"text": "最怕的是，挑回来的货不一定好卖，压一仓库动不了。", "kind": "contrast", "feature": "wall", "hl": ["压一仓库"]},
+        {"text": f"后来才知道，现在手机上就能直采——一个{bs}，中国站工厂价下单。", "kind": "selling", "feature": "drone", "hl": [bs, "工厂价"]},
+        _sku_beat(facts, "想试什么先进几件。"),
+        warehouse_beats(region, facts),
+        {"text": "现在我一年能少飞好几趟，省下的时间精力，全用在守店上。", "kind": "selling", "feature": "people", "hl": ["少飞好几趟"]},
+        {"text": "落地成本还比以前当地拿货，低了两成多。", "kind": "number", "feature": "wall", "hl": ["低了两成多"]},
+        {"text": f"在{rn}开店的老乡，别再年年飞回国折腾了，手机搜「{bs}」，试一单就知道。", "kind": "closing", "feature": "drone", "hl": [rn, bs]},
+    ]
+    return (f"{rn}开店\n我进货方式变了", [rn, "进货方式变了"], beats,
+            f"{rn}华人超市老板自述:从年年飞回国进货到手机直采省两成",
+            [f"{rn}华人超市", "海外开店", "进货经历", f"{rn}华人", "mizan"])
+
+
 FRAMES = {"channel": frame_channel, "price": frame_price,
-          "selection": frame_selection, "profit": frame_profit}
+          "selection": frame_selection, "profit": frame_profit,
+          "concern": frame_concern, "story": frame_story}
 
 
 # ── 5 传播目的(正交维:同一框架 × 不同目的 → 话题相同、目的不同)──

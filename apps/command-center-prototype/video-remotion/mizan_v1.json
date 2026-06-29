@@ -1,0 +1,179 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "voice_v1.mp3",
+  "bgm": "bgm.mp3",
+  "durationSec": 46.469,
+  "beats": [
+    {
+      "text": "在海外开华人超市，货到底从哪进？",
+      "startSec": 0,
+      "endSec": 3.239,
+      "kind": "contrast",
+      "clip": "v1/s1.mp4",
+      "feature": "wall",
+      "hl": [
+        "海外",
+        "从哪进"
+      ]
+    },
+    {
+      "text": "说实话，大多数人第一条路就走累了。",
+      "startSec": 3.359,
+      "endSec": 6.451,
+      "kind": "contrast",
+      "clip": "v1/s2.mp4",
+      "feature": "people",
+      "hl": [
+        "走累了"
+      ]
+    },
+    {
+      "text": "第一条，飞回中国跑批发市场。",
+      "startSec": 6.571,
+      "endSec": 9.136,
+      "kind": "selling",
+      "clip": "v1/s3.mp4",
+      "feature": "loading",
+      "hl": [
+        "飞回中国",
+        "批发市场"
+      ]
+    },
+    {
+      "text": "机票酒店、住好几天，还得一件件自己选品，太耗了。",
+      "startSec": 9.256,
+      "endSec": 13.318,
+      "kind": "contrast",
+      "clip": "v1/s4.mp4",
+      "feature": "aisle",
+      "hl": [
+        "太耗"
+      ]
+    },
+    {
+      "text": "第二条，本地华人进货群拼海运。",
+      "startSec": 13.438,
+      "endSec": 16.349,
+      "kind": "selling",
+      "clip": "v1/s5.mp4",
+      "feature": "people",
+      "hl": [
+        "拼海运"
+      ]
+    },
+    {
+      "text": "便宜是便宜，可起订量大、还得等船一个多月。",
+      "startSec": 16.469,
+      "endSec": 19.951,
+      "kind": "contrast",
+      "clip": "v1/s6.mp4",
+      "feature": "loading",
+      "hl": [
+        "等船一个多月"
+      ]
+    },
+    {
+      "text": "第三条，找货代代采，省心但一层层加价。",
+      "startSec": 20.071,
+      "endSec": 24.064,
+      "kind": "contrast",
+      "clip": "v1/s7.mp4",
+      "feature": "wall",
+      "hl": [
+        "层层加价"
+      ]
+    },
+    {
+      "text": "现在多了第四条，最省事——手机上一个mizan，中国直采。",
+      "startSec": 24.184,
+      "endSec": 28.307,
+      "kind": "selling",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "drone",
+      "hl": [
+        "mizan",
+        "中国直采"
+      ]
+    },
+    {
+      "text": "十万多种货，工厂价，一件就能起订。",
+      "startSec": 28.427,
+      "endSec": 31.615,
+      "kind": "number",
+      "clip": "v1/s9.mp4",
+      "feature": "wall",
+      "chart": {
+        "type": "kpi",
+        "title": "mizan 在售商品",
+        "takeaway": "工厂价  一件起订  不用囤货",
+        "value": 100000,
+        "label": "种商品（十万多种）"
+      },
+      "hl": [
+        "十万多种",
+        "一件起订"
+      ]
+    },
+    {
+      "text": "算下来，落地成本比当地进货，通常能省两成以上。",
+      "startSec": 33.215,
+      "endSec": 37.587,
+      "kind": "number",
+      "clip": "v1/s10.mp4",
+      "feature": "product",
+      "chart": {
+        "type": "kpi",
+        "title": "中国直采省多少",
+        "takeaway": "砍掉中间环节，拿到工厂价",
+        "value": 20,
+        "unit": "%",
+        "label": "落地成本下降"
+      },
+      "hl": [
+        "省两成"
+      ]
+    },
+    {
+      "text": "在海外开店进货，别再飞回国折腾了，认准mizan。",
+      "startSec": 39.187,
+      "endSec": 42.908,
+      "kind": "closing",
+      "clip": "v1/s11.mp4",
+      "feature": "drone",
+      "hl": [
+        "认准mizan"
+      ]
+    },
+    {
+      "text": "应用商店搜「mizan」，现在手机上就能直采。",
+      "startSec": 43.028,
+      "endSec": 46.469,
+      "kind": "closing",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": [
+        "搜mizan",
+        "直采"
+      ]
+    }
+  ],
+  "title": "海外华人超市\n货从哪进？",
+  "titleHl": [
+    "货从哪进"
+  ],
+  "cover": {
+    "locale": "🌍 海外开店",
+    "sub": "三条进货路 + 第四条",
+    "tags": [
+      "工厂价",
+      "一件起订",
+      "10-15天到"
+    ]
+  }
+}

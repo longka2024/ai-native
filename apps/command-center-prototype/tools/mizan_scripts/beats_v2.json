@@ -1,0 +1,68 @@
+[
+  {
+    "text": "在海外开店的华人,常被客人问同一句话:就这些吗,有没有新的?",
+    "kind": "selling",
+    "feature": "people",
+    "hl": []
+  },
+  {
+    "text": "本地批发能拿的就那么几样,款式老、更新又慢。",
+    "kind": "selling",
+    "feature": "aisle",
+    "hl": []
+  },
+  {
+    "text": "货架一年到头老面孔,回头客来两次就没了新鲜感。",
+    "kind": "selling",
+    "feature": "wall",
+    "hl": []
+  },
+  {
+    "text": "想上新,本地又找不到货源,只能干着急。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": []
+  },
+  {
+    "text": "其实留住客人的关键,是货架常换常新。",
+    "kind": "selling",
+    "feature": "aisle",
+    "hl": []
+  },
+  {
+    "text": "米站对接的是中国源头工厂,十万多种货、二十六个大类。",
+    "kind": "number",
+    "feature": "category",
+    "hl": [],
+    "num": {
+      "to": 10,
+      "unit": "万",
+      "label": "SKU 工厂价",
+      "decimals": 0
+    }
+  },
+  {
+    "text": "从日用到家居、从饰品到家电,选择多到挑花眼。",
+    "kind": "selling",
+    "feature": "product",
+    "hl": []
+  },
+  {
+    "text": "工厂价、一件起订,想上什么新品随时补。",
+    "kind": "selling",
+    "feature": "loading",
+    "hl": []
+  },
+  {
+    "text": "货架新鲜了,客人才愿意一次次回来。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": []
+  },
+  {
+    "text": "想让货架常换常新,应用商店搜mizan。",
+    "kind": "selling",
+    "feature": "download",
+    "hl": []
+  }
+]

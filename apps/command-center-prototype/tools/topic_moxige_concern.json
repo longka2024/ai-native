@@ -1,0 +1,114 @@
+{
+  "industry": "商超采购 供应链",
+  "brand": "源头供应链 · mizan",
+  "watermark": "longka 制作",
+  "persona": "P1",
+  "bucket": "concern",
+  "keyword": "墨西哥华人超市从中国直采靠谱吗",
+  "keyword_source": "default",
+  "title": "墨西哥直采\n你担心的几个问题",
+  "titleHl": [
+    "墨西哥",
+    "担心的问题"
+  ],
+  "seo_title": "墨西哥华人超市从中国直采靠谱吗?价格质量运费现货一次说清",
+  "seo_tags": [
+    "墨西哥华人超市",
+    "中国直采",
+    "进货避坑",
+    "墨西哥华人",
+    "mizan"
+  ],
+  "beats": [
+    {
+      "text": "想从中国直采，又怕踩坑？墨西哥的老板下单前最常问这几个，今天一次说清。",
+      "kind": "contrast",
+      "feature": "wall",
+      "hl": [
+        "墨西哥",
+        "怕踩坑"
+      ]
+    },
+    {
+      "text": "第一个，价格是真的吗？——平台基本都是工厂出厂价，没有中间商再加一手。",
+      "kind": "selling",
+      "feature": "wall",
+      "hl": [
+        "工厂出厂价",
+        "没有中间商"
+      ]
+    },
+    {
+      "text": "第二个，能不能少量混着拿？——八成的货一件起订，不同品类凑一单完全可以。",
+      "kind": "selling",
+      "feature": "aisle",
+      "hl": [
+        "一件起订",
+        "凑一单"
+      ]
+    },
+    {
+      "text": "__REAL_DATA__质量怎么保障(待 mizan 真实答案)",
+      "kind": "selling",
+      "feature": "product",
+      "hl": [],
+      "_placeholder": "concern_quality"
+    },
+    {
+      "text": "__REAL_DATA__运费怎么算(待 mizan 真实答案)",
+      "kind": "selling",
+      "feature": "loading",
+      "hl": [],
+      "_placeholder": "concern_shipping"
+    },
+    {
+      "text": "再就是，多久能到、补货快不快？",
+      "kind": "contrast",
+      "feature": "people",
+      "hl": [
+        "多久到"
+      ]
+    },
+    {
+      "text": "墨西哥有自营海外仓，就近补货，十到十五天到。",
+      "kind": "selling",
+      "feature": "loading",
+      "hl": [
+        "墨西哥",
+        "海外仓"
+      ]
+    },
+    {
+      "text": "__REAL_DATA__有没有现货、库存怎么看(待 mizan 真实答案)",
+      "kind": "selling",
+      "feature": "wall",
+      "hl": [],
+      "_placeholder": "concern_stock"
+    },
+    {
+      "text": "说到底，大家最担心的还是第一次合作。",
+      "kind": "selling",
+      "feature": "people",
+      "hl": [
+        "第一次合作"
+      ]
+    },
+    {
+      "text": "很多老板来义乌展厅，第一句都是：中国直采跟当地拿货，差这么大。",
+      "kind": "contrast",
+      "feature": "wall",
+      "hl": [
+        "差这么大"
+      ]
+    },
+    {
+      "text": "墨西哥的老板，别光听我说，应用商店搜「米站」，自己上去看价。",
+      "kind": "closing",
+      "feature": "drone",
+      "hl": [
+        "墨西哥",
+        "米站"
+      ]
+    }
+  ]
+}

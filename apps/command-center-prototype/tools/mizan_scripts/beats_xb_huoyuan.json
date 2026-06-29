@@ -1,0 +1,125 @@
+[
+  {
+    "text": "很多在海外开超市的华人,都卡在同一个坎上。",
+    "kind": "contrast",
+    "feature": "people",
+    "hl": [
+      "同一个坎"
+    ]
+  },
+  {
+    "text": "开店头一个月,货架空着一半,却不知道去哪补货。",
+    "kind": "contrast",
+    "feature": "wall",
+    "hl": [
+      "不知道去哪补货"
+    ]
+  },
+  {
+    "text": "本地批发就那么几家,品类少、价还高。",
+    "kind": "contrast",
+    "feature": "aisle",
+    "hl": [
+      "品类少",
+      "价还高"
+    ]
+  },
+  {
+    "text": "想从同行嘴里打听到真渠道?几乎不可能。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": [
+      "真渠道"
+    ]
+  },
+  {
+    "text": "于是只剩两条老路。第一条,自己飞回国,跑义乌广州一家家挑。",
+    "kind": "selling",
+    "feature": "loading",
+    "hl": [
+      "飞回国"
+    ]
+  },
+  {
+    "text": "机票酒店住一礼拜,货还得一件件自己扛,人累钱也压。",
+    "kind": "contrast",
+    "feature": "aisle",
+    "hl": [
+      "人累钱也压"
+    ]
+  },
+  {
+    "text": "第二条,本地华人群拼海运,便宜,可起订量大、等船一个多月。",
+    "kind": "contrast",
+    "feature": "loading",
+    "hl": [
+      "起订量大",
+      "等船一个多月"
+    ]
+  },
+  {
+    "text": "旺季一来货还没到,生意就这么错过了。",
+    "kind": "contrast",
+    "feature": "wall",
+    "hl": [
+      "错过了"
+    ]
+  },
+  {
+    "text": "钱压在店面上,货却跟不上,愁得睡不着。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": [
+      "愁得睡不着"
+    ]
+  },
+  {
+    "text": "开店真正的坎,从不是租店面,是稳定、便宜、品类全的货源。",
+    "kind": "selling",
+    "feature": "wall",
+    "hl": [
+      "货源"
+    ]
+  },
+  {
+    "text": "而这正是米站在解决的——手机上从中国源头按品类直接下单。",
+    "kind": "selling",
+    "feature": "category",
+    "hl": [
+      "米站",
+      "直接下单"
+    ]
+  },
+  {
+    "text": "十万多种货、工厂价,一件就能起订。",
+    "kind": "number",
+    "feature": "wall",
+    "num": {
+      "to": 10,
+      "unit": "万",
+      "label": "SKU 工厂价",
+      "decimals": 0
+    },
+    "hl": [
+      "十万多种",
+      "一件起订"
+    ]
+  },
+  {
+    "text": "西班牙、葡萄牙还有自营海外仓,常用货就近补,十来天到。",
+    "kind": "selling",
+    "feature": "loading",
+    "hl": [
+      "自营海外仓",
+      "就近补"
+    ]
+  },
+  {
+    "text": "开店补货不用再慌,应用商店搜米站,自己上去看品类和价。",
+    "kind": "closing",
+    "feature": "download",
+    "hl": [
+      "搜米站"
+    ]
+  }
+]

@@ -13,6 +13,7 @@ import script_frames as sf
 DEFAULT_KW = {
     "price": "{r}华人超市进货多少钱", "channel": "{r}华人超市在哪进货",
     "selection": "{r}开店进什么货好卖", "profit": "{r}开超市赚钱吗",
+    "concern": "{r}华人超市从中国直采靠谱吗", "story": "{r}华人超市进货经历",
 }
 
 

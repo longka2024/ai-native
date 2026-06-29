@@ -1,0 +1,71 @@
+[
+  {
+    "text": "这两年海外的百元店、一欧店越来越难做,关的比开的还多。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": [],
+    "clip": "mx_zhuanxing/s1.mp4"
+  },
+  {
+    "text": "不是华人不会做生意,是纯靠低价杂货走量这套,利润越摊越薄。",
+    "kind": "selling",
+    "feature": "wall",
+    "hl": [],
+    "clip": "mx_zhuanxing/s2.mp4"
+  },
+  {
+    "text": "活下来、做大的,几乎都在干同一件事:往超市、专业店转,品类往上做。",
+    "kind": "selling",
+    "feature": "aisle",
+    "hl": [],
+    "clip": "mx_zhuanxing/s3.mp4"
+  },
+  {
+    "text": "可转型最大的坎是货源:专业品类,本地批发根本配不齐。",
+    "kind": "selling",
+    "feature": "loading",
+    "hl": [],
+    "clip": "mx_zhuanxing/s4.mp4"
+  },
+  {
+    "text": "家居、家电、五金、汽车用品想一站备齐,你得到处找供应商,累还凑不全。",
+    "kind": "selling",
+    "feature": "aisle",
+    "hl": [],
+    "clip": "mx_zhuanxing/s5.mp4"
+  },
+  {
+    "text": "而米站,十万多种货、二十六个大类,基本一站备齐。",
+    "kind": "number",
+    "feature": "category",
+    "hl": [],
+    "num": {
+      "to": 10,
+      "unit": "万",
+      "label": "SKU 工厂价",
+      "decimals": 0
+    },
+    "clip": "shared/mizan-category.mp4"
+  },
+  {
+    "text": "工厂价、一件起订,墨西哥还有自营仓就近补。",
+    "kind": "selling",
+    "feature": "loading",
+    "hl": [],
+    "clip": "mx_zhuanxing/s7.mp4"
+  },
+  {
+    "text": "转型不用一次压一大笔货,按品类一步步上。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": [],
+    "clip": "mx_zhuanxing/s8.mp4"
+  },
+  {
+    "text": "想从百元店顺利转型升级,应用商店搜米站。",
+    "kind": "selling",
+    "feature": "download",
+    "hl": [],
+    "clip": "shared/mizan-download.mp4"
+  }
+]

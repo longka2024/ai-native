@@ -1,0 +1,62 @@
+[
+  {
+    "text": "很多海外开店的老板,第一次听说手机就能直接从中国工厂进货,都不太敢信。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": []
+  },
+  {
+    "text": "哪有这么好的事,会不会是套路。",
+    "kind": "selling",
+    "feature": "wall",
+    "hl": []
+  },
+  {
+    "text": "直到有机会去义乌的展厅走一圈,看到同样一件货摆在那、标着出厂价。",
+    "kind": "selling",
+    "feature": "aisle",
+    "hl": []
+  },
+  {
+    "text": "他们才愣住:原来自己这些年,多掏了这么多钱。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": []
+  },
+  {
+    "text": "中国直采和当地拿货的差距,常常不是一点半点,而是成倍。",
+    "kind": "selling",
+    "feature": "wall",
+    "hl": []
+  },
+  {
+    "text": "米站,就是把义乌这个源头搬上手机。",
+    "kind": "selling",
+    "feature": "category",
+    "hl": []
+  },
+  {
+    "text": "工厂价、一件起订,智利还有自营仓就近补。",
+    "kind": "number",
+    "feature": "loading",
+    "hl": [],
+    "num": {
+      "to": 10,
+      "unit": "万",
+      "label": "SKU 工厂价",
+      "decimals": 0
+    }
+  },
+  {
+    "text": "不用专门飞一趟,先小批量进几件试,值不值自己一算就知道。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": []
+  },
+  {
+    "text": "眼见为实,应用商店搜米站,自己上去比比价。",
+    "kind": "selling",
+    "feature": "download",
+    "hl": []
+  }
+]

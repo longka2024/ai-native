@@ -1,0 +1,145 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "voice15_v4.mp3",
+  "bgm": "bgm.mp3",
+  "durationSec": 37.161,
+  "coverStyle": "question",
+  "beats": [
+    {
+      "text": "在海外开百货店，到底稳不稳、赚不赚？",
+      "startSec": 0.0,
+      "endSec": 3.483,
+      "kind": "contrast",
+      "clip": "v4/s1.mp4",
+      "feature": "wall",
+      "hl": [
+        "稳不稳"
+      ]
+    },
+    {
+      "text": "我跟你说句实在话：卖日用品的，最稳。",
+      "startSec": 3.603,
+      "endSec": 6.843,
+      "kind": "selling",
+      "clip": "v4/s2.mp4",
+      "feature": "people",
+      "hl": [
+        "日用品",
+        "最稳"
+      ]
+    },
+    {
+      "text": "为啥？日用品是消耗品，用完就得再买。",
+      "startSec": 6.963,
+      "endSec": 10.263,
+      "kind": "selling",
+      "clip": "v4/s3.mp4",
+      "feature": "aisle",
+      "hl": [
+        "消耗品"
+      ]
+    },
+    {
+      "text": "所以做得久的华人超市，每个月都在补货。",
+      "startSec": 10.383,
+      "endSec": 14.037,
+      "kind": "selling",
+      "clip": "v4/s4.mp4",
+      "feature": "loading",
+      "hl": [
+        "每个月",
+        "补货"
+      ]
+    },
+    {
+      "text": "五百平以上的百货店、连锁店，采购周期特别稳。",
+      "startSec": 14.157,
+      "endSec": 17.919,
+      "kind": "selling",
+      "clip": "v4/s5.mp4",
+      "feature": "wall",
+      "hl": [
+        "五百平",
+        "采购周期稳"
+      ]
+    },
+    {
+      "text": "做得稳的店，一年补十几次货是常态。",
+      "startSec": 18.039,
+      "endSec": 21.071,
+      "kind": "number",
+      "clip": "v4/s6.mp4",
+      "feature": "loading",
+      "chart": {
+        "type": "kpi",
+        "title": "稳定客户复购",
+        "takeaway": "日用品消耗型，月月有需求",
+        "value": 12,
+        "unit": "次",
+        "label": "年补货次数"
+      },
+      "hl": [
+        "十几次"
+      ]
+    },
+    {
+      "text": "货源稳、补货快，生意才滚得起来。",
+      "startSec": 22.671,
+      "endSec": 25.836,
+      "kind": "selling",
+      "clip": "v4/s7.mp4",
+      "feature": "drone",
+      "hl": [
+        "货源稳"
+      ]
+    },
+    {
+      "text": "用mizan直采，工厂价、一件起订、就近海外仓补货。",
+      "startSec": 25.956,
+      "endSec": 30.299,
+      "kind": "selling",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "product",
+      "hl": [
+        "一件起订",
+        "海外仓"
+      ]
+    },
+    {
+      "text": "在海外开百货店，选对货源，就是选对稳。",
+      "startSec": 30.419,
+      "endSec": 33.983,
+      "kind": "closing",
+      "clip": "v4/s9.mp4",
+      "feature": "wall",
+      "hl": [
+        "选对货源"
+      ]
+    },
+    {
+      "text": "应用商店搜「mizan」，现在就能下载。",
+      "startSec": 34.103,
+      "endSec": 37.161,
+      "kind": "closing",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": [
+        "搜mizan",
+        "下载"
+      ]
+    }
+  ],
+  "title": "海外开百货店\n稳不稳?",
+  "titleHl": [
+    "稳不稳"
+  ],
+  "cover": {
+    "sub": "日用品月月复购"
+  }
+}

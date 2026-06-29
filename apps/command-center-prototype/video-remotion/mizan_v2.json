@@ -1,0 +1,169 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "voice_v2.mp3",
+  "bgm": "bgm.mp3",
+  "durationSec": 37.386,
+  "beats": [
+    {
+      "text": "在西班牙开店，进货成本到底差多少？",
+      "startSec": 0.0,
+      "endSec": 2.712,
+      "kind": "contrast",
+      "clip": "v2/s1.mp4",
+      "feature": "wall",
+      "hl": [
+        "西班牙",
+        "差多少"
+      ]
+    },
+    {
+      "text": "同样一批货，你可能比同行多掏一截。",
+      "startSec": 2.832,
+      "endSec": 5.709,
+      "kind": "contrast",
+      "clip": "v2/s2.mp4",
+      "feature": "aisle",
+      "hl": [
+        "多掏一截"
+      ]
+    },
+    {
+      "text": "差就差在，你走的是第几手货。",
+      "startSec": 5.829,
+      "endSec": 8.242,
+      "kind": "selling",
+      "clip": "v2/s3.mp4",
+      "feature": "people",
+      "hl": [
+        "第几手"
+      ]
+    },
+    {
+      "text": "飞回国跑批发，机票酒店压货，全摊进成本。",
+      "startSec": 8.362,
+      "endSec": 11.845,
+      "kind": "contrast",
+      "clip": "v2/s4.mp4",
+      "feature": "loading",
+      "hl": [
+        "全摊进成本"
+      ]
+    },
+    {
+      "text": "拼海运便宜，可起订量大、还压一个多月。",
+      "startSec": 11.965,
+      "endSec": 15.092,
+      "kind": "contrast",
+      "clip": "v2/s5.mp4",
+      "feature": "loading",
+      "hl": [
+        "压一个多月"
+      ]
+    },
+    {
+      "text": "找货代省心，可中间一层层加价。",
+      "startSec": 15.212,
+      "endSec": 17.864,
+      "kind": "contrast",
+      "clip": "v2/s6.mp4",
+      "feature": "wall",
+      "hl": [
+        "层层加价"
+      ]
+    },
+    {
+      "text": "每多过一道手，进货价就贵一截。",
+      "startSec": 17.984,
+      "endSec": 20.606,
+      "kind": "contrast",
+      "clip": "v2/s7.mp4",
+      "feature": "aisle",
+      "hl": [
+        "贵一截"
+      ]
+    },
+    {
+      "text": "真正便宜的，是直接拿到工厂价。",
+      "startSec": 20.726,
+      "endSec": 23.298,
+      "kind": "selling",
+      "clip": "v2/s8.mp4",
+      "feature": "wall",
+      "hl": [
+        "工厂价"
+      ]
+    },
+    {
+      "text": "用mizan中国直采，落地成本通常能省两成以上。",
+      "startSec": 23.418,
+      "endSec": 26.894,
+      "kind": "number",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "product",
+      "chart": {
+        "type": "kpi",
+        "title": "中国直采省多少",
+        "takeaway": "砍掉中间环节，拿到工厂价",
+        "value": 20,
+        "unit": "%",
+        "label": "落地成本下降"
+      },
+      "hl": [
+        "省两成"
+      ]
+    },
+    {
+      "text": "省下的，全是你的利润。",
+      "startSec": 28.494,
+      "endSec": 30.682,
+      "kind": "selling",
+      "clip": "v2/s10.mp4",
+      "feature": "product",
+      "hl": [
+        "利润"
+      ]
+    },
+    {
+      "text": "在西班牙进货别再当冤大头，工厂价直采才是底价。",
+      "startSec": 30.802,
+      "endSec": 34.528,
+      "kind": "closing",
+      "clip": "v2/s11.mp4",
+      "feature": "wall",
+      "hl": [
+        "工厂价直采"
+      ]
+    },
+    {
+      "text": "应用商店搜「mizan」，现在就能下载。",
+      "startSec": 34.648,
+      "endSec": 37.386,
+      "kind": "closing",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": [
+        "搜mizan",
+        "下载"
+      ]
+    }
+  ],
+  "title": "西班牙进货\n到底省多少？",
+  "titleHl": [
+    "省多少"
+  ],
+  "cover": {
+    "locale": "🇪🇸 西班牙开店",
+    "sub": "算笔账给你看",
+    "tags": [
+      "工厂价",
+      "省两成",
+      "海外仓直发"
+    ]
+  }
+}

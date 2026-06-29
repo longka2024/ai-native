@@ -1,0 +1,109 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "voice15_es_tonghang.mp3",
+  "bgm": "bgm.mp3",
+  "durationSec": 40.906,
+  "coverStyle": "question",
+  "beats": [
+    {
+      "text": "同一条街两家中国店,卖的货差不多,结局却天差地别。",
+      "startSec": 0.0,
+      "endSec": 4.475,
+      "kind": "selling",
+      "clip": "es_tonghang/s1.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "一家利润厚、扛得住打折,一家天天喊难、勉强糊口。",
+      "startSec": 4.595,
+      "endSec": 9.057,
+      "kind": "selling",
+      "clip": "es_tonghang/s2.mp4",
+      "feature": "wall",
+      "hl": []
+    },
+    {
+      "text": "差别常常不在会不会卖,在进货价。",
+      "startSec": 9.177,
+      "endSec": 12.518,
+      "kind": "selling",
+      "clip": "es_tonghang/s3.mp4",
+      "feature": "aisle",
+      "hl": []
+    },
+    {
+      "text": "这行的账很实在:进价每低一成,利润就厚一成。",
+      "startSec": 12.638,
+      "endSec": 16.823,
+      "kind": "selling",
+      "clip": "es_tonghang/s4.mp4",
+      "feature": "wall",
+      "hl": []
+    },
+    {
+      "text": "同样标价,你进得便宜,人家打价格战你跟得起。",
+      "startSec": 16.943,
+      "endSec": 20.549,
+      "kind": "selling",
+      "clip": "es_tonghang/s5.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "那进价怎么压到底?核心一条:少过几道手,直接拿工厂价。",
+      "startSec": 20.669,
+      "endSec": 25.436,
+      "kind": "selling",
+      "clip": "es_tonghang/s6.mp4",
+      "feature": "aisle",
+      "hl": []
+    },
+    {
+      "text": "mizan,对接中国源头工厂,出厂价、一件起订,把中间环节全省掉。",
+      "startSec": 25.556,
+      "endSec": 30.989,
+      "kind": "number",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "category",
+      "num": {
+        "to": 10,
+        "unit": "万",
+        "label": "SKU 工厂价",
+        "decimals": 0
+      },
+      "hl": []
+    },
+    {
+      "text": "当你的进价就是别人拿不到的底价,这门生意才真有竞争力。",
+      "startSec": 32.589,
+      "endSec": 37.322,
+      "kind": "selling",
+      "clip": "es_tonghang/s8.mp4",
+      "feature": "drone",
+      "hl": []
+    },
+    {
+      "text": "想让进价成为你的优势,应用商店搜mizan。",
+      "startSec": 37.442,
+      "endSec": 40.906,
+      "kind": "selling",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": []
+    }
+  ],
+  "title": "同行\n凭啥更便宜?",
+  "titleHl": [
+    "凭啥"
+  ],
+  "cover": {
+    "sub": "进价压到底是工厂价"
+  }
+}

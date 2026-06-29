@@ -1,0 +1,68 @@
+[
+  {
+    "text": "很多海外开店的华人都动过从中国进货的念头,又很快打了退堂鼓。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": []
+  },
+  {
+    "text": "怕流程复杂、怕语言不通、怕不会操作、怕货到不了。",
+    "kind": "selling",
+    "feature": "wall",
+    "hl": []
+  },
+  {
+    "text": "听起来跨境进货,好像是件很专业、很麻烦的事。",
+    "kind": "selling",
+    "feature": "aisle",
+    "hl": []
+  },
+  {
+    "text": "但现在,它其实比你想的简单得多。",
+    "kind": "selling",
+    "feature": "drone",
+    "hl": []
+  },
+  {
+    "text": "米站就是一个手机App,中文界面,像网购一样下单。",
+    "kind": "selling",
+    "feature": "category",
+    "hl": []
+  },
+  {
+    "text": "十万多种货、工厂价、一件起订,挑好下单工厂直发到店。",
+    "kind": "number",
+    "feature": "wall",
+    "hl": [],
+    "num": {
+      "to": 10,
+      "unit": "万",
+      "label": "SKU 工厂价",
+      "decimals": 0
+    }
+  },
+  {
+    "text": "不用飞回国、不用找货代、不用懂外贸。",
+    "kind": "selling",
+    "feature": "loading",
+    "hl": []
+  },
+  {
+    "text": "手机点几下,源头的货就到你店里。",
+    "kind": "selling",
+    "feature": "product",
+    "hl": []
+  },
+  {
+    "text": "进货这件事,早就不该那么麻烦了。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": []
+  },
+  {
+    "text": "想像网购一样从源头进货,应用商店搜mizan。",
+    "kind": "selling",
+    "feature": "download",
+    "hl": []
+  }
+]

@@ -1,0 +1,78 @@
+[
+  {
+    "text": "在海外开店的华人,从国内进了一批货,到手才发现一个麻烦。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": [],
+    "clip": "v1/s1.mp4"
+  },
+  {
+    "text": "包装全是中文,当地客人拿起来一脸茫然,看不懂成分也看不懂用法。",
+    "kind": "selling",
+    "feature": "aisle",
+    "hl": [],
+    "clip": "v1/s2.mp4"
+  },
+  {
+    "text": "想上架,还得自己一件件贴标、翻译,费时又不专业。",
+    "kind": "selling",
+    "feature": "wall",
+    "hl": [],
+    "clip": "v1/s3.mp4"
+  },
+  {
+    "text": "有的货干脆因为包装不合规,卡在上架这一步。",
+    "kind": "selling",
+    "feature": "loading",
+    "hl": [],
+    "clip": "v1/s4.mp4"
+  },
+  {
+    "text": "做久的都知道:货好不好卖,包装能不能直接上架是第一关。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": [],
+    "clip": "v1/s5.mp4"
+  },
+  {
+    "text": "而米站的货,包装本身就支持多国语言。",
+    "kind": "selling",
+    "feature": "category",
+    "hl": [],
+    "clip": "shared/mizan-category.mp4"
+  },
+  {
+    "text": "到了当地不用重新贴标,直接上架就能卖。",
+    "kind": "selling",
+    "feature": "product",
+    "hl": [],
+    "clip": "v1/s7.mp4"
+  },
+  {
+    "text": "十万多种货、工厂价、一件起订,省下的全是你的时间和成本。",
+    "kind": "number",
+    "feature": "wall",
+    "hl": [],
+    "num": {
+      "to": 10,
+      "unit": "万",
+      "label": "SKU 工厂价",
+      "decimals": 0
+    },
+    "clip": "v1/s8.mp4"
+  },
+  {
+    "text": "进货不止要便宜,还要能省心地卖出去。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": [],
+    "clip": "v1/s9.mp4"
+  },
+  {
+    "text": "想让进的货到店直接上架,应用商店搜mizan。",
+    "kind": "selling",
+    "feature": "download",
+    "hl": [],
+    "clip": "shared/mizan-download.mp4"
+  }
+]

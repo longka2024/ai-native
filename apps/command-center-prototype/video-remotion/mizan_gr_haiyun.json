@@ -1,0 +1,107 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "voice_gr_haiyun.mp3",
+  "bgm": "bgm.mp3",
+  "durationSec": 41.503,
+  "coverStyle": "lingzaoTop",
+  "beats": [
+    {
+      "text": "海外开店的华人想省钱进货,常会去拼海运,可拼过的都知道里头的坑。",
+      "startSec": 0.0,
+      "endSec": 5.865,
+      "kind": "selling",
+      "clip": "gr_haiyun/s1.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "看着单价便宜,起订量却动不动一大批,一个品类就得吃下几百上千件。",
+      "startSec": 5.985,
+      "endSec": 11.193,
+      "kind": "selling",
+      "clip": "gr_haiyun/s2.mp4",
+      "feature": "aisle",
+      "hl": []
+    },
+    {
+      "text": "钱一次压进去一大笔,货还得在海上漂一个多月。",
+      "startSec": 11.313,
+      "endSec": 15.489,
+      "kind": "selling",
+      "clip": "gr_haiyun/s3.mp4",
+      "feature": "loading",
+      "hl": []
+    },
+    {
+      "text": "最怕赶不上节奏:旺季要补货,船期一拖,等货到旺季都过了。",
+      "startSec": 15.609,
+      "endSec": 20.759,
+      "kind": "selling",
+      "clip": "gr_haiyun/s4.mp4",
+      "feature": "wall",
+      "hl": []
+    },
+    {
+      "text": "做生意要的其实是灵活,要多少拿多少,缺什么补什么。",
+      "startSec": 20.879,
+      "endSec": 25.522,
+      "kind": "selling",
+      "clip": "gr_haiyun/s5.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "mizan正好这样:中国站工厂价、一件起订,十万多种货直发到店。",
+      "startSec": 25.642,
+      "endSec": 30.703,
+      "kind": "number",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "category",
+      "num": {
+        "to": 10,
+        "unit": "万",
+        "label": "SKU 工厂价",
+        "decimals": 0
+      },
+      "hl": []
+    },
+    {
+      "text": "不用凑大单、不用等长船期,旺季要补随时下单。",
+      "startSec": 32.303,
+      "endSec": 36.673,
+      "kind": "selling",
+      "clip": "gr_haiyun/s7.mp4",
+      "feature": "drone",
+      "hl": []
+    },
+    {
+      "text": "进货别再被起订量和船期绑住手脚,应用商店搜mizan。",
+      "startSec": 36.793,
+      "endSec": 41.503,
+      "kind": "selling",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": []
+    }
+  ],
+  "title": "拼海运\n划算吗?",
+  "titleHl": [
+    "划算吗"
+  ],
+  "cover": {
+    "locale": "希腊",
+    "sub": "一件起订,不用凑大单",
+    "tags": [
+      "工厂价",
+      "一件起订",
+      "直发"
+    ],
+    "flag": "gr"
+  }
+}

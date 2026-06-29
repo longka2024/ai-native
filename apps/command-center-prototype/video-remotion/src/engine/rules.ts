@@ -44,27 +44,33 @@ export const STYLES: Record<StyleId, StyleProfile> = {
   datahard: { id: "datahard", label: "数据硬核", trDur: 14, push: [1.05, 1.16], captionSize: 78, numSize: 230 },
 };
 
-// ① 文案节拍 × 风格 → 转场(数字砸/对比擦除/铺陈慢推/收尾稳)
-export function pickTransition(prevKind: BeatKind, style: StyleProfile, idx: number): {
+// ① 文案节拍 × 风格 → 转场。多样化:对角擦除只是其一,叠化(fade)/滑动/缩放轮换,
+//    避免"总是对角线";录屏/UI 镜头(screen)强制叠化,不缩放不闪白(防糊成白/压暗角)。
+export function pickTransition(prevKind: BeatKind, style: StyleProfile, idx: number, screen = false): {
   timing: TransitionTiming; presentation: TransitionPresentation<any>;
 } {
   const T = style.trDur;
   const lin = (d = T) => linearTiming({ durationInFrames: d });
   const spr = springTiming({ config: { damping: 200 } });
+  const dissolve = { timing: lin(T + 6), presentation: fade() };                                   // 叠化(crossfade)
+  const diagWipe = (j: number) => ({ timing: lin(), presentation: wipe({ direction: j % 2 ? "from-bottom-right" : "from-top-right" }) });
+  const slideIn = (j: number) => ({ timing: lin(T + 2), presentation: slide({ direction: j % 2 ? "from-right" : "from-left" }) });
+
+  // 录屏/UI 镜头:只用叠化,最稳,不裁不糊不闪白
+  if (screen) return dissolve;
+
   switch (prevKind) {
-    case "number":   // 数字砸:缩放模糊冲击
-      return { timing: lin(T + 4), presentation: zoomBlur({}) };
-    case "contrast": // 对比/痛点:对角擦除(用户最爱),奇偶变方向
-      return { timing: lin(), presentation: wipe({ direction: idx % 2 ? "from-bottom-right" : "from-top-right" }) };
-    case "selling":  // 卖点铺陈:梦幻/推镜虚化慢过
-      return { timing: spr, presentation: idx % 2 ? dreamyZoom({}) : crossZoom({}) };
-    case "closing":  // 收尾:稳,淡入
-      return { timing: lin(T + 6), presentation: fade() };
+    case "number":   // 数字砸:缩放模糊冲击,偶尔叠化喘口气
+      return idx % 2 ? { timing: lin(T + 4), presentation: zoomBlur({}) } : dissolve;
+    case "contrast": // 对比/痛点:多样轮换(对角擦除=用户爱,占一半)+叠化+滑动,不单一
+      return [diagWipe(idx), dissolve, diagWipe(idx), slideIn(idx)][idx % 4];
+    case "selling":  // 卖点铺陈:梦幻推 / 叠化 / 推镜虚化 轮换
+      return [{ timing: spr, presentation: dreamyZoom({}) }, dissolve, { timing: spr, presentation: crossZoom({}) }][idx % 3];
+    case "closing":  // 收尾:稳,叠化
+      return dissolve;
     case "intro":
     default:         // 起势:方向模糊 / 滑入(快剪用滑,其余用模糊)
-      return style.id === "punchy"
-        ? { timing: lin(), presentation: slide({ direction: "from-right" }) }
-        : { timing: lin(T + 4), presentation: linearBlur({}) };
+      return style.id === "punchy" ? slideIn(idx) : { timing: lin(T + 4), presentation: linearBlur({}) };
   }
 }
 

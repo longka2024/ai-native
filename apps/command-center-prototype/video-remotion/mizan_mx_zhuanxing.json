@@ -1,0 +1,116 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "voice_mx_zhuanxing.mp3",
+  "bgm": "bgm.mp3",
+  "durationSec": 46.222,
+  "coverStyle": "lingzao",
+  "beats": [
+    {
+      "text": "这两年海外的百元店、一欧店越来越难做,关的比开的还多。",
+      "startSec": 0.0,
+      "endSec": 4.785,
+      "kind": "selling",
+      "clip": "mx_zhuanxing/s1.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "不是华人不会做生意,是纯靠低价杂货走量这套,利润越摊越薄。",
+      "startSec": 4.905,
+      "endSec": 10.383,
+      "kind": "selling",
+      "clip": "mx_zhuanxing/s2.mp4",
+      "feature": "wall",
+      "hl": []
+    },
+    {
+      "text": "活下来、做大的,几乎都在干同一件事:往超市、专业店转,品类往上做。",
+      "startSec": 10.503,
+      "endSec": 16.77,
+      "kind": "selling",
+      "clip": "mx_zhuanxing/s3.mp4",
+      "feature": "aisle",
+      "hl": []
+    },
+    {
+      "text": "可转型最大的坎是货源:专业品类,本地批发根本配不齐。",
+      "startSec": 16.89,
+      "endSec": 21.627,
+      "kind": "selling",
+      "clip": "mx_zhuanxing/s4.mp4",
+      "feature": "loading",
+      "hl": []
+    },
+    {
+      "text": "家居、家电、五金、汽车用品想一站备齐,你得到处找供应商,累还凑不全。",
+      "startSec": 21.747,
+      "endSec": 28.23,
+      "kind": "selling",
+      "clip": "mx_zhuanxing/s5.mp4",
+      "feature": "aisle",
+      "hl": []
+    },
+    {
+      "text": "而mizan,十万多种货、二十六个大类,基本一站备齐。",
+      "startSec": 28.35,
+      "endSec": 32.52,
+      "kind": "number",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "category",
+      "num": {
+        "to": 10,
+        "unit": "万",
+        "label": "SKU 工厂价",
+        "decimals": 0
+      },
+      "hl": []
+    },
+    {
+      "text": "工厂价、一件起订,墨西哥还有自营仓就近补。",
+      "startSec": 34.12,
+      "endSec": 37.767,
+      "kind": "selling",
+      "clip": "mx_zhuanxing/s7.mp4",
+      "feature": "loading",
+      "hl": []
+    },
+    {
+      "text": "转型不用一次压一大笔货,按品类一步步上。",
+      "startSec": 37.887,
+      "endSec": 42.127,
+      "kind": "selling",
+      "clip": "mx_zhuanxing/s8.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "想从百元店顺利转型升级,应用商店搜mizan。",
+      "startSec": 42.247,
+      "endSec": 46.222,
+      "kind": "selling",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": []
+    }
+  ],
+  "title": "百元店\n还能做吗?",
+  "titleHl": [
+    "还能做吗"
+  ],
+  "cover": {
+    "locale": "墨西哥",
+    "sub": "转型货源一站配齐",
+    "tags": [
+      "26大类",
+      "工厂价",
+      "海外仓"
+    ],
+    "flag": "mx"
+  }
+}

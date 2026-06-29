@@ -1,0 +1,68 @@
+[
+  {
+    "text": "在智利海外开店,最容易把钱压死的,不是房租,是赌错了货。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": []
+  },
+  {
+    "text": "很多新手一上来就赌大的,看哪个好像好卖就一口气进一大批。",
+    "kind": "selling",
+    "feature": "aisle",
+    "hl": []
+  },
+  {
+    "text": "结果款式过季、当地不认,几百件压在仓库,活钱全变死钱。",
+    "kind": "selling",
+    "feature": "wall",
+    "hl": []
+  },
+  {
+    "text": "其实做久的都懂:选品不是赌博,是试出来的。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": []
+  },
+  {
+    "text": "先小批量上几款,哪个动得快补哪个,卖不动的及时止损。",
+    "kind": "selling",
+    "feature": "aisle",
+    "hl": []
+  },
+  {
+    "text": "可难就难在,本地批发起订量大,你想小批量试都试不了。",
+    "kind": "selling",
+    "feature": "loading",
+    "hl": []
+  },
+  {
+    "text": "而米站,十万多种货、工厂价,八成支持一件起订。",
+    "kind": "number",
+    "feature": "category",
+    "hl": [],
+    "num": {
+      "to": 10,
+      "unit": "万",
+      "label": "SKU 工厂价",
+      "decimals": 0
+    }
+  },
+  {
+    "text": "想试什么先拿几件铺货架,智利还有自营仓,哪款卖爆随时就近补。",
+    "kind": "selling",
+    "feature": "loading",
+    "hl": []
+  },
+  {
+    "text": "选品不靠赌,靠小步快试。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": []
+  },
+  {
+    "text": "想把选品风险降到最低,应用商店搜米站。",
+    "kind": "selling",
+    "feature": "download",
+    "hl": []
+  }
+]

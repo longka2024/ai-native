@@ -1,0 +1,169 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "voice_v3.mp3",
+  "bgm": "bgm.mp3",
+  "durationSec": 43.638,
+  "beats": [
+    {
+      "text": "在海外开百货店，到底进什么货好卖？",
+      "startSec": 0.0,
+      "endSec": 3.197,
+      "kind": "contrast",
+      "clip": "v3/s1.mp4",
+      "feature": "wall",
+      "hl": [
+        "百货店",
+        "什么货好卖"
+      ]
+    },
+    {
+      "text": "进错货，等于压一仓库卖不动。",
+      "startSec": 3.317,
+      "endSec": 6.336,
+      "kind": "contrast",
+      "clip": "v3/s2.mp4",
+      "feature": "aisle",
+      "hl": [
+        "压一仓库"
+      ]
+    },
+    {
+      "text": "记住一个原则：跟着当地刚需走，别凭喜好。",
+      "startSec": 6.456,
+      "endSec": 9.964,
+      "kind": "selling",
+      "clip": "v3/s3.mp4",
+      "feature": "people",
+      "hl": [
+        "当地刚需"
+      ]
+    },
+    {
+      "text": "欧洲卖得最稳的：家居百货、厨房、收纳、五金。",
+      "startSec": 10.084,
+      "endSec": 14.674,
+      "kind": "selling",
+      "clip": "v3/s4.mp4",
+      "feature": "product",
+      "hl": [
+        "家居百货",
+        "五金"
+      ]
+    },
+    {
+      "text": "南美这边：电动工具、五金、美妆、箱包更走量。",
+      "startSec": 14.794,
+      "endSec": 18.993,
+      "kind": "selling",
+      "clip": "v3/s5.mp4",
+      "feature": "product",
+      "hl": [
+        "电动工具",
+        "美妆"
+      ]
+    },
+    {
+      "text": "说到底，日用品和家居百货，才是吃饭的核心品类。",
+      "startSec": 19.113,
+      "endSec": 23.44,
+      "kind": "selling",
+      "clip": "v3/s6.mp4",
+      "feature": "wall",
+      "hl": [
+        "日用品",
+        "核心品类"
+      ]
+    },
+    {
+      "text": "而这些，mizan一个平台，十万多种货全都有。",
+      "startSec": 23.56,
+      "endSec": 27.343,
+      "kind": "number",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "category",
+      "chart": {
+        "type": "kpi",
+        "title": "mizan 在售商品",
+        "takeaway": "一站选齐，不用东找西找",
+        "value": 100000,
+        "label": "种商品（十万多种）"
+      },
+      "hl": [
+        "十万多种"
+      ]
+    },
+    {
+      "text": "二十多个大类，一站选齐。",
+      "startSec": 28.943,
+      "endSec": 31.386,
+      "kind": "number",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "category",
+      "chart": {
+        "type": "kpi",
+        "title": "品类覆盖",
+        "takeaway": "大类全覆盖",
+        "value": 26,
+        "unit": "个",
+        "label": "大类"
+      },
+      "hl": [
+        "一站选齐"
+      ]
+    },
+    {
+      "text": "卖得动再补，小批量试，一件就能起订。",
+      "startSec": 32.986,
+      "endSec": 36.242,
+      "kind": "selling",
+      "clip": "v3/s9.mp4",
+      "feature": "product",
+      "hl": [
+        "小批量",
+        "一件起订"
+      ]
+    },
+    {
+      "text": "选品不靠赌，靠跟刚需加小批量试，试错成本最低。",
+      "startSec": 36.362,
+      "endSec": 40.545,
+      "kind": "closing",
+      "clip": "v3/s10.mp4",
+      "feature": "wall",
+      "hl": [
+        "试错成本最低"
+      ]
+    },
+    {
+      "text": "应用商店搜「mizan」，现在就能下载。",
+      "startSec": 40.665,
+      "endSec": 43.638,
+      "kind": "closing",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": [
+        "搜mizan",
+        "下载"
+      ]
+    }
+  ],
+  "title": "海外百货店\n进什么好卖？",
+  "titleHl": [
+    "什么好卖"
+  ],
+  "cover": {
+    "locale": "🌍 海外百货",
+    "sub": "欧美南美热销品类",
+    "tags": [
+      "10万SKU",
+      "26大类",
+      "一站选齐"
+    ]
+  }
+}

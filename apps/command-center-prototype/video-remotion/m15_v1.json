@@ -1,0 +1,124 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "voice15_v1.mp3",
+  "bgm": "bgm.mp3",
+  "durationSec": 43.713,
+  "coverStyle": "lingzao",
+  "beats": [
+    {
+      "text": "在海外开店的华人,从国内进了一批货,到手才发现一个麻烦。",
+      "startSec": 0.0,
+      "endSec": 4.704,
+      "kind": "selling",
+      "clip": "v1/s1.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "包装全是中文,当地客人拿起来一脸茫然,看不懂成分也看不懂用法。",
+      "startSec": 4.824,
+      "endSec": 10.244,
+      "kind": "selling",
+      "clip": "v1/s2.mp4",
+      "feature": "aisle",
+      "hl": []
+    },
+    {
+      "text": "想上架,还得自己一件件贴标、翻译,费时又不专业。",
+      "startSec": 10.364,
+      "endSec": 14.75,
+      "kind": "selling",
+      "clip": "v1/s3.mp4",
+      "feature": "wall",
+      "hl": []
+    },
+    {
+      "text": "有的货干脆因为包装不合规,卡在上架这一步。",
+      "startSec": 14.87,
+      "endSec": 18.274,
+      "kind": "selling",
+      "clip": "v1/s4.mp4",
+      "feature": "loading",
+      "hl": []
+    },
+    {
+      "text": "做久的都知道:货好不好卖,包装能不能直接上架是第一关。",
+      "startSec": 18.394,
+      "endSec": 22.92,
+      "kind": "selling",
+      "clip": "v1/s5.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "而mizan的货,包装本身就支持多国语言。",
+      "startSec": 23.04,
+      "endSec": 26.825,
+      "kind": "selling",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "category",
+      "hl": []
+    },
+    {
+      "text": "到了当地不用重新贴标,直接上架就能卖。",
+      "startSec": 26.945,
+      "endSec": 30.18,
+      "kind": "selling",
+      "clip": "v1/s7.mp4",
+      "feature": "product",
+      "hl": []
+    },
+    {
+      "text": "十万多种货、工厂价、一件起订,省下的全是你的时间和成本。",
+      "startSec": 30.3,
+      "endSec": 35.101,
+      "kind": "number",
+      "clip": "v1/s8.mp4",
+      "feature": "wall",
+      "num": {
+        "to": 10,
+        "unit": "万",
+        "label": "SKU 工厂价",
+        "decimals": 0
+      },
+      "hl": []
+    },
+    {
+      "text": "进货不止要便宜,还要能省心地卖出去。",
+      "startSec": 36.701,
+      "endSec": 39.871,
+      "kind": "selling",
+      "clip": "v1/s9.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "想让进的货到店直接上架,应用商店搜mizan。",
+      "startSec": 39.991,
+      "endSec": 43.713,
+      "kind": "selling",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": []
+    }
+  ],
+  "title": "进的货\n包装看不懂?",
+  "titleHl": [
+    "看不懂"
+  ],
+  "cover": {
+    "locale": "海外开店",
+    "sub": "包装多国语言·直接上架",
+    "tags": [
+      "多国语言",
+      "直接上架",
+      "一件起订"
+    ]
+  }
+}

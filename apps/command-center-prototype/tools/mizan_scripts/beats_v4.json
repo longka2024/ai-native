@@ -1,0 +1,13 @@
+[
+  {"text":"在海外开百货店，到底稳不稳、赚不赚？", "kind":"contrast", "feature":"wall", "hl":["稳不稳"]},
+  {"text":"我跟你说句实在话：卖日用品的，最稳。", "kind":"selling", "feature":"people", "hl":["日用品","最稳"]},
+  {"text":"为啥？日用品是消耗品，用完就得再买。", "kind":"selling", "feature":"aisle", "hl":["消耗品"]},
+  {"text":"所以做得久的华人超市，每个月都在补货。", "kind":"selling", "feature":"loading", "hl":["每个月","补货"]},
+  {"text":"五百平以上的百货店、连锁店，采购周期特别稳。", "kind":"selling", "feature":"wall", "hl":["五百平","采购周期稳"]},
+  {"text":"做得稳的店，一年补十几次货是常态。", "kind":"number", "feature":"loading", "hl":["十几次"],
+   "chart":{"type":"kpi","title":"稳定客户复购","takeaway":"日用品消耗型，月月有需求","value":12,"unit":"次","label":"年补货次数"}},
+  {"text":"货源稳、补货快，生意才滚得起来。", "kind":"selling", "feature":"drone", "hl":["货源稳"]},
+  {"text":"用米站直采，工厂价、一件起订、就近海外仓补货。", "kind":"selling", "feature":"product", "hl":["一件起订","海外仓"]},
+  {"text":"在海外开百货店，选对货源，就是选对稳。", "kind":"closing", "feature":"wall", "hl":["选对货源"]},
+  {"text":"应用商店搜「米站」，现在就能下载。", "kind":"closing", "feature":"download", "hl":["搜米站","下载"]}
+]

@@ -1,0 +1,71 @@
+[
+  {
+    "text": "在阿根廷,或者南美偏远些的城市开店,常碰到一个尴尬。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": [],
+    "clip": "ag_fabudao/s1.mp4"
+  },
+  {
+    "text": "看上的好货源,一问发货,对方一句:发不到你那。",
+    "kind": "selling",
+    "feature": "wall",
+    "hl": [],
+    "clip": "ag_fabudao/s2.mp4"
+  },
+  {
+    "text": "本地批发品类配不齐、价又高;想从中国进,又怕货卡在中途。",
+    "kind": "selling",
+    "feature": "aisle",
+    "hl": [],
+    "clip": "ag_fabudao/s3.mp4"
+  },
+  {
+    "text": "所以很多人宁可凑合用本地贵货,也不敢碰跨境。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": [],
+    "clip": "ag_fabudao/s4.mp4"
+  },
+  {
+    "text": "其实这几年从中国源头直发,反而比层层转运更稳、更透明。",
+    "kind": "selling",
+    "feature": "loading",
+    "hl": [],
+    "clip": "ag_fabudao/s5.mp4"
+  },
+  {
+    "text": "米站,中国站工厂价直接下单,十万多种货、一件起订,直发到店。",
+    "kind": "number",
+    "feature": "category",
+    "hl": [],
+    "num": {
+      "to": 10,
+      "unit": "万",
+      "label": "SKU 工厂价",
+      "decimals": 0
+    },
+    "clip": "shared/mizan-category.mp4"
+  },
+  {
+    "text": "走哪条线、大概多久到,下单页写得清清楚楚,不用提心吊胆等。",
+    "kind": "selling",
+    "feature": "drone",
+    "hl": [],
+    "clip": "ag_fabudao/s7.mp4"
+  },
+  {
+    "text": "开店在偏一点的地方,一样能进到便宜又全的货。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": [],
+    "clip": "ag_fabudao/s8.mp4"
+  },
+  {
+    "text": "想让好货源也能发到你这,应用商店搜米站。",
+    "kind": "selling",
+    "feature": "download",
+    "hl": [],
+    "clip": "shared/mizan-download.mp4"
+  }
+]

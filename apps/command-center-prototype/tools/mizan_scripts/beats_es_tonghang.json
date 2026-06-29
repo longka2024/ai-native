@@ -1,0 +1,62 @@
+[
+  {
+    "text": "同一条街两家中国店,卖的货差不多,结局却天差地别。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": []
+  },
+  {
+    "text": "一家利润厚、扛得住打折,一家天天喊难、勉强糊口。",
+    "kind": "selling",
+    "feature": "wall",
+    "hl": []
+  },
+  {
+    "text": "差别常常不在会不会卖,在进货价。",
+    "kind": "selling",
+    "feature": "aisle",
+    "hl": []
+  },
+  {
+    "text": "这行的账很实在:进价每低一成,利润就厚一成。",
+    "kind": "selling",
+    "feature": "wall",
+    "hl": []
+  },
+  {
+    "text": "同样标价,你进得便宜,人家打价格战你跟得起。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": []
+  },
+  {
+    "text": "那进价怎么压到底?核心一条:少过几道手,直接拿工厂价。",
+    "kind": "selling",
+    "feature": "aisle",
+    "hl": []
+  },
+  {
+    "text": "米站,对接中国源头工厂,出厂价、一件起订,把中间环节全省掉。",
+    "kind": "number",
+    "feature": "category",
+    "hl": [],
+    "num": {
+      "to": 10,
+      "unit": "万",
+      "label": "SKU 工厂价",
+      "decimals": 0
+    }
+  },
+  {
+    "text": "当你的进价就是别人拿不到的底价,这门生意才真有竞争力。",
+    "kind": "selling",
+    "feature": "drone",
+    "hl": []
+  },
+  {
+    "text": "想让进价成为你的优势,应用商店搜米站。",
+    "kind": "selling",
+    "feature": "download",
+    "hl": []
+  }
+]

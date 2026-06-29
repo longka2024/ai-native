@@ -1,0 +1,124 @@
+{
+  "styleId": "datahard",
+  "theme": "#F2B33D",
+  "cap": "glow",
+  "brand": "源头供应链 · mizan",
+  "watermark": "",
+  "logo": "brand/mizan-logo.png",
+  "endLogo": "brand/mizan-icon.png",
+  "voice": "voice15_v3.mp3",
+  "bgm": "bgm.mp3",
+  "durationSec": 40.656,
+  "coverStyle": "lingzaoTop",
+  "beats": [
+    {
+      "text": "很多海外开店的华人都动过从中国进货的念头,又很快打了退堂鼓。",
+      "startSec": 0.0,
+      "endSec": 5.12,
+      "kind": "selling",
+      "clip": "v3/s1.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "怕流程复杂、怕语言不通、怕不会操作、怕货到不了。",
+      "startSec": 5.24,
+      "endSec": 9.231,
+      "kind": "selling",
+      "clip": "v3/s2.mp4",
+      "feature": "wall",
+      "hl": []
+    },
+    {
+      "text": "听起来跨境进货,好像是件很专业、很麻烦的事。",
+      "startSec": 9.351,
+      "endSec": 13.235,
+      "kind": "selling",
+      "clip": "v3/s3.mp4",
+      "feature": "aisle",
+      "hl": []
+    },
+    {
+      "text": "但现在,它其实比你想的简单得多。",
+      "startSec": 13.355,
+      "endSec": 16.314,
+      "kind": "selling",
+      "clip": "v3/s4.mp4",
+      "feature": "drone",
+      "hl": []
+    },
+    {
+      "text": "mizan就是一个手机App,中文界面,像网购一样下单。",
+      "startSec": 16.434,
+      "endSec": 20.959,
+      "kind": "selling",
+      "clip": "shared/mizan-category.mp4",
+      "feature": "category",
+      "hl": []
+    },
+    {
+      "text": "十万多种货、工厂价、一件起订,挑好下单工厂直发到店。",
+      "startSec": 21.079,
+      "endSec": 25.731,
+      "kind": "number",
+      "clip": "v3/s6.mp4",
+      "feature": "wall",
+      "num": {
+        "to": 10,
+        "unit": "万",
+        "label": "SKU 工厂价",
+        "decimals": 0
+      },
+      "hl": []
+    },
+    {
+      "text": "不用飞回国、不用找货代、不用懂外贸。",
+      "startSec": 27.331,
+      "endSec": 30.422,
+      "kind": "selling",
+      "clip": "v3/s7.mp4",
+      "feature": "loading",
+      "hl": []
+    },
+    {
+      "text": "手机点几下,源头的货就到你店里。",
+      "startSec": 30.542,
+      "endSec": 33.578,
+      "kind": "selling",
+      "clip": "v3/s8.mp4",
+      "feature": "product",
+      "hl": []
+    },
+    {
+      "text": "进货这件事,早就不该那么麻烦了。",
+      "startSec": 33.698,
+      "endSec": 36.487,
+      "kind": "selling",
+      "clip": "v3/s9.mp4",
+      "feature": "people",
+      "hl": []
+    },
+    {
+      "text": "想像网购一样从源头进货,应用商店搜mizan。",
+      "startSec": 36.607,
+      "endSec": 40.656,
+      "kind": "selling",
+      "clip": "shared/mizan-download.mp4",
+      "feature": "download",
+      "hl": []
+    }
+  ],
+  "title": "从中国进货\n很麻烦?",
+  "titleHl": [
+    "很麻烦"
+  ],
+  "cover": {
+    "locale": "海外开店",
+    "sub": "手机App中文下单·像网购",
+    "tags": [
+      "手机下单",
+      "中文界面",
+      "工厂直发"
+    ]
+  }
+}

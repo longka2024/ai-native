@@ -1,0 +1,102 @@
+[
+  {
+    "text": "想用米站直采，第一步怎么开通？手机三分钟搞定。",
+    "kind": "selling",
+    "feature": "register",
+    "hl": [
+      "三分钟"
+    ],
+    "clip": "shared/mizan-reg1.mp4"
+  },
+  {
+    "text": "应用商店搜「米站」，下载安装。",
+    "kind": "selling",
+    "feature": "download",
+    "hl": [
+      "下载安装"
+    ],
+    "clip": "shared/mizan-download.mp4"
+  },
+  {
+    "text": "打开后，点新用户注册。",
+    "kind": "selling",
+    "feature": "register",
+    "hl": [
+      "新用户注册"
+    ],
+    "clip": "shared/mizan-reg2.mp4"
+  },
+  {
+    "text": "选你所在的国家地区，西班牙、墨西哥都有。",
+    "kind": "selling",
+    "feature": "register",
+    "hl": [
+      "国家地区"
+    ],
+    "clip": "shared/mizan-reg3.mp4"
+  },
+  {
+    "text": "填手机号，获取验证码。",
+    "kind": "selling",
+    "feature": "register",
+    "hl": [
+      "手机号",
+      "验证码"
+    ],
+    "clip": "shared/mizan-reg4.mp4"
+  },
+  {
+    "text": "填一下店铺基本信息，提交审核。",
+    "kind": "selling",
+    "feature": "register",
+    "hl": [
+      "提交审核"
+    ],
+    "clip": "shared/mizan-reg1.mp4"
+  },
+  {
+    "text": "审核通过，登录就能进中国站主页。",
+    "kind": "selling",
+    "feature": "register",
+    "hl": [
+      "登录",
+      "中国站"
+    ],
+    "clip": "shared/mizan-reg2.mp4"
+  },
+  {
+    "text": "进去就是十万多种货、工厂价、一件起订。",
+    "kind": "number",
+    "feature": "category",
+    "hl": [
+      "十万多种"
+    ],
+    "chart": {
+      "type": "kpi",
+      "title": "开通后",
+      "takeaway": "工厂价  一件起订",
+      "value": 100000,
+      "label": "种商品（十万多种）"
+    },
+    "clip": "shared/mizan-category.mp4"
+  },
+  {
+    "text": "整个注册，前后也就三分钟。",
+    "kind": "closing",
+    "feature": "register",
+    "hl": [
+      "三分钟"
+    ],
+    "clip": "shared/mizan-reg3.mp4"
+  },
+  {
+    "text": "现在就去应用商店搜「米站」开通。",
+    "kind": "closing",
+    "feature": "download",
+    "hl": [
+      "搜米站",
+      "开通"
+    ],
+    "clip": "shared/mizan-download.mp4"
+  }
+]

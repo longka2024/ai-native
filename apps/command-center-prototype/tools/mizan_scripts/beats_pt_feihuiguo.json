@@ -1,0 +1,68 @@
+[
+  {
+    "text": "在海外开店的华人,过去补货几乎都靠一件事:一年飞回国一两趟。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": []
+  },
+  {
+    "text": "跑义乌、广州的批发市场,听着风光,实际多累自己知道。",
+    "kind": "selling",
+    "feature": "loading",
+    "hl": []
+  },
+  {
+    "text": "来回机票、住一礼拜酒店,白天泡市场一件件挑,晚上还得对账打包。",
+    "kind": "selling",
+    "feature": "aisle",
+    "hl": []
+  },
+  {
+    "text": "更别说一趟得备齐大半年的货,资金一次压一大笔,选错还砸手里。",
+    "kind": "selling",
+    "feature": "wall",
+    "hl": []
+  },
+  {
+    "text": "人折腾一圈,钱没省多少,店里还得找人盯。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": []
+  },
+  {
+    "text": "其实现在,这趟可以不用飞了。",
+    "kind": "selling",
+    "feature": "drone",
+    "hl": []
+  },
+  {
+    "text": "米站把整个义乌、广州的源头搬上了手机。",
+    "kind": "selling",
+    "feature": "category",
+    "hl": []
+  },
+  {
+    "text": "随时打开按品类挑货,工厂价、一件起订,葡萄牙还有自营仓就近补,十来天到。",
+    "kind": "number",
+    "feature": "loading",
+    "hl": [],
+    "num": {
+      "to": 10,
+      "unit": "万",
+      "label": "SKU 工厂价",
+      "decimals": 0
+    }
+  },
+  {
+    "text": "补货从飞一趟变成点几下,省下的精力全花在守店上。",
+    "kind": "selling",
+    "feature": "people",
+    "hl": []
+  },
+  {
+    "text": "想告别年年飞回国进货,应用商店搜米站。",
+    "kind": "selling",
+    "feature": "download",
+    "hl": []
+  }
+]
