@@ -8,13 +8,13 @@
   "endLogo": "brand/mizan-icon.png",
   "voice": "voice15_v2.mp3",
   "bgm": "bgm.mp3",
-  "durationSec": 39.21,
-  "coverStyle": "question",
+  "durationSec": 39.043,
+  "coverStyle": "lingzao",
   "beats": [
     {
       "text": "在海外开店的华人,常被客人问同一句话:就这些吗,有没有新的?",
       "startSec": 0.0,
-      "endSec": 4.82,
+      "endSec": 4.588,
       "kind": "selling",
       "clip": "v2/s1.mp4",
       "feature": "people",
@@ -22,8 +22,8 @@
     },
     {
       "text": "本地批发能拿的就那么几样,款式老、更新又慢。",
-      "startSec": 4.94,
-      "endSec": 8.416,
+      "startSec": 4.708,
+      "endSec": 8.094,
       "kind": "selling",
       "clip": "v2/s2.mp4",
       "feature": "aisle",
@@ -31,8 +31,8 @@
     },
     {
       "text": "货架一年到头老面孔,回头客来两次就没了新鲜感。",
-      "startSec": 8.536,
-      "endSec": 12.177,
+      "startSec": 8.214,
+      "endSec": 11.989,
       "kind": "selling",
       "clip": "v2/s3.mp4",
       "feature": "wall",
@@ -40,17 +40,17 @@
     },
     {
       "text": "想上新,本地又找不到货源,只能干着急。",
-      "startSec": 12.297,
-      "endSec": 15.78,
+      "startSec": 12.109,
+      "endSec": 15.476,
       "kind": "selling",
       "clip": "v2/s4.mp4",
       "feature": "people",
       "hl": []
     },
     {
-      "text": "其实留住客人的关键,是货架常换常新。",
-      "startSec": 15.9,
-      "endSec": 19.358,
+      "text": "其实留住客人的关键,是产品常换常新。",
+      "startSec": 15.596,
+      "endSec": 18.682,
       "kind": "selling",
       "clip": "v2/s5.mp4",
       "feature": "aisle",
@@ -58,8 +58,8 @@
     },
     {
       "text": "mizan对接的是中国源头工厂,十万多种货、二十六个大类。",
-      "startSec": 19.478,
-      "endSec": 23.748,
+      "startSec": 18.802,
+      "endSec": 23.274,
       "kind": "number",
       "clip": "shared/mizan-category.mp4",
       "feature": "category",
@@ -73,8 +73,8 @@
     },
     {
       "text": "从日用到家居、从饰品到家电,选择多到挑花眼。",
-      "startSec": 25.348,
-      "endSec": 29.27,
+      "startSec": 24.874,
+      "endSec": 29.444,
       "kind": "selling",
       "clip": "v2/s7.mp4",
       "feature": "product",
@@ -82,8 +82,8 @@
     },
     {
       "text": "工厂价、一件起订,想上什么新品随时补。",
-      "startSec": 29.39,
-      "endSec": 32.891,
+      "startSec": 29.564,
+      "endSec": 32.699,
       "kind": "selling",
       "clip": "v2/s8.mp4",
       "feature": "loading",
@@ -91,28 +91,35 @@
     },
     {
       "text": "货架新鲜了,客人才愿意一次次回来。",
-      "startSec": 33.011,
-      "endSec": 35.724,
+      "startSec": 32.819,
+      "endSec": 35.789,
       "kind": "selling",
       "clip": "v2/s9.mp4",
       "feature": "people",
       "hl": []
     },
     {
-      "text": "想让货架常换常新,应用商店搜mizan。",
-      "startSec": 35.844,
-      "endSec": 39.21,
+      "text": "想让产品常换常新,应用商店搜mizan。",
+      "startSec": 35.909,
+      "endSec": 39.043,
       "kind": "selling",
       "clip": "shared/mizan-download.mp4",
       "feature": "download",
       "hl": []
     }
   ],
-  "title": "货架\n总是老几样?",
+  "title": "西班牙进货\n到底省多少?",
   "titleHl": [
-    "老几样"
+    "省多少"
   ],
   "cover": {
-    "sub": "十万SKU源头直采·选择多"
+    "locale": "西班牙开店",
+    "sub": "算笔账给你看",
+    "tags": [
+      "工厂价",
+      "省两成",
+      "海外仓直发"
+    ],
+    "flag": "es"
   }
 }

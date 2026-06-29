@@ -24,7 +24,7 @@ except Exception:
 def ffprobe(path: str) -> dict:
     out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0",
         "-show_entries", "stream=width,height,r_frame_rate", "-show_entries", "format=duration",
-        "-of", "json", path], capture_output=True, text=True).stdout
+        "-of", "json", path], capture_output=True, text=True, encoding="utf-8", errors="replace").stdout
     d = json.loads(out or "{}")
     st = (d.get("streams") or [{}])[0]
     fm = d.get("format", {})
@@ -34,18 +34,18 @@ def ffprobe(path: str) -> dict:
     n, dn = rfr.split("/")
     fps = round(float(n) / float(dn)) if float(dn) else 0
     dur = float(fm.get("duration", 0) or 0)
-    a = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0", path], capture_output=True, text=True).stdout.strip()
+    a = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0", path], capture_output=True, text=True, encoding="utf-8", errors="replace").stdout.strip()
     return {"w": w, "h": h, "fps": fps, "dur": round(dur, 2), "has_audio": bool(a)}
 
 
 def audio_stats(path: str) -> dict:
     """音轨响度(ffmpeg volumedetect)+ 音频时长。静音/削峰/声画错位用。"""
     r = subprocess.run(["ffmpeg", "-hide_banner", "-i", path, "-af", "volumedetect", "-f", "null", os.devnull],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
     err = r.stderr or ""
     mean = re.search(r"mean_volume:\s*(-?[\d.]+) dB", err)
     mx = re.search(r"max_volume:\s*(-?[\d.]+) dB", err)
-    adur = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=duration", "-of", "csv=p=0", path], capture_output=True, text=True).stdout.strip()
+    adur = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=duration", "-of", "csv=p=0", path], capture_output=True, text=True, encoding="utf-8", errors="replace").stdout.strip()
     try:
         adur_f = float(adur)
     except ValueError:
@@ -60,7 +60,7 @@ def scene_pacing(path: str, dur: float, thresh: float = 0.3) -> dict:
     切太少+某镜头停太久=PPT感/拖;太碎=切碎堆料。阈值内容相关 → 只报数值作预警。"""
     r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", path,
         "-filter:v", f"select='gt(scene,{thresh})',metadata=print", "-an", "-f", "null", os.devnull],
-        capture_output=True, text=True)
+        capture_output=True, text=True, encoding="utf-8", errors="replace")
     times = sorted(float(t) for t in re.findall(r"pts_time:([\d.]+)", r.stderr or ""))
     cuts = len(times)
     bounds = [0.0] + times + [dur if dur > 0 else (times[-1] if times else 0.0)]
@@ -112,6 +112,16 @@ def analyze(path: str, n: int = 10) -> dict:
     except OSError:
         pass
 
+    # 片尾黑屏专检(客户反馈核心):抽最后一帧,亮度极低=片尾黑(判废)
+    tail_mean = 999.0
+    tp = os.path.join(tempfile.mkdtemp(), "tail.png")
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", str(max(0, dur - 0.08)), "-i", path, "-vframes", "1", tp], check=False)
+    if os.path.exists(tp):
+        ti = cv2.imread(tp)
+        if ti is not None:
+            tail_mean = float(cv2.cvtColor(ti, cv2.COLOR_BGR2GRAY).mean())
+        os.remove(tp)
+
     # 黑屏/纯色: 整帧亮度极低(near-black) 或 标准差极低(纯色/单色块)
     black = sum(1 for m in means if m < 12)
     flat = sum(1 for s in stds if s < 6)
@@ -132,7 +142,7 @@ def analyze(path: str, n: int = 10) -> dict:
     return {"vignette_ratio": round(float(np.mean(ratios)), 3) if ratios else 0,
             "blur_var": round(float(np.mean(blurs)), 1) if blurs else 0,
             "frames": len(grays),
-            "black_frames": black, "flat_frames": flat,
+            "black_frames": black, "flat_frames": flat, "tail_mean": round(tail_mean, 1),
             "motion": motion, "dup_pairs": dup_pairs}
 
 
@@ -172,13 +182,16 @@ def main() -> None:
     if l1["has_audio"]:
         chk("非静音", au["mean_db"] is not None and au["mean_db"] > a.silence_db,
             f'{au["mean_db"]}dB', f'>{a.silence_db}dB')
-    # 声画时长错位: 视频时长 vs 音频时长
+    # 声画时长错位: 视频 vs 音频(有符号)。+ = 视频比音频长(片尾无声 outro,正常);
+    # 音频比视频长 > tol = 被截断(判废);视频比音频长 > 2.5s = 死黑/挂尾(判废)。
     if l1["has_audio"] and au["audio_dur"] > 0:
-        diff = round(abs(l1["dur"] - au["audio_dur"]), 2)
-        chk("声画同步", diff <= a.sync_tol, f'差{diff}s', f'≤{a.sync_tol}s')
+        diff = round(l1["dur"] - au["audio_dur"], 2)
+        chk("声画同步", (diff >= -a.sync_tol) and (diff <= 2.5), f'视频长音频{diff}s', f'-{a.sync_tol}~+2.5s')
     # 黑屏: 抽样帧里出现近黑帧(≥2 或占比≥30%)=渲染翻车
     blackbad = l2["black_frames"] >= max(2, int(l2["frames"] * 0.3)) if l2["frames"] else False
     chk("无黑屏", not blackbad, f'{l2["black_frames"]}/{l2["frames"]}黑帧', "0")
+    # 片尾黑屏专检(客户核心反馈):最后一帧亮度极低=片尾黑,判废
+    chk("片尾非黑", l2["tail_mean"] >= 14, f'末帧亮度{l2["tail_mean"]}', "≥14")
     # 动态承诺: 声明 motion/mixed 但运动量过低 = PPT感/静态,判废
     if a.kind in ("motion", "mixed"):
         chk(f"运动量({a.kind})", l2["motion"] >= a.min_motion, l2["motion"], f'≥{a.min_motion}')

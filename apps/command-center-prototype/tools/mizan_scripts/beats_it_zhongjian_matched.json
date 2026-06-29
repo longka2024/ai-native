@@ -1,92 +1,92 @@
 [
-  {
-    "text": "在意大利开店的华人,辛苦一年算下来,利润常常薄得吓人。",
-    "kind": "selling",
-    "feature": "people",
-    "hl": [],
-    "clip": "it_zhongjian/s1.mp4"
+ {
+  "text": "在意大利开店的华人,辛苦一年算下来,利润常常薄得吓人。",
+  "kind": "selling",
+  "feature": "people",
+  "hl": [],
+  "clip": "it_zhongjian/s1.mp4"
+ },
+ {
+  "text": "可问题往往不在卖货,在进货。",
+  "kind": "selling",
+  "feature": "wall",
+  "hl": [],
+  "clip": "it_zhongjian/s2.mp4"
+ },
+ {
+  "text": "一件货从工厂到你店里,要过多少手?",
+  "kind": "selling",
+  "feature": "aisle",
+  "hl": [],
+  "clip": "it_zhongjian/s3.mp4"
+ },
+ {
+  "text": "一级批发、二级分销、再到零售,每层都抽一道。",
+  "kind": "selling",
+  "feature": "loading",
+  "hl": [],
+  "clip": "it_zhongjian/s4.mp4"
+ },
+ {
+  "text": "等你拿到手,价早翻了不止一倍,你卖的其实是第三、第四手货。",
+  "kind": "selling",
+  "feature": "wall",
+  "hl": [],
+  "clip": "it_zhongjian/s5.mp4"
+ },
+ {
+  "text": "更亏的是,有人贪一批低价货,到手一半款式过季,压仓库卖不动。",
+  "kind": "selling",
+  "feature": "aisle",
+  "hl": [],
+  "clip": "it_zhongjian/s6.mp4"
+ },
+ {
+  "text": "做久的老板都看明白了:省下的每一分利润,都藏在你走的是第几手货里。",
+  "kind": "selling",
+  "feature": "people",
+  "hl": [],
+  "clip": "it_zhongjian/s7.mp4"
+ },
+ {
+  "text": "而米站,就是把中间这几层全砍掉。",
+  "kind": "selling",
+  "feature": "category",
+  "hl": [],
+  "clip": "shared/mizan-category.mp4"
+ },
+ {
+  "text": "直接对接中国源头,工厂出厂价,手机一件起订,工厂直接发货。",
+  "kind": "selling",
+  "feature": "drone",
+  "hl": [],
+  "clip": "it_zhongjian/s9.mp4"
+ },
+ {
+  "text": "十万多种货、工厂价,不用先囤一大堆压着钱。",
+  "kind": "number",
+  "feature": "wall",
+  "hl": [],
+  "num": {
+   "to": 10,
+   "unit": "万",
+   "label": "SKU 工厂价",
+   "decimals": 0
   },
-  {
-    "text": "可问题往往不在卖货,在进货。",
-    "kind": "selling",
-    "feature": "wall",
-    "hl": [],
-    "clip": "it_zhongjian/s2.mp4"
-  },
-  {
-    "text": "一件货从工厂到你店里,要过多少手?",
-    "kind": "selling",
-    "feature": "aisle",
-    "hl": [],
-    "clip": "it_zhongjian/s3.mp4"
-  },
-  {
-    "text": "一级批发、二级分销、再到零售,每层都抽一道。",
-    "kind": "selling",
-    "feature": "loading",
-    "hl": [],
-    "clip": "it_zhongjian/s4.mp4"
-  },
-  {
-    "text": "等你拿到手,价早翻了不止一倍,你卖的其实是第三、第四手货。",
-    "kind": "selling",
-    "feature": "wall",
-    "hl": [],
-    "clip": "it_zhongjian/s5.mp4"
-  },
-  {
-    "text": "更亏的是,有人贪一批低价货,到手一半临期、款式过季,压仓库卖不动。",
-    "kind": "selling",
-    "feature": "aisle",
-    "hl": [],
-    "clip": "it_zhongjian/s6.mp4"
-  },
-  {
-    "text": "做久的老板都看明白了:省下的每一分利润,都藏在你走的是第几手货里。",
-    "kind": "selling",
-    "feature": "people",
-    "hl": [],
-    "clip": "it_zhongjian/s7.mp4"
-  },
-  {
-    "text": "而米站,就是把中间这几层全砍掉。",
-    "kind": "selling",
-    "feature": "category",
-    "hl": [],
-    "clip": "shared/mizan-category.mp4"
-  },
-  {
-    "text": "直接对接中国源头,工厂出厂价,手机一件起订,工厂直接发货。",
-    "kind": "selling",
-    "feature": "drone",
-    "hl": [],
-    "clip": "it_zhongjian/s9.mp4"
-  },
-  {
-    "text": "十万多种货、工厂价,不用先囤一大堆压着钱。",
-    "kind": "number",
-    "feature": "wall",
-    "hl": [],
-    "num": {
-      "to": 10,
-      "unit": "万",
-      "label": "SKU 工厂价",
-      "decimals": 0
-    },
-    "clip": "it_zhongjian/s10.mp4"
-  },
-  {
-    "text": "进货价压到底,利润才是你自己的。",
-    "kind": "selling",
-    "feature": "people",
-    "hl": [],
-    "clip": "it_zhongjian/s11.mp4"
-  },
-  {
-    "text": "想让利润不再被中间商一层层吃掉,应用商店搜米站。",
-    "kind": "selling",
-    "feature": "download",
-    "hl": [],
-    "clip": "shared/mizan-download.mp4"
-  }
+  "clip": "it_zhongjian/s10.mp4"
+ },
+ {
+  "text": "进货价压到底,利润才是你自己的。",
+  "kind": "selling",
+  "feature": "people",
+  "hl": [],
+  "clip": "it_zhongjian/s11.mp4"
+ },
+ {
+  "text": "想让利润不再被中间商一层层吃掉,应用商店搜米站。",
+  "kind": "selling",
+  "feature": "download",
+  "hl": [],
+  "clip": "shared/mizan-download.mp4"
+ }
 ]
